@@ -11,15 +11,15 @@ export const AnalyzeRequestSchema = z.object({
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
 export const SuggestionSchema = z.object({
-  action: z.string().min(1),
-  reason: z.string().min(1),
-  expected_effect: z.string().min(1),
+  action: z.string().min(1).max(160),
+  reason: z.string().min(1).max(240),
+  expected_effect: z.string().min(1).max(240),
 });
 
 const CompleteOutfitAnalysisSchema = z
   .object({
-    summary: z.string().min(1),
-    strengths: z.array(z.string().min(1)).length(2),
+    summary: z.string().min(1).max(280),
+    strengths: z.array(z.string().min(1).max(160)).length(2),
     occasion_fit: z.enum(["適合", "稍需調整", "不太適合"]),
     suggestions: z.array(SuggestionSchema).max(3),
     retake_required: z.literal(false),
@@ -30,7 +30,7 @@ const CompleteOutfitAnalysisSchema = z
 const RetakeOutfitAnalysisSchema = z
   .object({
     retake_required: z.literal(true),
-    retake_reason: z.string().min(1),
+    retake_reason: z.string().min(1).max(240),
   })
   .strict();
 

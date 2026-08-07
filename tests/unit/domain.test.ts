@@ -78,4 +78,48 @@ describe("outfit domain contract", () => {
       }),
     ).toThrow();
   });
+
+  it("accepts analysis text at every forwarding limit", () => {
+    expect(() => OutfitAnalysisSchema.parse({
+      summary: "s".repeat(280),
+      strengths: ["a".repeat(160), "b".repeat(160)],
+      occasion_fit: "適合",
+      suggestions: [{
+        action: "a".repeat(160),
+        reason: "r".repeat(240),
+        expected_effect: "e".repeat(240),
+      }],
+      retake_required: false,
+      retake_reason: null,
+    })).not.toThrow();
+    expect(() => OutfitAnalysisSchema.parse({
+      retake_required: true,
+      retake_reason: "r".repeat(240),
+    })).not.toThrow();
+  });
+
+  it.each([
+    ["summary", { summary: "s".repeat(281) }],
+    ["strength", { strengths: ["a".repeat(161), "比例清楚"] }],
+    ["suggestion action", { suggestions: [{ action: "a".repeat(161), reason: "原因", expected_effect: "效果" }] }],
+    ["suggestion reason", { suggestions: [{ action: "動作", reason: "r".repeat(241), expected_effect: "效果" }] }],
+    ["suggestion expected effect", { suggestions: [{ action: "動作", reason: "原因", expected_effect: "e".repeat(241) }] }],
+  ])("rejects a %s above its forwarding limit", (_field, invalidFields) => {
+    expect(() => OutfitAnalysisSchema.parse({
+      summary: "整體俐落。",
+      strengths: ["配色協調", "比例清楚"],
+      occasion_fit: "適合",
+      suggestions: [],
+      retake_required: false,
+      retake_reason: null,
+      ...invalidFields,
+    })).toThrow();
+  });
+
+  it("rejects a retake reason above its forwarding limit", () => {
+    expect(() => OutfitAnalysisSchema.parse({
+      retake_required: true,
+      retake_reason: "r".repeat(241),
+    })).toThrow();
+  });
 });

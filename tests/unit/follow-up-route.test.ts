@@ -29,6 +29,33 @@ function clientReturning(alternative: string): FollowUpResponsesClient {
   };
 }
 
+function makeOversizedRequest(contentLength?: string) {
+  let cancelled = false;
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(JSON.stringify({
+        analysis: { ...completeAnalysis, summary: "x".repeat(32 * 1024) },
+        question: "還有其他方法嗎？",
+      })));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const headers = new Headers({ "content-type": "application/json" });
+  if (contentLength) headers.set("content-length", contentLength);
+
+  return {
+    request: new Request("http://localhost/api/follow-up", {
+      method: "POST",
+      headers,
+      body,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" }),
+    wasCancelled: () => cancelled,
+  };
+}
+
 describe("POST /api/follow-up", () => {
   afterEach(() => {
     delete process.env.OPENAI_VISION_MODEL;
@@ -92,6 +119,53 @@ describe("POST /api/follow-up", () => {
     await expect(response.json()).resolves.toEqual({ error: "INVALID_FOLLOW_UP" });
     expect(calls).toBe(0);
   });
+
+  it("rejects an over-limit Content-Length before reading or calling the AI", async () => {
+    process.env.OPENAI_VISION_MODEL = "follow-up-test-model";
+    let calls = 0;
+    const client: FollowUpResponsesClient = {
+      responses: {
+        create: async () => {
+          calls += 1;
+          return { output_text: JSON.stringify({ alternative: "不應使用" }) };
+        },
+      },
+    };
+    const normalRequest = request({ analysis: completeAnalysis, question: "還有其他方法嗎？" });
+
+    const response = await POST(
+      new Request(normalRequest, { headers: { "content-length": String(32 * 1024 + 1) } }),
+      client,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_FOLLOW_UP" });
+    expect(calls).toBe(0);
+  });
+
+  it.each([undefined, "1"])(
+    "rejects and cancels an over-limit stream with Content-Length %s before calling the AI",
+    async (contentLength) => {
+      process.env.OPENAI_VISION_MODEL = "follow-up-test-model";
+      let calls = 0;
+      const client: FollowUpResponsesClient = {
+        responses: {
+          create: async () => {
+            calls += 1;
+            return { output_text: JSON.stringify({ alternative: "不應使用" }) };
+          },
+        },
+      };
+      const oversized = makeOversizedRequest(contentLength);
+
+      const response = await POST(oversized.request, client);
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({ error: "INVALID_FOLLOW_UP" });
+      expect(oversized.wasCancelled()).toBe(true);
+      expect(calls).toBe(0);
+    },
+  );
 
   it("uses a stateless structured Responses request without logging content", async () => {
     process.env.OPENAI_VISION_MODEL = "follow-up-test-model";

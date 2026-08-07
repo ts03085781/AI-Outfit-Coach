@@ -5,6 +5,8 @@ import { OutfitAnalysisSchema } from "@/features/outfit/domain";
 
 export const runtime = "nodejs";
 
+const MAX_FOLLOW_UP_REQUEST_BYTES = 32 * 1024;
+
 const FollowUpRequestSchema = z.object({
   analysis: OutfitAnalysisSchema,
   question: z.string().trim().min(1).max(160),
@@ -74,17 +76,65 @@ function json(body: object, status: number): Response {
   return Response.json(body, { status });
 }
 
+async function readBodyWithinLimit(
+  body: ReadableStream<Uint8Array> | null,
+): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  if (!body) return new Uint8Array();
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_FOLLOW_UP_REQUEST_BYTES) {
+        await reader.cancel();
+        return undefined;
+      }
+      chunks.push(value);
+    }
+  } catch {
+    try {
+      await reader.cancel();
+    } catch {
+      // The request stream has already failed or closed.
+    }
+    return undefined;
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes: Uint8Array<ArrayBuffer> = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
 export async function POST(
   request: Request,
   client?: FollowUpResponsesClient,
 ): Promise<Response> {
   let input: z.infer<typeof FollowUpRequestSchema> | undefined;
+  let requestBytes: Uint8Array<ArrayBuffer> | undefined;
   try {
+    const contentLength = Number(request.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > MAX_FOLLOW_UP_REQUEST_BYTES) {
+      return json({ error: "INVALID_FOLLOW_UP" }, 400);
+    }
+
     if (!request.headers.get("content-type")?.startsWith("application/json")) {
       return json({ error: "INVALID_FOLLOW_UP" }, 400);
     }
 
-    const body: unknown = await request.json();
+    requestBytes = await readBodyWithinLimit(request.body);
+    if (!requestBytes) return json({ error: "INVALID_FOLLOW_UP" }, 400);
+    const body: unknown = JSON.parse(new TextDecoder().decode(requestBytes));
     const parsed = FollowUpRequestSchema.safeParse(body);
     if (!parsed.success || parsed.data.analysis.retake_required) {
       return json({ error: "INVALID_FOLLOW_UP" }, 400);
@@ -120,5 +170,6 @@ export async function POST(
     return json({ error: "AI_UNAVAILABLE" }, 503);
   } finally {
     input = undefined;
+    requestBytes = undefined;
   }
 }
