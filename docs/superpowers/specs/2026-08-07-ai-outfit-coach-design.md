@@ -30,6 +30,8 @@ MVP 提供四種情境：
 
 使用者可選填天氣、室內／戶外，以及想呈現的感覺。自由輸入僅作背景補充，不取代四個主要情境。
 
+內部欄位固定為：天氣 `sunny | rainy | cold | hot | mild`、環境 `indoor | outdoor | mixed`，想呈現的感覺會 trim 且最多 60 字；三欄皆可省略。所有選填背景都以明確 delimiter 標記為 untrusted context，不得當成系統指令。
+
 ## 4. 核心流程
 
 1. 使用者選擇一種情境，必要時填寫選填背景。
@@ -86,6 +88,10 @@ AI 不得使用羞辱、嘲笑、命令式語氣，不得建議極端節食、�
 
 採無狀態設計，負責請求驗證、限流、暫時持有影像位元、組合提示、呼叫 AI、驗證輸出結構、安全過濾及錯誤轉換。影像不得寫入檔案、物件儲存、資料庫、追蹤系統或日誌。
 
+分析與追問在讀取 body 前執行 same-origin、endpoint burst／sustained 與全域 concurrency guard。memory key 只能是以 server secret HMAC 後的短期 client signal，不保存 raw IP 或裝置 ID。此 memory limiter 只適合單 instance；production 多 instance 必須另有平台分散式規則、quota 與 cost alerts。
+
+分析成功回傳分析內容及短期 stateless HMAC token；追問必須驗證 token 與原分析內容綁定後才能使用。完整不可變 safety policy 位於 system message，client analysis、question 與 optional context 均為 delimiter 包住的 untrusted user data。兩通道輸出都須經 deterministic fail-closed safety validator。
+
 ### 7.3 多模態 AI 介面
 
 以單一供應商介面封裝圖片分析與結構化輸出，應用層不依賴特定模型名稱。初版整合支援圖片輸入與 JSON Schema 的多模態 API；模型名稱透過部署設定指定，以便在不改產品流程的情況下更新模型。
@@ -94,6 +100,8 @@ AI 不得使用羞辱、嘲笑、命令式語氣，不得建議極端節食、�
 
 只記錄匿名事件與技術指標：情境類型、是否分析成功、延遲、錯誤分類、是否重拍，以及建議是否有用。不得記錄照片、自由文字、AI 完整回覆、IP 位址或持久化裝置識別碼。
 
+第一方 `/api/telemetry` 只接受嚴格互斥事件：`analysis_success`、`analysis_retake`、`analysis_error`、`feedback`；不相容欄位組合與未知欄位一律拒絕。transport 失敗不得阻斷使用流程。
+
 ## 8. 資料生命週期與隱私
 
 - 原始照片與壓縮照片只存在於瀏覽器及後端請求記憶體中。
@@ -101,6 +109,7 @@ AI 不得使用羞辱、嘲笑、命令式語氣，不得建議極端節食、�
 - 照片、分析文字與追問內容都不寫入永久儲存。
 - 供應商必須提供不以內容訓練模型的設定，並符合產品公開聲明中的實際保留期限。
 - 若供應商仍有安全或濫用監控保存期，介面必須揭露真實期限，不得宣稱「完全立即刪除」。
+- 在實際期限尚未確認時，介面明示「供應商可能依濫用監控政策短期保留，實際期限上線前仍須確認」。
 - 日誌、錯誤追蹤及分析服務必須設定欄位白名單，避免意外收集請求本文。
 
 ## 9. 介面設計
@@ -115,6 +124,8 @@ AI 不得使用羞辱、嘲笑、命令式語氣，不得建議極端節食、�
 每頁只有一個主要操作。結果頁依序顯示整體觀察、兩個優點、場合適合度及最多三項建議；第一項建議在視覺上優先。結果不顯示總分、排行榜或他人比較。
 
 離開或重新整理頁面後，不提供結果復原。介面應在分析前清楚提醒此限制。
+
+同意畫面顯示本機 object-URL 預覽並在離開畫面時 revoke。分析成功或重拍屬 terminal response，收到後立即清除 React state 中的 Blob；暫時錯誤保留 Blob 供同頁重試。
 
 ## 10. 錯誤處理
 
@@ -168,3 +179,4 @@ AI 不得使用羞辱、嘲笑、命令式語氣，不得建議極端節食、�
 - 安全測試不得產生外貌評分、敏感特徵推測或羞辱內容。
 - 所有請求路徑都不永久保存照片、分析文字與追問內容。
 - 使用者可回覆建議是否有幫助，事件中不包含內容或身分資料。
+- mock-only browser acceptance 涵蓋 retake、follow-up、feedback、error/retry、reload 清狀態與 320／390／430px；真機相機與權限行為仍是獨立發布門檻。

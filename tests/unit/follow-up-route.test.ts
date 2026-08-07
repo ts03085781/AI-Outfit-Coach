@@ -373,4 +373,37 @@ describe("POST /api/follow-up", () => {
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({ error: "AI_SAFETY_REJECTED" });
   });
+
+  it("returns 429 at global concurrency without making another provider call", async () => {
+    process.env.OPENAI_VISION_MODEL = "follow-up-test-model";
+    let providerStarted: (() => void) | undefined;
+    let resolveProvider: ((value: { output_text: string }) => void) | undefined;
+    const started = new Promise<void>((resolve) => { providerStarted = resolve; });
+    const create = vi.fn(async () => {
+      providerStarted?.();
+      return await new Promise<{ output_text: string }>((resolve) => {
+        resolveProvider = resolve;
+      });
+    });
+    const handler = createFollowUpHandler({
+      createClient: () => ({ responses: { create } }),
+      abuseGuard: createInMemoryAbuseGuard({
+        secret: "rate-secret",
+        globalConcurrency: 1,
+      }),
+      verifyAnalysisToken: tokenService.verify,
+    });
+
+    const first = handler(request({ analysis: completeAnalysis, question: "第一個穿搭問題" }));
+    await started;
+    const blocked = await handler(request({ analysis: completeAnalysis, question: "第二個穿搭問題" }));
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("retry-after")).toBe("1");
+    expect(create).toHaveBeenCalledOnce();
+    resolveProvider?.({
+      output_text: JSON.stringify({ alternative: "把袖口捲起即可。" }),
+    });
+    expect((await first).status).toBe(200);
+  });
 });

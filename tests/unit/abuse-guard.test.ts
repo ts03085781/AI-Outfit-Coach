@@ -120,6 +120,28 @@ describe("in-memory abuse guard", () => {
     expect(guard.enter(request(), "followUp").allowed).toBe(true);
   });
 
+  it("keeps analysis and follow-up rate counters in separate endpoint budgets", () => {
+    const guard = createInMemoryAbuseGuard({
+      secret: "test-rate-secret",
+      config: {
+        analyze: {
+          burst: { limit: 2, windowMs: 1_000 },
+          sustained: { limit: 2, windowMs: 10_000 },
+        },
+        followUp: {
+          burst: { limit: 1, windowMs: 1_000 },
+          sustained: { limit: 1, windowMs: 10_000 },
+        },
+      },
+      globalConcurrency: 4,
+    });
+
+    const firstFollowUp = guard.enter(request(), "followUp");
+    if (firstFollowUp.allowed) firstFollowUp.release();
+    expect(guard.enter(request(), "followUp").allowed).toBe(false);
+    expect(guard.enter(request(), "analyze").allowed).toBe(true);
+  });
+
   it("rejects cross-site browser requests without retaining the raw client signal", () => {
     const guard = createInMemoryAbuseGuard({
       secret: "test-rate-secret",

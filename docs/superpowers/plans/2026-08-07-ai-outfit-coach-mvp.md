@@ -6,12 +6,13 @@
 
 **Architecture:** Next.js App Router 同時提供 PWA 前端與無狀態 Route Handler。領域規則、圖片驗證、AI 供應商介面與遙測各自隔離；照片只停留在瀏覽器與單次請求記憶體，不寫入永久儲存。
 
-**Tech Stack:** Node.js 22、TypeScript、Next.js、React、Zod、OpenAI JavaScript SDK、Vitest、Testing Library、Playwright、pnpm。
+**Tech Stack:** Node.js 24、TypeScript、Next.js、React、Zod、OpenAI JavaScript SDK、Sharp、Vitest、Testing Library、Playwright、pnpm 11.9.0。
 
 ## Global Constraints
 
 - 手機 PWA，免登入。
 - 情境固定為：日常外出、約會、工作／面試、正式活動。
+- 選填背景 schema：`weather = sunny|rainy|cold|hot|mild`、`setting = indoor|outdoor|mixed`、trim 後最多 60 字的 `desiredFeel`；全部 optional。
 - 正常結果恰好兩個優點、零至三項建議，不顯示數字分數。
 - 不分析外貌、身材好壞、性別、年齡、族群、健康或經濟狀況。
 - 照片、分析文字與追問內容不得寫入永久儲存、日誌或分析事件。
@@ -30,6 +31,10 @@
 - `src/features/outfit/openai-analyzer.ts`：OpenAI SDK adapter。
 - `src/features/outfit/components/*`：四個單一責任畫面。
 - `src/lib/telemetry.ts`：白名單匿名事件。
+- `src/lib/abuse-guard.ts`：same-origin、HMAC-keyed burst／sustained 與 global concurrency guard（單 instance memory）。
+- `src/features/outfit/analysis-token.ts`：短期 stateless HMAC analysis token。
+- `src/features/outfit/output-safety.ts`：兩通道 deterministic fail-closed safety validator。
+- `src/app/api/telemetry/route.ts`：第一方 strict telemetry sink。
 - `tests/unit/*`：領域、圖片、提示、API、遙測單元測試。
 - `tests/e2e/outfit-flow.spec.ts`：手機瀏覽器完整流程。
 - `tests/evals/safety-cases.ts`：安全與公平測試案例。
