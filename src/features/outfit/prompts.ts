@@ -7,16 +7,15 @@ export function buildAnalysisSystemPrompt(): string {
 回覆必須是符合 OutfitAnalysisSchema 的 JSON。`;
 }
 
-export function buildAnalysisPrompt(input: AnalyzeRequest): string {
-  const context = [
-    `場合：${input.occasion}`,
-    input.weather ? `天氣：${input.weather}` : undefined,
-    input.setting ? `環境：${input.setting}` : undefined,
-    input.desiredFeel ? `想呈現的感覺：${input.desiredFeel}` : undefined,
-  ].filter((line): line is string => Boolean(line)).join("\n");
+export function serializeUntrustedData(value: unknown): string {
+  return JSON.stringify(value)
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e");
+}
 
+export function buildAnalysisPrompt(input: AnalyzeRequest): string {
   return `<UNTRUSTED_ANALYSIS_CONTEXT>
-${context}
+${serializeUntrustedData(input)}
 </UNTRUSTED_ANALYSIS_CONTEXT>
 只分析隨附照片中的可見穿搭。`;
 }
