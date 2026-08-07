@@ -50,7 +50,7 @@ rg -n "console\.(log|debug)|writeFile|createWriteStream|base64|data:image" src
 
 E2E 必須使用 route interception 的固定回應；fixture 僅可用無真人、無個人資料的圖片。測試不得需要金鑰，也不得讓測試照片離開本機測試流程。
 
-隱私掃描只允許 OpenAI adapter 在單次請求記憶體中建立 data URL；若出現其他結果，停止發布並先確認沒有請求／結果記錄或檔案寫入。
+隱私掃描只允許 OpenAI adapter 在單次請求記憶體中建立 data URL，以及 abuse guard／analysis token 對 HMAC digest 或短期 token 做 `base64url` 編碼；HMAC 路徑不得編碼照片、自由文字或 raw client signal。若出現其他結果，停止發布並先確認沒有請求／結果記錄或檔案寫入。
 
 並以 320、390、430px 寬度及至少一台真機驗證相機流程。
 
