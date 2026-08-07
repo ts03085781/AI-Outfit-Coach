@@ -9,6 +9,7 @@
 ```bash
 nvm use 24
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 cp .env.example .env.local
 pnpm dev
 ```
