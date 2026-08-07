@@ -90,7 +90,7 @@ export default function HomePage() {
         {flow.state === "consent" && flow.image ? <ConsentStep image={flow.image} consented={flow.consented} onConsentChange={flow.setConsented} onAnalyze={flow.analyze} /> : null}
         {flow.state === "analyzing" ? <section role="status" aria-live="polite"><h1>正在分析你的穿搭</h1><p>這通常只要幾秒鐘。</p></section> : null}
         {flow.state === "result" && flow.result ? <ResultStep result={flow.result} analysisToken={flow.analysisToken} onRetake={flow.retake} /> : null}
-        {flow.state === "error" ? <section aria-labelledby="error-title"><h1 id="error-title">分析暫時停住了</h1><p role="alert">現在無法分析照片，請確認網路後再試一次。</p><button className="primary-action" type="button" onClick={flow.analyze}>再試一次</button></section> : null}
+        {flow.state === "error" ? <section aria-labelledby="error-title"><h1 id="error-title">分析暫時停住了</h1><p role="alert">{flow.analysisErrorMessage}</p><button className="primary-action" type="button" onClick={flow.analyze}>再試一次</button></section> : null}
       </div>
     </main>
   );

@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  AnalyzerProviderError,
   AnalyzerSafetyError,
   AnalyzerUnavailableError,
   OpenAIOutfitAnalyzer,
@@ -18,13 +19,21 @@ const completeAnalysis = {
   retake_reason: null,
 };
 
-function createClient(outputs: Array<string | Error>): OpenAIResponsesClient {
+type FakeResponse = {
+  output_text: string;
+  output?: Array<{
+    type: "message";
+    content: Array<{ type: "output_text" | "refusal" }>;
+  }>;
+};
+
+function createClient(outputs: Array<string | Error | FakeResponse>): OpenAIResponsesClient {
   return {
     responses: {
       create: async () => {
         const output = outputs.shift();
         if (output instanceof Error) throw output;
-        return { output_text: output ?? "" };
+        return typeof output === "string" ? { output_text: output } : output ?? { output_text: "" };
       },
     },
   };
@@ -113,6 +122,28 @@ describe("OpenAIOutfitAnalyzer", () => {
     expect(request?.text.format.schema).not.toHaveProperty("oneOf");
   });
 
+  it("constrains provider output to the final analysis bounds", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    let request: Parameters<OpenAIResponsesClient["responses"]["create"]>[0] | undefined;
+    const client: OpenAIResponsesClient = {
+      responses: {
+        create: async (nextRequest) => {
+          request = nextRequest;
+          return { output_text: JSON.stringify(completeAnalysis) };
+        },
+      },
+    };
+
+    await new OpenAIOutfitAnalyzer(client).analyze(makeInput());
+
+    const providerSchema = JSON.stringify(request?.text.format.schema);
+    expect(providerSchema).toContain('"minItems":2');
+    expect(providerSchema).toContain('"maxItems":2');
+    expect(providerSchema).toContain('"maxItems":3');
+    expect(providerSchema).toContain('"maxLength":280');
+    expect(providerSchema).toContain('"maxLength":240');
+  });
+
   it("does not retry an unavailable OpenAI request", async () => {
     process.env.OPENAI_VISION_MODEL = "vision-test-model";
     let calls = 0;
@@ -129,6 +160,49 @@ describe("OpenAIOutfitAnalyzer", () => {
       AnalyzerUnavailableError,
     );
     expect(calls).toBe(1);
+  });
+
+  it("classifies an OpenAI authorization failure without preserving its message", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    const providerError = Object.assign(new Error("secret provider detail"), {
+      status: 401,
+      requestID: "req_authorization",
+    });
+
+    await expect(
+      new OpenAIOutfitAnalyzer(createClient([providerError])).analyze(makeInput()),
+    ).rejects.toMatchObject({
+      code: "AI_AUTHORIZATION",
+      providerStatus: 401,
+      requestId: "req_authorization",
+      message: "AI_AUTHORIZATION",
+    } satisfies Partial<AnalyzerProviderError>);
+  });
+
+  it("classifies an OpenAI rate limit failure", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    const providerError = Object.assign(new Error("rate limit"), { status: 429 });
+
+    await expect(
+      new OpenAIOutfitAnalyzer(createClient([providerError])).analyze(makeInput()),
+    ).rejects.toMatchObject({ code: "AI_RATE_LIMITED", providerStatus: 429 });
+  });
+
+  it("classifies a model refusal before parsing output text", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+
+    await expect(new OpenAIOutfitAnalyzer(createClient([{
+      output_text: "",
+      output: [{ type: "message", content: [{ type: "refusal" }] }],
+    }])).analyze(makeInput())).rejects.toMatchObject({ code: "AI_REFUSED" });
+  });
+
+  it("classifies two invalid structured outputs as an invalid response", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+
+    await expect(
+      new OpenAIOutfitAnalyzer(createClient(["not-json", "still-not-json"])).analyze(makeInput()),
+    ).rejects.toMatchObject({ code: "AI_INVALID_RESPONSE" });
   });
 
   it("uses OPENAI_VISION_MODEL for the Responses request", async () => {

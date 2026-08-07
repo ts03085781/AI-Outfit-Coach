@@ -4,6 +4,7 @@ import {
   AnalyzerSafetyError,
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
+  AnalyzerProviderError,
 } from "./openai-analyzer";
 import { isDecodableSupportedImage } from "./server-image";
 import type { AbuseGuard } from "@/lib/abuse-guard";
@@ -154,6 +155,15 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
       } catch (error) {
         if (error instanceof AnalyzerTimeoutError || isAbortError(error)) {
           return json({ error: "AI_TIMEOUT" }, 504);
+        }
+        if (error instanceof AnalyzerProviderError) {
+          console.error("outfit_analysis_failure", {
+            stage: "provider",
+            errorCode: error.code,
+            providerStatus: error.providerStatus,
+            requestId: error.requestId,
+          });
+          return json({ error: error.code }, 503);
         }
         if (error instanceof AnalyzerUnavailableError) {
           return json({ error: "AI_UNAVAILABLE" }, 503);

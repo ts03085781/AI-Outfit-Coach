@@ -23,11 +23,29 @@ const TELEMETRY_ERROR_CODES = new Set<TelemetryErrorCode>([
   "INVALID_IMAGE",
   "AI_TIMEOUT",
   "AI_UNAVAILABLE",
+  "AI_AUTHORIZATION",
+  "AI_RATE_LIMITED",
+  "AI_REFUSED",
+  "AI_INVALID_RESPONSE",
   "AI_SAFETY_REJECTED",
   "RATE_LIMITED",
   "RATE_LIMIT_UNAVAILABLE",
   "INVALID_RESPONSE",
 ]);
+
+const ANALYSIS_ERROR_MESSAGES: Record<TelemetryErrorCode, string> = {
+  INVALID_IMAGE: "這張照片目前無法處理，請改用清楚的 JPEG、PNG 或 WebP 照片。",
+  AI_TIMEOUT: "分析等待逾時，請再試一次。",
+  AI_UNAVAILABLE: "分析服務暫時無法使用，請稍後再試一次。",
+  AI_AUTHORIZATION: "OpenAI 專案的額度或權限目前無法使用，請檢查 Platform 設定。",
+  AI_RATE_LIMITED: "目前分析次數較多，請稍後再試一次。",
+  AI_REFUSED: "這張照片目前無法由模型分析，請改用清楚、完整的單人穿搭照。",
+  AI_INVALID_RESPONSE: "模型回覆格式暫時異常，請再試一次。",
+  AI_SAFETY_REJECTED: "這張照片目前無法完成安全檢查，請改用清楚、完整的單人穿搭照。",
+  RATE_LIMITED: "目前分析次數較多，請稍後再試一次。",
+  RATE_LIMIT_UNAVAILABLE: "分析服務暫時無法使用，請稍後再試一次。",
+  INVALID_RESPONSE: "模型回覆格式暫時異常，請再試一次。",
+};
 
 class AnalysisRequestError extends Error {
   constructor(readonly code: TelemetryErrorCode) {
@@ -56,6 +74,7 @@ export function useOutfitFlow() {
   const [photoError, setPhotoError] = useState<string>();
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
+  const [analysisErrorCode, setAnalysisErrorCode] = useState<TelemetryErrorCode>();
 
   const chooseOccasion = (nextOccasion: Occasion) => {
     setOccasion(nextOccasion);
@@ -80,6 +99,7 @@ export function useOutfitFlow() {
   const analyze = async () => {
     if (!occasion || !image || !consented) return;
     const startedAt = performance.now();
+    setAnalysisErrorCode(undefined);
     setState("analyzing");
     try {
       const formData = new FormData();
@@ -98,6 +118,7 @@ export function useOutfitFlow() {
         if (typeof retakeReason === "string") {
           setImage(undefined);
           setAnalysisToken(undefined);
+          setAnalysisErrorCode(undefined);
           setResult({ retake_required: true, retake_reason: retakeReason });
           setState("result");
           track({ type: "analysis_retake", occasion, latencyBucket });
@@ -114,15 +135,18 @@ export function useOutfitFlow() {
       setImage(undefined);
       setResult(parsed.data.analysis);
       setAnalysisToken(parsed.data.analysisToken);
+      setAnalysisErrorCode(undefined);
       setState("result");
       track({ type: "analysis_success", occasion, latencyBucket });
     } catch (error) {
+      const errorCode = error instanceof AnalysisRequestError ? error.code : "AI_UNAVAILABLE";
+      setAnalysisErrorCode(errorCode);
       setState("error");
       track({
         type: "analysis_error",
         occasion,
         latencyBucket: coarseLatencyBucket(performance.now() - startedAt),
-        errorCode: error instanceof AnalysisRequestError ? error.code : "AI_UNAVAILABLE",
+        errorCode,
       });
     }
   };
@@ -132,6 +156,7 @@ export function useOutfitFlow() {
     setConsented(false);
     setResult(undefined);
     setAnalysisToken(undefined);
+    setAnalysisErrorCode(undefined);
     setState("photo");
   };
 
@@ -146,6 +171,7 @@ export function useOutfitFlow() {
     photoError,
     result,
     analysisToken,
+    analysisErrorMessage: ANALYSIS_ERROR_MESSAGES[analysisErrorCode ?? "AI_UNAVAILABLE"],
     chooseOccasion,
     choosePhoto,
     continueToConsent,

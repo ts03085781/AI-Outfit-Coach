@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { OutfitAnalyzer } from "@/features/outfit/analyzer";
 import {
+  AnalyzerProviderError,
   AnalyzerSafetyError,
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
@@ -373,6 +374,41 @@ describe("POST /api/analyze", () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
+  });
+
+  it("returns an allowlisted authorization code without provider details", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = await handleRequest(
+      makeMultipartRequest(validImage()),
+      {
+        analyze: async () => {
+          throw new AnalyzerProviderError("AI_AUTHORIZATION", 401, "req_authorization");
+        },
+      },
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "AI_AUTHORIZATION" });
+  });
+
+  it("logs only allowlisted provider diagnostic fields", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await handleRequest(
+      makeMultipartRequest(validImage()),
+      {
+        analyze: async () => {
+          throw new AnalyzerProviderError("AI_RATE_LIMITED", 429, "req_rate_limit");
+        },
+      },
+    );
+
+    expect(error).toHaveBeenCalledWith("outfit_analysis_failure", {
+      stage: "provider",
+      errorCode: "AI_RATE_LIMITED",
+      providerStatus: 429,
+      requestId: "req_rate_limit",
+    });
   });
 
   it("fails closed when deterministic output safety rejects the analysis", async () => {

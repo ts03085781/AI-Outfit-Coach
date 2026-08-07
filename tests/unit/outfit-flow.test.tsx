@@ -246,11 +246,35 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "我同意將這張照片用於本次穿搭分析" }));
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("現在無法分析照片");
+    expect(await screen.findByRole("alert")).toHaveTextContent("分析服務暫時無法使用，請稍後再試一次。");
     expect(screen.getByRole("button", { name: "再試一次" })).toBeVisible();
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
       url === "/api/telemetry"
       && JSON.parse(String(init?.body)).type === "analysis_error"
+    )).toBe(true);
+  });
+
+  it.each([
+    ["AI_REFUSED", "這張照片目前無法由模型分析，請改用清楚、完整的單人穿搭照。"],
+    ["AI_AUTHORIZATION", "OpenAI 專案的額度或權限目前無法使用，請檢查 Platform 設定。"],
+    ["AI_RATE_LIMITED", "目前分析次數較多，請稍後再試一次。"],
+    ["AI_INVALID_RESPONSE", "模型回覆格式暫時異常，請再試一次。"],
+    ["AI_TIMEOUT", "分析等待逾時，請再試一次。"],
+  ])("shows an actionable message for %s", async (errorCode, message) => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: errorCode }), { status: 503 }),
+    );
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "我同意將這張照片用於本次穿搭分析" }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
+      url === "/api/telemetry"
+      && JSON.parse(String(init?.body)).errorCode === errorCode,
     )).toBe(true);
   });
 

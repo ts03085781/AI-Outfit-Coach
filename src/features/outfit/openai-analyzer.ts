@@ -28,7 +28,13 @@ export interface OpenAIResponsesClient {
     create(
       request: OpenAIResponsesRequest,
       options?: { signal?: AbortSignal },
-    ): Promise<{ output_text: string }>;
+    ): Promise<{
+      output_text: string;
+      output?: Array<{
+        type: string;
+        content?: Array<{ type: string }>;
+      }>;
+    }>;
   };
 }
 
@@ -46,6 +52,25 @@ export class AnalyzerUnavailableError extends Error {
   }
 }
 
+export type AnalyzerProviderErrorCode =
+  | "AI_AUTHORIZATION"
+  | "AI_RATE_LIMITED"
+  | "AI_REFUSED"
+  | "AI_INVALID_RESPONSE"
+  | "AI_UNAVAILABLE";
+
+export class AnalyzerProviderError extends AnalyzerUnavailableError {
+  constructor(
+    readonly code: AnalyzerProviderErrorCode,
+    readonly providerStatus?: number,
+    readonly requestId?: string,
+  ) {
+    super();
+    this.message = code;
+    this.name = "AnalyzerProviderError";
+  }
+}
+
 export class AnalyzerSafetyError extends Error {
   constructor() {
     super("AI analysis failed safety validation");
@@ -55,12 +80,12 @@ export class AnalyzerSafetyError extends Error {
 
 const TransportAnalysisSchema = z
   .object({
-    summary: z.string().nullable(),
-    strengths: z.array(z.string()).nullable(),
+    summary: z.string().min(1).max(280).nullable(),
+    strengths: z.array(z.string().min(1).max(160)).length(2).nullable(),
     occasion_fit: z.enum(["適合", "稍需調整", "不太適合"]).nullable(),
-    suggestions: z.array(SuggestionSchema).nullable(),
+    suggestions: z.array(SuggestionSchema).max(3).nullable(),
     retake_required: z.boolean(),
-    retake_reason: z.string().nullable(),
+    retake_reason: z.string().min(1).max(240).nullable(),
   })
   .strict();
 
@@ -70,6 +95,32 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException
     ? error.name === "AbortError"
     : error instanceof Error && error.name === "AbortError";
+}
+
+function providerErrorFrom(error: unknown): AnalyzerProviderError {
+  const candidate = error as {
+    status?: unknown;
+    requestID?: unknown;
+    _request_id?: unknown;
+  };
+  const providerStatus = typeof candidate.status === "number" ? candidate.status : undefined;
+  const requestId = typeof candidate.requestID === "string"
+    ? candidate.requestID
+    : typeof candidate._request_id === "string"
+      ? candidate._request_id
+      : undefined;
+  const code = providerStatus === 401 || providerStatus === 403
+    ? "AI_AUTHORIZATION"
+    : providerStatus === 429
+      ? "AI_RATE_LIMITED"
+      : "AI_UNAVAILABLE";
+  return new AnalyzerProviderError(code, providerStatus, requestId);
+}
+
+function hasRefusal(response: Awaited<ReturnType<OpenAIResponsesClient["responses"]["create"]>>): boolean {
+  return response.output?.some((item) =>
+    item.type === "message" && item.content?.some((content) => content.type === "refusal"),
+  ) ?? false;
 }
 
 function parseAnalysis(outputText: string): OutfitAnalysis {
@@ -108,7 +159,15 @@ function createOpenAIClient(): OpenAIResponsesClient {
     responses: {
       create: async (request, options) => {
         const response = await client.responses.create(request as never, options);
-        return { output_text: response.output_text };
+        return {
+          output_text: response.output_text,
+          output: response.output.map((item) => ({
+            type: item.type,
+            content: item.type === "message"
+              ? item.content.map((content) => ({ type: content.type }))
+              : undefined,
+          })),
+        };
       },
     },
   };
@@ -127,7 +186,7 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
       imageDataUrl = `data:${input.image.type};base64,${Buffer.from(imageBytes).toString("base64")}`;
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        let response: { output_text: string };
+        let response: Awaited<ReturnType<OpenAIResponsesClient["responses"]["create"]>>;
         try {
           response = await this.client.responses.create(
             {
@@ -159,8 +218,10 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
           );
         } catch (error) {
           if (isAbortError(error)) throw new AnalyzerTimeoutError();
-          throw new AnalyzerUnavailableError();
+          throw providerErrorFrom(error);
         }
+
+        if (hasRefusal(response)) throw new AnalyzerProviderError("AI_REFUSED");
 
         try {
           const analysis = parseAnalysis(response.output_text);
@@ -168,7 +229,7 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
           return analysis;
         } catch (error) {
           if (error instanceof UnsafeModelOutputError) throw new AnalyzerSafetyError();
-          if (attempt === 1) throw new AnalyzerUnavailableError();
+          if (attempt === 1) throw new AnalyzerProviderError("AI_INVALID_RESPONSE");
         }
       }
 
