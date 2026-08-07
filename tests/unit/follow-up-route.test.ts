@@ -2,7 +2,10 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { POST, type FollowUpResponsesClient } from "@/app/api/follow-up/route";
+import {
+  createFollowUpHandler,
+  type FollowUpResponsesClient,
+} from "@/features/outfit/follow-up-handler";
 
 const completeAnalysis = {
   summary: "整體俐落。",
@@ -27,6 +30,10 @@ function clientReturning(alternative: string): FollowUpResponsesClient {
       create: async () => ({ output_text: JSON.stringify({ alternative }) }),
     },
   };
+}
+
+function handleRequest(request: Request, client: FollowUpResponsesClient) {
+  return createFollowUpHandler({ createClient: () => client })(request);
 }
 
 function makeOversizedRequest(contentLength?: string) {
@@ -65,7 +72,7 @@ describe("POST /api/follow-up", () => {
   it("returns one alternative for the current analysis and short question", async () => {
     process.env.OPENAI_VISION_MODEL = "follow-up-test-model";
 
-    const response = await POST(
+    const response = await handleRequest(
       request({ analysis: completeAnalysis, question: "不買新衣服還能怎麼調整？" }),
       clientReturning("試著把袖口微微捲起，讓比例更輕盈。"),
     );
@@ -88,7 +95,7 @@ describe("POST /api/follow-up", () => {
       },
     };
 
-    const response = await POST(
+    const response = await handleRequest(
       request({ analysis: completeAnalysis, question: "問".repeat(161) }),
       client,
     );
@@ -110,7 +117,7 @@ describe("POST /api/follow-up", () => {
       },
     };
 
-    const response = await POST(
+    const response = await handleRequest(
       request({ analysis: completeAnalysis, question: "還有其他方法嗎？", image: "base64" }),
       client,
     );
@@ -133,7 +140,7 @@ describe("POST /api/follow-up", () => {
     };
     const normalRequest = request({ analysis: completeAnalysis, question: "還有其他方法嗎？" });
 
-    const response = await POST(
+    const response = await handleRequest(
       new Request(normalRequest, { headers: { "content-length": String(32 * 1024 + 1) } }),
       client,
     );
@@ -158,7 +165,7 @@ describe("POST /api/follow-up", () => {
       };
       const oversized = makeOversizedRequest(contentLength);
 
-      const response = await POST(oversized.request, client);
+      const response = await handleRequest(oversized.request, client);
 
       expect(response.status).toBe(400);
       await expect(response.json()).resolves.toEqual({ error: "INVALID_FOLLOW_UP" });
@@ -182,7 +189,7 @@ describe("POST /api/follow-up", () => {
       },
     };
 
-    await POST(
+    await handleRequest(
       request({ analysis: completeAnalysis, question: "私人追問內容" }),
       client,
     );
