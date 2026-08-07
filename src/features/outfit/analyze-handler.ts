@@ -1,6 +1,7 @@
 import { OccasionSchema } from "./domain";
 import type { OutfitAnalyzer } from "./analyzer";
 import {
+  AnalyzerSafetyError,
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
 } from "./openai-analyzer";
@@ -15,6 +16,7 @@ const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 export type AnalyzeHandlerDependencies = {
   createAnalyzer: () => OutfitAnalyzer;
   abuseGuard: AbuseGuard;
+  issueAnalysisToken: (analysis: Exclude<Awaited<ReturnType<OutfitAnalyzer["analyze"]>>, { retake_required: true }>) => string;
 };
 
 function json(body: object, status: number): Response {
@@ -138,13 +140,19 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
           return json({ error: "RETAKE_REQUIRED", retake_reason: analysis.retake_reason }, 422);
         }
 
-        return json(analysis, 200);
+        return json({
+          analysis,
+          analysisToken: dependencies.issueAnalysisToken(analysis),
+        }, 200);
       } catch (error) {
         if (error instanceof AnalyzerTimeoutError || isAbortError(error)) {
           return json({ error: "AI_TIMEOUT" }, 504);
         }
         if (error instanceof AnalyzerUnavailableError) {
           return json({ error: "AI_UNAVAILABLE" }, 503);
+        }
+        if (error instanceof AnalyzerSafetyError) {
+          return json({ error: "AI_SAFETY_REJECTED" }, 502);
         }
         return json({ error: "AI_UNAVAILABLE" }, 503);
       } finally {

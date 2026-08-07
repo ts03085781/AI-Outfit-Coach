@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAnalysisPrompt } from "@/features/outfit/prompts";
+import {
+  buildAnalysisPrompt,
+  buildAnalysisSystemPrompt,
+} from "@/features/outfit/prompts";
 
 describe("buildAnalysisPrompt", () => {
   it("forbids nonessential shopping unless explicitly requested and keeps it optional", () => {
-    const prompt = buildAnalysisPrompt({ occasion: "work" });
+    const prompt = `${buildAnalysisSystemPrompt()}\n${buildAnalysisPrompt({ occasion: "work" })}`;
 
     expect(prompt).toContain("可見衣物");
     expect(prompt).toContain("不得建議非必要購物");
@@ -14,5 +17,6 @@ describe("buildAnalysisPrompt", () => {
     expect(prompt).toContain("不得評價身體或外貌");
     expect(prompt).toContain("不得推斷敏感個人資訊");
     expect(prompt).toContain("照片不足時，要求重拍");
+    expect(prompt).toContain("<UNTRUSTED_ANALYSIS_CONTEXT>");
   });
 });

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { OutfitAnalyzer } from "@/features/outfit/analyzer";
 import {
+  AnalyzerSafetyError,
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
 } from "@/features/outfit/openai-analyzer";
@@ -59,7 +60,11 @@ function allowingGuard(): AbuseGuard {
 }
 
 function handleRequest(request: Request, analyzer: OutfitAnalyzer, abuseGuard = allowingGuard()) {
-  return createAnalyzeHandler({ createAnalyzer: () => analyzer, abuseGuard })(request);
+  return createAnalyzeHandler({
+    createAnalyzer: () => analyzer,
+    abuseGuard,
+    issueAnalysisToken: () => "signed-analysis-token",
+  })(request);
 }
 
 function makeOversizedMultipartRequest(contentLength?: string) {
@@ -99,7 +104,10 @@ describe("POST /api/analyze", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ occasion_fit: "適合" });
+    await expect(response.json()).resolves.toEqual({
+      analysis: completeAnalysis,
+      analysisToken: "signed-analysis-token",
+    });
   });
 
   it("returns INVALID_IMAGE when the multipart payload has no image", async () => {
@@ -328,11 +336,23 @@ describe("POST /api/analyze", () => {
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
   });
 
+  it("fails closed when deterministic output safety rejects the analysis", async () => {
+    const response = await handleRequest(
+      makeMultipartRequest(validImage()),
+      { analyze: async () => { throw new AnalyzerSafetyError(); } },
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({ error: "AI_SAFETY_REJECTED" });
+  });
+
   it("maps a missing server-side API key to AI_UNAVAILABLE", async () => {
     const originalApiKey = process.env.OPENAI_API_KEY;
     const originalRateLimitSecret = process.env.RATE_LIMIT_SECRET;
+    const originalTokenSecret = process.env.ANALYSIS_TOKEN_SECRET;
     delete process.env.OPENAI_API_KEY;
     process.env.RATE_LIMIT_SECRET = "unit-test-rate-secret";
+    process.env.ANALYSIS_TOKEN_SECRET = "unit-test-analysis-secret";
 
     try {
       const response = await defaultPost(
@@ -345,6 +365,8 @@ describe("POST /api/analyze", () => {
       else process.env.OPENAI_API_KEY = originalApiKey;
       if (originalRateLimitSecret === undefined) delete process.env.RATE_LIMIT_SECRET;
       else process.env.RATE_LIMIT_SECRET = originalRateLimitSecret;
+      if (originalTokenSecret === undefined) delete process.env.ANALYSIS_TOKEN_SECRET;
+      else process.env.ANALYSIS_TOKEN_SECRET = originalTokenSecret;
     }
   });
 

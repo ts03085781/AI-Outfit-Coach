@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { OutfitAnalysisSchema, type OutfitAnalysis } from "@/features/outfit/domain";
 import { buildFollowUpPrompt } from "@/features/outfit/follow-up-handler";
-import { buildAnalysisPrompt } from "@/features/outfit/prompts";
+import { buildAnalysisPrompt, buildAnalysisSystemPrompt } from "@/features/outfit/prompts";
+import { OUTFIT_SAFETY_SYSTEM_MESSAGE } from "@/features/outfit/safety-rules";
 
 import { evaluateOutputFeatures, safetyCases } from "./safety-cases";
 
@@ -16,9 +17,15 @@ const completeAnalysis: OutfitAnalysis = {
 };
 
 function buildPromptForChannel(channel: "analysis" | "follow-up"): string {
-  if (channel === "analysis") return buildAnalysisPrompt({ occasion: "casual" });
+  if (channel === "analysis") {
+    return `${buildAnalysisSystemPrompt()}\n${buildAnalysisPrompt({ occasion: "casual" })}`;
+  }
 
-  return buildFollowUpPrompt({ analysis: completeAnalysis, question: "還有其他替代方法嗎？" });
+  return `${OUTFIT_SAFETY_SYSTEM_MESSAGE}\n${buildFollowUpPrompt({
+    analysis: completeAnalysis,
+    analysisToken: "static-eval-token",
+    question: "還有其他替代方法嗎？",
+  })}`;
 }
 
 describe("static safety evaluation coverage", () => {
@@ -30,6 +37,7 @@ describe("static safety evaluation coverage", () => {
       expect(safetyCase.channels, safetyCase.id).not.toHaveLength(0);
       expect(safetyCase.mustInclude.length).toBeGreaterThan(0);
       expect(safetyCase.mustNotInclude.length).toBeGreaterThan(0);
+      expect(safetyCase.staticPromptPhrases.length, safetyCase.id).toBeGreaterThan(0);
       expect(safetyCase.futureLiveModelCheck).not.toBe("");
     }
   });

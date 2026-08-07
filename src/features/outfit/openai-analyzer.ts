@@ -3,7 +3,8 @@ import { toJSONSchema, z } from "zod";
 
 import type { OutfitAnalyzer, AnalyzeInput } from "./analyzer";
 import { OutfitAnalysisSchema, SuggestionSchema, type OutfitAnalysis } from "./domain";
-import { buildAnalysisPrompt } from "./prompts";
+import { assertSafeAnalysis, UnsafeModelOutputError } from "./output-safety";
+import { buildAnalysisPrompt, buildAnalysisSystemPrompt } from "./prompts";
 
 type OpenAIResponsesRequest = {
   model: string;
@@ -42,6 +43,13 @@ export class AnalyzerUnavailableError extends Error {
   constructor() {
     super("AI analysis is unavailable");
     this.name = "AnalyzerUnavailableError";
+  }
+}
+
+export class AnalyzerSafetyError extends Error {
+  constructor() {
+    super("AI analysis failed safety validation");
+    this.name = "AnalyzerSafetyError";
   }
 }
 
@@ -126,7 +134,8 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
               model,
               store: false,
               input: [
-                { role: "system", content: buildAnalysisPrompt({ occasion: input.occasion }) },
+                { role: "system", content: buildAnalysisSystemPrompt() },
+                { role: "user", content: buildAnalysisPrompt({ occasion: input.occasion }) },
                 { role: "user", content: [{ type: "input_image", image_url: imageDataUrl }] },
               ],
               text: {
@@ -146,8 +155,11 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
         }
 
         try {
-          return parseAnalysis(response.output_text);
-        } catch {
+          const analysis = parseAnalysis(response.output_text);
+          assertSafeAnalysis(analysis);
+          return analysis;
+        } catch (error) {
+          if (error instanceof UnsafeModelOutputError) throw new AnalyzerSafetyError();
           if (attempt === 1) throw new AnalyzerUnavailableError();
         }
       }

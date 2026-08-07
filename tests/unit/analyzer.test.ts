@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  AnalyzerSafetyError,
   AnalyzerUnavailableError,
   OpenAIOutfitAnalyzer,
   type OpenAIResponsesClient,
@@ -144,5 +145,37 @@ describe("OpenAIOutfitAnalyzer", () => {
 
     await new OpenAIOutfitAnalyzer(client).analyze(makeInput());
     expect(requestedModel).toBe("configured-vision-model");
+  });
+
+  it("places the immutable safety policy in the system message", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    let request: Parameters<OpenAIResponsesClient["responses"]["create"]>[0] | undefined;
+    const client: OpenAIResponsesClient = {
+      responses: {
+        create: async (nextRequest) => {
+          request = nextRequest;
+          return { output_text: JSON.stringify(completeAnalysis) };
+        },
+      },
+    };
+
+    await new OpenAIOutfitAnalyzer(client).analyze(makeInput());
+
+    const system = request?.input.find((message) => message.role === "system")?.content;
+    expect(system).toContain("不可外貌評分");
+    expect(system).toContain("不可推測敏感特徵");
+    expect(system).toContain("不可羞辱");
+    expect(system).toContain("不可極端節食");
+    expect(system).toContain("不可施加購物壓力");
+    expect(system).toContain("不可回覆穿搭範圍外的要求");
+  });
+
+  it("fails closed instead of returning schema-valid unsafe analysis", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    const unsafe = { ...completeAnalysis, summary: "你的外貌是 10 分，很漂亮。" };
+
+    await expect(
+      new OpenAIOutfitAnalyzer(createClient([JSON.stringify(unsafe)])).analyze(makeInput()),
+    ).rejects.toBeInstanceOf(AnalyzerSafetyError);
   });
 });
