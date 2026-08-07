@@ -4,6 +4,8 @@ import {
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
 } from "./openai-analyzer";
+import { isDecodableSupportedImage } from "./server-image";
+import type { AbuseGuard } from "@/lib/abuse-guard";
 
 const MAX_REQUEST_BYTES = 6 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -12,6 +14,7 @@ const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 
 export type AnalyzeHandlerDependencies = {
   createAnalyzer: () => OutfitAnalyzer;
+  abuseGuard: AbuseGuard;
 };
 
 function json(body: object, status: number): Response {
@@ -94,52 +97,62 @@ async function parseMultipartFormData(request: Request): Promise<FormData | unde
 
 export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
   return async function analyzeHandler(request: Request): Promise<Response> {
-    const contentLength = Number(request.headers.get("content-length"));
-    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
-      return json({ error: "INVALID_IMAGE" }, 400);
-    }
+    const guard = dependencies.abuseGuard.enter(request, "analyze");
+    if (!guard.allowed) return guard.response;
 
-    if (!isMultipartContentType(request.headers.get("content-type"))) {
-      return json({ error: "INVALID_IMAGE" }, 400);
-    }
-
-    const formData = await parseMultipartFormData(request);
-    if (!formData) return json({ error: "INVALID_IMAGE" }, 400);
-
-    let image: Blob | undefined;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const imageValue = formData.get("image");
-      if (!isValidImage(imageValue)) return json({ error: "INVALID_IMAGE" }, 400);
-      image = imageValue;
-
-      const occasion = OccasionSchema.safeParse(formData.get("occasion"));
-      if (!occasion.success) return json({ error: "INVALID_IMAGE" }, 400);
-
-      const controller = new AbortController();
-      timeout = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
-      const analysis = await dependencies.createAnalyzer().analyze({
-        image,
-        occasion: occasion.data,
-        signal: controller.signal,
-      });
-
-      if (analysis.retake_required) {
-        return json({ error: "RETAKE_REQUIRED", retake_reason: analysis.retake_reason }, 422);
+      const contentLength = Number(request.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+        return json({ error: "INVALID_IMAGE" }, 400);
       }
 
-      return json(analysis, 200);
-    } catch (error) {
-      if (error instanceof AnalyzerTimeoutError || isAbortError(error)) {
-        return json({ error: "AI_TIMEOUT" }, 504);
+      if (!isMultipartContentType(request.headers.get("content-type"))) {
+        return json({ error: "INVALID_IMAGE" }, 400);
       }
-      if (error instanceof AnalyzerUnavailableError) {
+
+      const formData = await parseMultipartFormData(request);
+      if (!formData) return json({ error: "INVALID_IMAGE" }, 400);
+
+      let image: Blob | undefined;
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const imageValue = formData.get("image");
+        if (!isValidImage(imageValue)) return json({ error: "INVALID_IMAGE" }, 400);
+        image = imageValue;
+        if (!await isDecodableSupportedImage(image)) {
+          return json({ error: "INVALID_IMAGE" }, 400);
+        }
+
+        const occasion = OccasionSchema.safeParse(formData.get("occasion"));
+        if (!occasion.success) return json({ error: "INVALID_IMAGE" }, 400);
+
+        const controller = new AbortController();
+        timeout = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
+        const analysis = await dependencies.createAnalyzer().analyze({
+          image,
+          occasion: occasion.data,
+          signal: controller.signal,
+        });
+
+        if (analysis.retake_required) {
+          return json({ error: "RETAKE_REQUIRED", retake_reason: analysis.retake_reason }, 422);
+        }
+
+        return json(analysis, 200);
+      } catch (error) {
+        if (error instanceof AnalyzerTimeoutError || isAbortError(error)) {
+          return json({ error: "AI_TIMEOUT" }, 504);
+        }
+        if (error instanceof AnalyzerUnavailableError) {
+          return json({ error: "AI_UNAVAILABLE" }, 503);
+        }
         return json({ error: "AI_UNAVAILABLE" }, 503);
+      } finally {
+        if (timeout) clearTimeout(timeout);
+        image = undefined;
       }
-      return json({ error: "AI_UNAVAILABLE" }, 503);
     } finally {
-      if (timeout) clearTimeout(timeout);
-      image = undefined;
+      guard.release();
     }
   };
 }
