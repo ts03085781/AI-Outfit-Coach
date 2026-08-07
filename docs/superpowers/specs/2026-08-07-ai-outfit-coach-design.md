@@ -44,7 +44,9 @@ MVP 提供四種情境：
 
 ## 5. 回饋格式
 
-後端只接受符合下列概念結構的 AI 結果：
+後端只接受以下兩個互斥分支之一的 AI 結果：
+
+**正常分析（`retake_required: false`）**
 
 - `summary`：一句中性、溫和的整體觀察。
 - `strengths`：恰好兩個、能由照片支持的優點。
@@ -53,10 +55,14 @@ MVP 提供四種情境：
 - `suggestions[].action`：要做的具體動作。
 - `suggestions[].reason`：建議依據。
 - `suggestions[].expected_effect`：預期改善。
-- `retake_required`：是否應停止分析並重拍。
-- `retake_reason`：需要重拍時的具體原因；否則為空值。
+- `retake_reason`：必須為空值（`null`）。
 
-當 `retake_required` 為真時，不顯示穿搭評價與改善建議。
+**重拍（`retake_required: true`）**
+
+- `retake_reason`：非空的具體重拍原因。
+- 不得包含 `summary`、`strengths`、`occasion_fit` 或 `suggestions`。
+
+兩個分支均不得含有未定義欄位；重拍分支停止分析，不產生穿搭評價或改善建議。
 
 ## 6. 安全邊界
 

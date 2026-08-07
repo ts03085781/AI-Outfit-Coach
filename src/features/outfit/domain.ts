@@ -16,19 +16,27 @@ export const SuggestionSchema = z.object({
   expected_effect: z.string().min(1),
 });
 
-export const OutfitAnalysisSchema = z
+const CompleteOutfitAnalysisSchema = z
   .object({
     summary: z.string().min(1),
     strengths: z.array(z.string().min(1)).length(2),
     occasion_fit: z.enum(["適合", "稍需調整", "不太適合"]),
     suggestions: z.array(SuggestionSchema).max(3),
-    retake_required: z.boolean(),
-    retake_reason: z.string().min(1).nullable(),
+    retake_required: z.literal(false),
+    retake_reason: z.null(),
   })
-  .superRefine((value, ctx) => {
-    if (value.retake_required && value.suggestions.length > 0) {
-      ctx.addIssue({ code: "custom", message: "重拍時不得提供建議" });
-    }
-  });
+  .strict();
+
+const RetakeOutfitAnalysisSchema = z
+  .object({
+    retake_required: z.literal(true),
+    retake_reason: z.string().min(1),
+  })
+  .strict();
+
+export const OutfitAnalysisSchema = z.discriminatedUnion("retake_required", [
+  CompleteOutfitAnalysisSchema,
+  RetakeOutfitAnalysisSchema,
+]);
 
 export type OutfitAnalysis = z.infer<typeof OutfitAnalysisSchema>;

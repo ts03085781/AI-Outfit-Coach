@@ -8,16 +8,32 @@ import {
 
 describe("outfit domain contract", () => {
   it("accepts a complete analysis with exactly two strengths", () => {
+    const result = OutfitAnalysisSchema.parse({
+      summary: "整體俐落。",
+      strengths: ["配色協調", "比例清楚"],
+      occasion_fit: "適合",
+      suggestions: [],
+      retake_required: false,
+      retake_reason: null,
+    });
+
+    if (result.retake_required) {
+      throw new Error("預期為正常分析結果");
+    }
+
+    expect(result.strengths).toHaveLength(2);
+  });
+
+  it("accepts a retake result that contains only a non-empty reason", () => {
     expect(
       OutfitAnalysisSchema.parse({
-        summary: "整體俐落。",
-        strengths: ["配色協調", "比例清楚"],
-        occasion_fit: "適合",
-        suggestions: [],
-        retake_required: false,
-        retake_reason: null,
-      }).strengths,
-    ).toHaveLength(2);
+        retake_required: true,
+        retake_reason: "衣物細節不清楚",
+      }),
+    ).toEqual({
+      retake_required: true,
+      retake_reason: "衣物細節不清楚",
+    });
   });
 
   it("rejects an analysis with fewer than two strengths", () => {
@@ -31,18 +47,35 @@ describe("outfit domain contract", () => {
     expect(() => AnalyzeRequestSchema.parse({ occasion: "party" })).toThrow();
   });
 
-  it("rejects suggestions when a retake is required", () => {
+  it("rejects a retake result without a reason", () => {
     expect(() =>
       OutfitAnalysisSchema.parse({
-        summary: "照片不足。",
-        strengths: ["光線均勻", "人物置中"],
-        occasion_fit: "稍需調整",
-        suggestions: [
-          { action: "調整站位", reason: "更清楚", expected_effect: "便於判讀" },
-        ],
+        retake_required: true,
+        retake_reason: null,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects analysis fields when a retake is required", () => {
+    expect(() =>
+      OutfitAnalysisSchema.parse({
         retake_required: true,
         retake_reason: "衣物細節不清楚",
+        summary: "照片不足。",
       }),
-    ).toThrow("重拍時不得提供建議");
+    ).toThrow();
+  });
+
+  it("rejects a normal result with a retake reason", () => {
+    expect(() =>
+      OutfitAnalysisSchema.parse({
+        summary: "整體俐落。",
+        strengths: ["配色協調", "比例清楚"],
+        occasion_fit: "適合",
+        suggestions: [],
+        retake_required: false,
+        retake_reason: "衣物細節不清楚",
+      }),
+    ).toThrow();
   });
 });

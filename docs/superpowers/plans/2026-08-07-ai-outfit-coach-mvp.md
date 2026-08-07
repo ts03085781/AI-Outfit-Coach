@@ -119,16 +119,21 @@ export const OccasionSchema = z.enum(["casual", "date", "work", "formal"]);
 export const SuggestionSchema = z.object({
   action: z.string().min(1), reason: z.string().min(1), expected_effect: z.string().min(1)
 });
-export const OutfitAnalysisSchema = z.object({
+const CompleteOutfitAnalysisSchema = z.object({
   summary: z.string().min(1), strengths: z.array(z.string().min(1)).length(2),
   occasion_fit: z.enum(["適合", "稍需調整", "不太適合"]),
   suggestions: z.array(SuggestionSchema).max(3),
-  retake_required: z.boolean(), retake_reason: z.string().min(1).nullable()
-}).superRefine((value, ctx) => {
-  if (value.retake_required && value.suggestions.length > 0)
-    ctx.addIssue({ code: "custom", message: "重拍時不得提供建議" });
-});
+  retake_required: z.literal(false), retake_reason: z.null()
+}).strict();
+const RetakeOutfitAnalysisSchema = z.object({
+  retake_required: z.literal(true), retake_reason: z.string().min(1)
+}).strict();
+export const OutfitAnalysisSchema = z.discriminatedUnion("retake_required", [
+  CompleteOutfitAnalysisSchema, RetakeOutfitAnalysisSchema
+]);
 ```
+
+`retake_required: true` 分支只允許非空 `retake_reason`；不得包含分析欄位或建議。`retake_required: false` 分支必須包含摘要、恰好兩個優點、場合適合度、零至三項建議，且 `retake_reason` 為 `null`。
 
 提示必須逐條包含 Global Constraints 的安全禁令、只根據可見衣物、優先零購物調整，以及照片不足時重拍。
 
