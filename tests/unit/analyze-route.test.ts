@@ -7,7 +7,10 @@ import {
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
 } from "@/features/outfit/openai-analyzer";
-import { POST } from "@/app/api/analyze/route";
+import {
+  POST as defaultPost,
+} from "@/app/api/analyze/route";
+import { createAnalyzeHandler } from "@/features/outfit/analyze-handler";
 
 const completeAnalysis = {
   summary: "整體俐落。",
@@ -27,6 +30,10 @@ function makeMultipartRequest(image: Blob, occasion = "casual") {
 
 function analyzerReturning(result: Awaited<ReturnType<OutfitAnalyzer["analyze"]>>): OutfitAnalyzer {
   return { analyze: async () => result };
+}
+
+function handleRequest(request: Request, analyzer: OutfitAnalyzer) {
+  return createAnalyzeHandler({ createAnalyzer: () => analyzer })(request);
 }
 
 function makeOversizedMultipartRequest(contentLength?: string) {
@@ -60,7 +67,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("returns a complete analysis for a valid multipart image", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
       analyzerReturning(completeAnalysis),
     );
@@ -72,7 +79,7 @@ describe("POST /api/analyze", () => {
   it("returns INVALID_IMAGE when the multipart payload has no image", async () => {
     const formData = new FormData();
     formData.set("occasion", "casual");
-    const response = await POST(
+    const response = await handleRequest(
       new Request("http://localhost/api/analyze", { method: "POST", body: formData }),
       analyzerReturning(completeAnalysis),
     );
@@ -82,7 +89,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("returns INVALID_IMAGE for an unsupported image type", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       makeMultipartRequest(new Blob(["image"], { type: "image/gif" })),
       analyzerReturning(completeAnalysis),
     );
@@ -92,7 +99,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("returns INVALID_IMAGE for an image larger than 4 MB", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       makeMultipartRequest(new Blob([new Uint8Array(4 * 1024 * 1024 + 1)], { type: "image/webp" })),
       analyzerReturning(completeAnalysis),
     );
@@ -103,7 +110,7 @@ describe("POST /api/analyze", () => {
 
   it("returns INVALID_IMAGE when the Content-Length exceeds 6 MB", async () => {
     const request = makeMultipartRequest(new Blob(["image"], { type: "image/webp" }));
-    const response = await POST(
+    const response = await handleRequest(
       new Request(request, { headers: { "content-length": String(6 * 1024 * 1024 + 1) } }),
       analyzerReturning(completeAnalysis),
     );
@@ -114,7 +121,7 @@ describe("POST /api/analyze", () => {
 
   it("rejects and cancels an over-limit multipart stream without Content-Length", async () => {
     const oversized = makeOversizedMultipartRequest();
-    const response = await POST(oversized.request, analyzerReturning(completeAnalysis));
+    const response = await handleRequest(oversized.request, analyzerReturning(completeAnalysis));
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "INVALID_IMAGE" });
@@ -123,7 +130,7 @@ describe("POST /api/analyze", () => {
 
   it("rejects an over-limit multipart stream with a falsely small Content-Length", async () => {
     const oversized = makeOversizedMultipartRequest("1");
-    const response = await POST(oversized.request, analyzerReturning(completeAnalysis));
+    const response = await handleRequest(oversized.request, analyzerReturning(completeAnalysis));
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "INVALID_IMAGE" });
@@ -131,7 +138,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("returns INVALID_IMAGE for a non-multipart request", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       new Request("http://localhost/api/analyze", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -145,7 +152,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("returns INVALID_IMAGE for a multipart body with a malformed boundary", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       new Request("http://localhost/api/analyze", {
         method: "POST",
         headers: { "content-type": "multipart/form-data; boundary=expected" },
@@ -159,7 +166,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("returns RETAKE_REQUIRED when the analysis requires a new photo", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
       analyzerReturning({ retake_required: true, retake_reason: "衣物細節不清楚" }),
     );
@@ -172,7 +179,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("maps an aborted analysis to AI_TIMEOUT", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
       { analyze: async () => { throw new AnalyzerTimeoutError(); } },
     );
@@ -195,7 +202,7 @@ describe("POST /api/analyze", () => {
         });
       },
     };
-    const responsePromise = POST(
+    const responsePromise = handleRequest(
       makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
       analyzer,
     );
@@ -208,7 +215,7 @@ describe("POST /api/analyze", () => {
   });
 
   it("maps provider failures to AI_UNAVAILABLE", async () => {
-    const response = await POST(
+    const response = await handleRequest(
       makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
       { analyze: async () => { throw new AnalyzerUnavailableError(); } },
     );
@@ -222,7 +229,7 @@ describe("POST /api/analyze", () => {
     delete process.env.OPENAI_API_KEY;
 
     try {
-      const response = await POST(
+      const response = await defaultPost(
         makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
       );
       expect(response.status).toBe(503);
@@ -236,7 +243,7 @@ describe("POST /api/analyze", () => {
   it("does not log image payloads while handling a request", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
-    await POST(
+    await handleRequest(
       makeMultipartRequest(new Blob(["private image"], { type: "image/webp" })),
       analyzerReturning(completeAnalysis),
     );
