@@ -1,0 +1,9 @@
+.env*
+!.env.example
+.next/
+node_modules/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.superpowers/
+.worktrees/
