@@ -133,6 +133,9 @@ describe("outfit flow", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "重新開始" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "重新選擇照片" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "返回第一步驟" })).toBeVisible();
     expect(screen.getByText(completeAnalysis.summary)).toBeVisible();
     expect(screen.getByText(completeAnalysis.strengths[0])).toBeVisible();
     expect(screen.getByText(completeAnalysis.strengths[1])).toBeVisible();
@@ -191,6 +194,8 @@ describe("outfit flow", () => {
 
     expect(await screen.findByText("衣物細節不清楚")).toBeVisible();
     expect(screen.getByRole("button", { name: "重新拍照" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "重新選擇照片" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "返回第一步驟" })).not.toBeInTheDocument();
     expect(screen.queryByText("場合適合度：適合")).not.toBeInTheDocument();
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
       url === "/api/telemetry"
@@ -282,5 +287,84 @@ describe("outfit flow", () => {
     expect(stylesheet).toMatch(/\.result-step[\s\S]*?button[\s\S]*?min-height:\s*44px/);
     expect(stylesheet).toMatch(/\.result-step[\s\S]*?textarea[\s\S]*?min-height:\s*(?:44|9\d)px/);
     expect(stylesheet).toMatch(/textarea:focus-visible/);
+  });
+
+  it("returns to photo selection without discarding optional context", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => (
+      url === "/api/analyze" ? analysisResponse() : new Response(null, { status: 204 })
+    ));
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByText("加上選填背景"));
+    fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
+    fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
+    fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
+    fireEvent.change(screen.getByLabelText("想再問一個穿搭問題"), {
+      target: { value: "鞋子需要換嗎？" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
+    expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "重新選擇照片" }));
+
+    expect(screen.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "你的穿搭建議" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "繼續" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+      target: { files: [new File(["outfit-two"], "outfit-two.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
+    expect(screen.getByLabelText("想再問一個穿搭問題")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "有幫助" })).toBeEnabled();
+    expect(screen.queryByText("謝謝你的回饋。")).not.toBeInTheDocument();
+
+    const analysisCalls = vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/analyze");
+    const secondBody = analysisCalls[1]?.[1]?.body;
+    expect(secondBody).toBeInstanceOf(FormData);
+    expect((secondBody as FormData).get("weather")).toBe("rainy");
+    expect((secondBody as FormData).get("setting")).toBe("mixed");
+    expect((secondBody as FormData).get("desiredFeel")).toBe("專業但親切");
+  });
+
+  it("returns to the first step with all optional context cleared", async () => {
+    vi.mocked(fetch).mockResolvedValue(analysisResponse());
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByText("加上選填背景"));
+    fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
+    fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
+    fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
+
+    fireEvent.click(screen.getByRole("button", { name: "返回第一步驟" }));
+
+    expect(screen.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
+    fireEvent.click(screen.getByText("加上選填背景"));
+    expect(screen.getByLabelText("天氣")).toHaveValue("");
+    expect(screen.getByLabelText("地點環境")).toHaveValue("");
+    expect(screen.getByLabelText("想呈現的感覺")).toHaveValue("");
+  });
+
+  it("styles result navigation buttons as accessible secondary actions", () => {
+    expect(stylesheet).toMatch(/\.result-navigation\s*\{[\s\S]*?(?:display:\s*(?:grid|flex))/);
+    expect(stylesheet).toMatch(/\.result-navigation\s+button\s*\{[\s\S]*?min-height:\s*44px/);
+    expect(stylesheet).toMatch(/\.result-navigation\s+button:focus-visible/);
   });
 });

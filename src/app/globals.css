@@ -142,6 +142,9 @@ button { min-width: 44px; min-height: 44px; }
 .result-step button { min-width: 44px; min-height: 44px; }
 .result-step textarea { display: block; width: 100%; min-height: 96px; margin-top: 8px; padding: 10px; border: 1px solid #b9c9cf; border-radius: 10px; resize: vertical; }
 .result-step > section button { margin: 6px 8px 6px 0; padding: 10px 14px; border: 1px solid #176b87; border-radius: 10px; background: #fff; color: #176b87; font-weight: 700; }
+.result-navigation { display: grid; gap: 10px; margin-top: 28px; }
+.result-navigation button { min-height: 44px; padding: 10px 14px; border: 1px solid #61707b; border-radius: 10px; background: #fff; color: #17202a; cursor: pointer; font-weight: 700; }
+.result-navigation button:focus-visible { outline: 3px solid #f3a66b; outline-offset: 3px; }
 
 @media (prefers-reduced-motion: no-preference) {
   button, .photo-picker { transition: border-color .15s ease, transform .15s ease; }

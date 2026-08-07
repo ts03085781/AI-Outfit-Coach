@@ -151,14 +151,30 @@ export function useOutfitFlow() {
     }
   };
 
-  const retake = () => {
+  const clearAnalysisState = () => {
     setImage(undefined);
     setConsented(false);
+    setPhotoError(undefined);
     setResult(undefined);
     setAnalysisToken(undefined);
     setAnalysisErrorCode(undefined);
+  };
+
+  const reselectPhoto = () => {
+    clearAnalysisState();
     setState("photo");
   };
+
+  const restart = () => {
+    setOccasion(undefined);
+    setWeather(undefined);
+    setSetting(undefined);
+    setDesiredFeel("");
+    clearAnalysisState();
+    setState("occasion");
+  };
+
+  const retake = reselectPhoto;
 
   return {
     state,
@@ -181,5 +197,7 @@ export function useOutfitFlow() {
     setConsented,
     analyze,
     retake,
+    reselectPhoto,
+    restart,
   };
 }

@@ -10,9 +10,11 @@ type ResultStepProps = {
   result: OutfitAnalysis;
   analysisToken?: string;
   onRetake: () => void;
+  onReselectPhoto: () => void;
+  onRestart: () => void;
 };
 
-export function ResultStep({ result, analysisToken, onRetake }: ResultStepProps) {
+export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, onRestart }: ResultStepProps) {
   const [question, setQuestion] = useState("");
   const [alternative, setAlternative] = useState<string>();
   const [followUpUsed, setFollowUpUsed] = useState(false);
@@ -127,6 +129,10 @@ export function ResultStep({ result, analysisToken, onRetake }: ResultStepProps)
         <button type="button" disabled={feedbackSent} onClick={() => submitFeedback(false)}>沒幫助</button>
         {feedbackSent ? <p>謝謝你的回饋。</p> : null}
       </section>
+      <nav className="result-navigation" aria-label="重新開始">
+        <button type="button" onClick={onReselectPhoto}>重新選擇照片</button>
+        <button type="button" onClick={onRestart}>返回第一步驟</button>
+      </nav>
     </section>
   );
 }

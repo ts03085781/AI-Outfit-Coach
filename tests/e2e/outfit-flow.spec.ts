@@ -95,6 +95,27 @@ test.describe("mock-only outfit flow", () => {
     expect(metrics).toContainEqual(expect.objectContaining({ type: "analysis_retake" }));
   });
 
+  test("returns from a normal result to a new photo selection", async ({ page }) => {
+    await mockTelemetry(page);
+    await mockSuccessfulAnalysis(page);
+    await completeAnalysis(page);
+
+    await page.getByRole("button", { name: "重新選擇照片" }).click();
+
+    await expect(page.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "你的穿搭建議" })).toHaveCount(0);
+  });
+
+  test("returns from a normal result to the first step", async ({ page }) => {
+    await mockTelemetry(page);
+    await mockSuccessfulAnalysis(page);
+    await completeAnalysis(page);
+
+    await page.getByRole("button", { name: "返回第一步驟" }).click();
+
+    await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
+  });
+
   test("sends one bound follow-up and anonymous feedback", async ({ page }) => {
     const metrics: unknown[] = [];
     await mockTelemetry(page, metrics);
@@ -142,7 +163,7 @@ test.describe("mock-only outfit flow", () => {
 
     await reachConsent(page);
     await page.getByRole("button", { name: "開始分析" }).click();
-    await expect(page.getByText("現在無法分析照片，請確認網路後再試一次。"))
+    await expect(page.getByText("分析服務暫時無法使用，請稍後再試一次。"))
       .toBeVisible();
     await page.getByRole("button", { name: "再試一次" }).click();
 
