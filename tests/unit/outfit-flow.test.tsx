@@ -137,6 +137,33 @@ describe("outfit flow", () => {
     expect(screen.queryByText("場合適合度：適合")).not.toBeInTheDocument();
   });
 
+  it("offers one follow-up and anonymous helpfulness feedback with no image upload", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify(completeAnalysis), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ alternative: "調整袖口即可。" }), { status: 200 }));
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "我同意將這張照片用於本次穿搭分析" }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
+    fireEvent.change(screen.getByLabelText("想再問一個穿搭問題"), {
+      target: { value: "不買新衣服還能怎麼調整？" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "取得替代方法" }));
+
+    expect(await screen.findByText("調整袖口即可。")).toBeVisible();
+    expect(fetch).toHaveBeenLastCalledWith("/api/follow-up", expect.objectContaining({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    }));
+    expect(screen.getByRole("button", { name: "取得替代方法" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
+    expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
+  });
+
   it("announces an API failure and lets the user try again", async () => {
     vi.mocked(fetch).mockRejectedValue(new Error("network unavailable"));
     render(<HomePage />);
