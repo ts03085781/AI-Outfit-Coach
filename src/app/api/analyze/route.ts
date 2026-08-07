@@ -30,6 +30,67 @@ function isValidImage(value: FormDataEntryValue | null): value is File {
     && value.size <= MAX_IMAGE_BYTES;
 }
 
+function isMultipartContentType(value: string | null): boolean {
+  return value !== null && /^multipart\/form-data(?:\s*;|$)/i.test(value);
+}
+
+async function readBodyWithinLimit(
+  body: ReadableStream<Uint8Array> | null,
+): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  if (!body) return new Uint8Array();
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BYTES) {
+        await reader.cancel();
+        return undefined;
+      }
+      chunks.push(value);
+    }
+  } catch {
+    try {
+      await reader.cancel();
+    } catch {
+      // The request stream has already failed or closed.
+    }
+    return undefined;
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes: Uint8Array<ArrayBuffer> = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+async function parseMultipartFormData(request: Request): Promise<FormData | undefined> {
+  const multipartBody = await readBodyWithinLimit(request.body);
+  if (!multipartBody) return undefined;
+
+  try {
+    const headers = new Headers(request.headers);
+    headers.delete("content-length");
+    return await new Request(request.url, {
+      method: request.method,
+      headers,
+      body: new Blob([multipartBody]),
+    }).formData();
+  } catch {
+    return undefined;
+  }
+}
+
 export async function POST(
   request: Request,
   analyzer?: OutfitAnalyzer,
@@ -39,10 +100,16 @@ export async function POST(
     return json({ error: "INVALID_IMAGE" }, 400);
   }
 
+  if (!isMultipartContentType(request.headers.get("content-type"))) {
+    return json({ error: "INVALID_IMAGE" }, 400);
+  }
+
+  const formData = await parseMultipartFormData(request);
+  if (!formData) return json({ error: "INVALID_IMAGE" }, 400);
+
   let image: Blob | undefined;
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
-    const formData = await request.formData();
     const imageValue = formData.get("image");
     if (!isValidImage(imageValue)) return json({ error: "INVALID_IMAGE" }, 400);
     image = imageValue;

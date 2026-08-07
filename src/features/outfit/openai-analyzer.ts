@@ -1,12 +1,13 @@
 import OpenAI from "openai";
-import { toJSONSchema } from "zod";
+import { toJSONSchema, z } from "zod";
 
 import type { OutfitAnalyzer, AnalyzeInput } from "./analyzer";
-import { OutfitAnalysisSchema, type OutfitAnalysis } from "./domain";
+import { OutfitAnalysisSchema, SuggestionSchema, type OutfitAnalysis } from "./domain";
 import { buildAnalysisPrompt } from "./prompts";
 
 type OpenAIResponsesRequest = {
   model: string;
+  store: false;
   input: Array<{
     role: "system" | "user";
     content: string | Array<{ type: "input_image"; image_url: string }>;
@@ -44,7 +45,18 @@ export class AnalyzerUnavailableError extends Error {
   }
 }
 
-const ANALYSIS_JSON_SCHEMA = toJSONSchema(OutfitAnalysisSchema) as Record<string, unknown>;
+const TransportAnalysisSchema = z
+  .object({
+    summary: z.string().nullable(),
+    strengths: z.array(z.string()).nullable(),
+    occasion_fit: z.enum(["適合", "稍需調整", "不太適合"]).nullable(),
+    suggestions: z.array(SuggestionSchema).nullable(),
+    retake_required: z.boolean(),
+    retake_reason: z.string().nullable(),
+  })
+  .strict();
+
+const ANALYSIS_JSON_SCHEMA = toJSONSchema(TransportAnalysisSchema) as Record<string, unknown>;
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException
@@ -53,7 +65,30 @@ function isAbortError(error: unknown): boolean {
 }
 
 function parseAnalysis(outputText: string): OutfitAnalysis {
-  return OutfitAnalysisSchema.parse(JSON.parse(outputText));
+  const transport = TransportAnalysisSchema.parse(JSON.parse(outputText));
+  if (transport.retake_required) {
+    if (
+      transport.summary !== null
+      || transport.strengths !== null
+      || transport.occasion_fit !== null
+      || transport.suggestions !== null
+    ) {
+      throw new Error("Retake transport fields must be null");
+    }
+    return OutfitAnalysisSchema.parse({
+      retake_required: true,
+      retake_reason: transport.retake_reason,
+    });
+  }
+
+  return OutfitAnalysisSchema.parse({
+    summary: transport.summary,
+    strengths: transport.strengths,
+    occasion_fit: transport.occasion_fit,
+    suggestions: transport.suggestions,
+    retake_required: false,
+    retake_reason: transport.retake_reason,
+  });
 }
 
 function createOpenAIClient(): OpenAIResponsesClient {
@@ -89,6 +124,7 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
           response = await this.client.responses.create(
             {
               model,
+              store: false,
               input: [
                 { role: "system", content: buildAnalysisPrompt({ occasion: input.occasion }) },
                 { role: "user", content: [{ type: "input_image", image_url: imageDataUrl }] },

@@ -29,6 +29,30 @@ function analyzerReturning(result: Awaited<ReturnType<OutfitAnalyzer["analyze"]>
   return { analyze: async () => result };
 }
 
+function makeOversizedMultipartRequest(contentLength?: string) {
+  let cancelled = false;
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(6 * 1024 * 1024 + 1));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const headers = new Headers({ "content-type": "multipart/form-data; boundary=body-limit" });
+  if (contentLength) headers.set("content-length", contentLength);
+
+  return {
+    request: new Request("http://localhost/api/analyze", {
+      method: "POST",
+      body,
+      headers,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" }),
+    wasCancelled: () => cancelled,
+  };
+}
+
 describe("POST /api/analyze", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -88,6 +112,52 @@ describe("POST /api/analyze", () => {
     await expect(response.json()).resolves.toEqual({ error: "INVALID_IMAGE" });
   });
 
+  it("rejects and cancels an over-limit multipart stream without Content-Length", async () => {
+    const oversized = makeOversizedMultipartRequest();
+    const response = await POST(oversized.request, analyzerReturning(completeAnalysis));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_IMAGE" });
+    expect(oversized.wasCancelled()).toBe(true);
+  });
+
+  it("rejects an over-limit multipart stream with a falsely small Content-Length", async () => {
+    const oversized = makeOversizedMultipartRequest("1");
+    const response = await POST(oversized.request, analyzerReturning(completeAnalysis));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_IMAGE" });
+    expect(oversized.wasCancelled()).toBe(true);
+  });
+
+  it("returns INVALID_IMAGE for a non-multipart request", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/analyze", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      analyzerReturning(completeAnalysis),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_IMAGE" });
+  });
+
+  it("returns INVALID_IMAGE for a multipart body with a malformed boundary", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/analyze", {
+        method: "POST",
+        headers: { "content-type": "multipart/form-data; boundary=expected" },
+        body: "--different\\r\\n",
+      }),
+      analyzerReturning(completeAnalysis),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_IMAGE" });
+  });
+
   it("returns RETAKE_REQUIRED when the analysis requires a new photo", async () => {
     const response = await POST(
       makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
@@ -113,17 +183,24 @@ describe("POST /api/analyze", () => {
 
   it("aborts an analysis after 30 seconds and maps it to AI_TIMEOUT", async () => {
     vi.useFakeTimers();
+    let analysisStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      analysisStarted = resolve;
+    });
     const analyzer: OutfitAnalyzer = {
-      analyze: ({ signal }) => new Promise((_, reject) => {
-        signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
-      }),
+      analyze: ({ signal }) => {
+        analysisStarted?.();
+        return new Promise((_, reject) => {
+          signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      },
     };
     const responsePromise = POST(
       makeMultipartRequest(new Blob(["image"], { type: "image/webp" })),
       analyzer,
     );
 
-    await vi.advanceTimersByTimeAsync(0);
+    await started;
     await vi.advanceTimersByTimeAsync(30_000);
     const response = await responsePromise;
     expect(response.status).toBe(504);

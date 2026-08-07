@@ -29,6 +29,17 @@ function createClient(outputs: Array<string | Error>): OpenAIResponsesClient {
   };
 }
 
+function retakeTransport(reason: string) {
+  return {
+    summary: null,
+    strengths: null,
+    occasion_fit: null,
+    suggestions: null,
+    retake_required: true,
+    retake_reason: reason,
+  };
+}
+
 function makeInput() {
   return {
     occasion: "casual" as const,
@@ -53,7 +64,7 @@ describe("OpenAIOutfitAnalyzer", () => {
   it("returns the retake union without adding complete-analysis fields", async () => {
     process.env.OPENAI_VISION_MODEL = "vision-test-model";
     const analyzer = new OpenAIOutfitAnalyzer(
-      createClient([JSON.stringify({ retake_required: true, retake_reason: "衣物細節不清楚" })]),
+      createClient([JSON.stringify(retakeTransport("衣物細節不清楚"))]),
     );
 
     await expect(analyzer.analyze(makeInput())).resolves.toEqual({
@@ -64,19 +75,41 @@ describe("OpenAIOutfitAnalyzer", () => {
 
   it("retries exactly once when the first model result fails schema validation", async () => {
     process.env.OPENAI_VISION_MODEL = "vision-test-model";
-    let calls = 0;
+    const requests: Parameters<OpenAIResponsesClient["responses"]["create"]>[0][] = [];
     const client: OpenAIResponsesClient = {
       responses: {
-        create: async () => {
-          calls += 1;
-          return { output_text: calls === 1 ? "{\"retake_required\":false}" : JSON.stringify(completeAnalysis) };
+        create: async (request) => {
+          requests.push(request);
+          return {
+            output_text: requests.length === 1
+              ? "{\"retake_required\":false}"
+              : JSON.stringify(completeAnalysis),
+          };
         },
       },
     };
     const analyzer = new OpenAIOutfitAnalyzer(client);
 
     await expect(analyzer.analyze(makeInput())).resolves.toEqual(completeAnalysis);
-    expect(calls).toBe(2);
+    expect(requests).toHaveLength(2);
+    expect(requests.every((request) => request.store === false)).toBe(true);
+  });
+
+  it("sends a top-level object transport schema without oneOf", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    let request: Parameters<OpenAIResponsesClient["responses"]["create"]>[0] | undefined;
+    const client: OpenAIResponsesClient = {
+      responses: {
+        create: async (nextRequest) => {
+          request = nextRequest;
+          return { output_text: JSON.stringify(completeAnalysis) };
+        },
+      },
+    };
+
+    await new OpenAIOutfitAnalyzer(client).analyze(makeInput());
+    expect(request?.text.format.schema).toMatchObject({ type: "object" });
+    expect(request?.text.format.schema).not.toHaveProperty("oneOf");
   });
 
   it("does not retry an unavailable OpenAI request", async () => {

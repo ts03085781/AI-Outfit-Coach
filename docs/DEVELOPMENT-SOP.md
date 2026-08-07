@@ -23,6 +23,7 @@
 - 照片只存在瀏覽器與單次 API 請求記憶體。
 - 不記錄照片、data URL、自由文字、完整 AI 回覆或追問。
 - 模型或供應商更換前，重新核對訓練使用、人工審查與保存期限。
+- `store: false` 只停用 Responses application-state 保存；部署前仍須確認供應商的 abuse-monitoring 保存是否符合核准的 ZDR／Modified Abuse Monitoring 設定。程式碼本身不能保證供應商端零保存。
 - 公開隱私文字必須符合供應商實際政策，不宣稱無法證明的「立即刪除」。
 
 ## 4. 測試門檻
