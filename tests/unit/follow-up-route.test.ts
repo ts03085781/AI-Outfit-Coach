@@ -83,6 +83,30 @@ describe("POST /api/follow-up", () => {
     });
   });
 
+  it("applies the complete optional-shopping rule to an unrequested follow-up", async () => {
+    process.env.OPENAI_VISION_MODEL = "follow-up-test-model";
+    let sentRequest: Parameters<FollowUpResponsesClient["responses"]["create"]>[0] | undefined;
+    const client: FollowUpResponsesClient = {
+      responses: {
+        create: async (nextRequest) => {
+          sentRequest = nextRequest;
+          return { output_text: JSON.stringify({ alternative: "調整袖口即可。" }) };
+        },
+      },
+    };
+
+    await handleRequest(
+      request({ analysis: completeAnalysis, question: "還有其他替代方法嗎？" }),
+      client,
+    );
+
+    const prompt = sentRequest?.input.map((message) => message.content).join("\n") ?? "";
+    expect(prompt).toContain("不得建議非必要購物");
+    expect(prompt).toContain("只有使用者明確要求購物建議時");
+    expect(prompt).toContain("非強制選項");
+    expect(prompt).toContain("仍先提供現有衣物調整");
+  });
+
   it("rejects a question over 160 characters without calling the AI", async () => {
     process.env.OPENAI_VISION_MODEL = "follow-up-test-model";
     let calls = 0;
