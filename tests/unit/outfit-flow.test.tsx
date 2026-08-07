@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
@@ -12,10 +13,14 @@ const completeAnalysis = {
   occasion_fit: "適合",
   suggestions: [
     { action: "加一雙簡約鞋", reason: "讓視覺更完整", expected_effect: "整體更有精神" },
+    { action: "換成素色包款", reason: "減少視覺雜訊", expected_effect: "輪廓更俐落" },
+    { action: "捲起袖口", reason: "露出手腕", expected_effect: "比例更輕盈" },
   ],
   retake_required: false,
   retake_reason: null,
 };
+
+const stylesheet = readFileSync("src/app/globals.css", "utf8");
 
 function chooseOccasionAndPhoto() {
   fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
@@ -83,6 +88,37 @@ describe("outfit flow", () => {
     expect(screen.getByText(completeAnalysis.strengths[1])).toBeVisible();
     expect(screen.getByText("場合適合度：適合")).toBeVisible();
     expect(screen.getByText(completeAnalysis.suggestions[0].action)).toBeVisible();
+    const primarySuggestion = document.querySelector(".primary-suggestion");
+    expect(primarySuggestion).toHaveTextContent(completeAnalysis.suggestions[0].action);
+    expect(primarySuggestion).toHaveTextContent(completeAnalysis.suggestions[0].reason);
+    expect(primarySuggestion).toHaveTextContent(completeAnalysis.suggestions[0].expected_effect);
+    expect(document.querySelectorAll(".suggestion-list li")).toHaveLength(2);
+  });
+
+  it("does not render a primary suggestion card when the analysis has no suggestions", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ ...completeAnalysis, suggestions: [] }), { status: 200 }),
+    );
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "我同意將這張照片用於本次穿搭分析" }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
+    expect(document.querySelector(".primary-suggestion")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "可以試試" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the consent label as a 44px minimum tap target associated with its checkbox", async () => {
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+
+    expect(screen.getByLabelText("我同意將這張照片用於本次穿搭分析")).toBeVisible();
+    expect(stylesheet).toMatch(/\.consent-label\s*\{[\s\S]*?min-height:\s*44px/);
   });
 
   it("shows only a retake reason and retake action when the photo needs retaking", async () => {

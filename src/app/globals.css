@@ -113,7 +113,7 @@ p { color: #61707b; line-height: 1.55; }
 }
 
 .primary-action:disabled { cursor: not-allowed; opacity: .45; }
-.consent-label { display: flex; gap: 12px; align-items: flex-start; margin-top: 22px; line-height: 1.45; }
+.consent-label { display: flex; min-height: 44px; gap: 12px; align-items: center; margin-top: 22px; padding-block: 10px; cursor: pointer; line-height: 1.45; }
 .consent-label input { width: 20px; height: 20px; margin-top: 2px; accent-color: #176b87; }
 .summary-card { padding: 16px; background: #e7f1f4; border-radius: 13px; }
 .summary-card p { margin: 0; color: #17202a; font-weight: 650; }
@@ -121,6 +121,9 @@ p { color: #61707b; line-height: 1.55; }
 .suggestion-list { padding: 0; list-style: none; }
 .suggestion-list li { display: grid; gap: 4px; padding: 13px 0; border-top: 1px solid #d6e0e3; }
 .suggestion-list span { color: #61707b; }
+.primary-suggestion { padding: 18px; background: #e7f1f4; border: 1px solid #b9c9cf; border-radius: 13px; }
+.primary-suggestion strong { color: #17202a; font-size: 1.08rem; }
+.primary-suggestion p { margin: 8px 0 0; }
 .retake-result p { color: #17202a; font-weight: 650; }
 
 @media (prefers-reduced-motion: no-preference) {

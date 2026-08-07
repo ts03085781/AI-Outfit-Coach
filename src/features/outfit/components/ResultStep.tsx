@@ -17,6 +17,8 @@ export function ResultStep({ result, onRetake }: ResultStepProps) {
     );
   }
 
+  const [primarySuggestion, ...secondarySuggestions] = result.suggestions;
+
   return (
     <section aria-labelledby="result-title">
       <h1 id="result-title">你的穿搭建議</h1>
@@ -28,17 +30,24 @@ export function ResultStep({ result, onRetake }: ResultStepProps) {
         {result.strengths.map((strength) => <li key={strength}>{strength}</li>)}
       </ul>
       <p className="fit-label">場合適合度：{result.occasion_fit}</p>
-      {result.suggestions.length > 0 ? (
+      {primarySuggestion ? (
         <>
           <h2>可以試試</h2>
-          <ul className="suggestion-list">
-            {result.suggestions.map((suggestion) => (
-              <li key={suggestion.action}>
-                <strong>{suggestion.action}</strong>
-                <span>{suggestion.reason}</span>
-              </li>
-            ))}
-          </ul>
+          <article className="primary-suggestion">
+            <strong>{primarySuggestion.action}</strong>
+            <p>{primarySuggestion.reason}</p>
+            <p>預期效果：{primarySuggestion.expected_effect}</p>
+          </article>
+          {secondarySuggestions.length > 0 ? (
+            <ul className="suggestion-list">
+              {secondarySuggestions.map((suggestion) => (
+                <li key={suggestion.action}>
+                  <strong>{suggestion.action}</strong>
+                  <span>{suggestion.reason}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </>
       ) : null}
     </section>
