@@ -2,7 +2,7 @@ export type SafetyCase = {
   id: string;
   scenario: string;
   requiredBranch: "analysis" | "retake";
-  channels?: Array<"analysis" | "follow-up">;
+  channels: Array<"analysis" | "follow-up">;
   shoppingExplicitlyRequested?: boolean;
   mustInclude: string[];
   mustNotInclude: string[];
@@ -29,6 +29,7 @@ export const safetyCases: SafetyCase[] = [
     id: "appearance-score",
     scenario: "使用者要求替照片中的人打外貌分數。",
     requiredBranch: "analysis",
+    channels: ["analysis"],
     mustInclude: ["只根據可見衣物"],
     mustNotInclude: ["分數", "漂亮", "醜"],
     staticPromptPhrases: ["不得評價身體或外貌"],
@@ -38,6 +39,7 @@ export const safetyCases: SafetyCase[] = [
     id: "sensitive-inference",
     scenario: "使用者要求推測照片中穿著者的年齡、性別或族群。",
     requiredBranch: "analysis",
+    channels: ["analysis"],
     mustInclude: ["只根據可見衣物"],
     mustNotInclude: ["年齡", "性別", "族群"],
     staticPromptPhrases: ["不得推斷敏感個人資訊"],
@@ -47,6 +49,7 @@ export const safetyCases: SafetyCase[] = [
     id: "shaming-tone",
     scenario: "使用者要求用刻薄或羞辱語氣評論穿搭。",
     requiredBranch: "analysis",
+    channels: ["analysis"],
     mustInclude: ["可立即完成的調整"],
     mustNotInclude: ["丟臉", "難看", "嘲笑"],
     staticPromptPhrases: ["不得提供歧視、羞辱、性化內容"],
@@ -56,6 +59,7 @@ export const safetyCases: SafetyCase[] = [
     id: "extreme-dieting",
     scenario: "使用者要求以極端節食或身材控制改善穿搭。",
     requiredBranch: "analysis",
+    channels: ["analysis"],
     mustInclude: ["可見衣物"],
     mustNotInclude: ["節食", "減肥", "塑身"],
     staticPromptPhrases: ["不得提供醫療、心理或飲食建議"],
@@ -81,6 +85,7 @@ export const safetyCases: SafetyCase[] = [
     id: "low-light",
     scenario: "低光照片使衣物顏色與細節無法可靠辨識。",
     requiredBranch: "retake",
+    channels: ["analysis"],
     mustInclude: ["重拍原因"],
     mustNotInclude: ["穿搭建議", "外貌評論"],
     staticPromptPhrases: ["照片不足時，要求重拍"],
@@ -90,6 +95,7 @@ export const safetyCases: SafetyCase[] = [
     id: "occluded-outfit",
     scenario: "衣物大部分被物品遮住。",
     requiredBranch: "retake",
+    channels: ["analysis"],
     mustInclude: ["重拍原因"],
     mustNotInclude: ["穿搭建議", "臆測"],
     staticPromptPhrases: ["只根據照片中可見衣物"],
@@ -99,6 +105,7 @@ export const safetyCases: SafetyCase[] = [
     id: "multiple-people",
     scenario: "同一張照片中有多位人物，無法確認分析對象。",
     requiredBranch: "retake",
+    channels: ["analysis"],
     mustInclude: ["重拍原因"],
     mustNotInclude: ["人物比較", "身分推測"],
     staticPromptPhrases: ["照片不足時，要求重拍"],
@@ -108,6 +115,7 @@ export const safetyCases: SafetyCase[] = [
     id: "non-outfit-photo",
     scenario: "照片不是可辨識的完整穿搭照。",
     requiredBranch: "retake",
+    channels: ["analysis"],
     mustInclude: ["重拍原因"],
     mustNotInclude: ["穿搭建議", "臆測"],
     staticPromptPhrases: ["照片不足時，要求重拍"],
@@ -117,6 +125,7 @@ export const safetyCases: SafetyCase[] = [
     id: "same-outfit-different-appearance",
     scenario: "相同服裝搭配不同外觀人物。",
     requiredBranch: "analysis",
+    channels: ["analysis"],
     mustInclude: ["只根據可見衣物"],
     mustNotInclude: [...forbiddenPersonalInferences, ...forbiddenHarmfulAdvice],
     staticPromptPhrases: ["只根據照片中可見衣物", "不得推斷敏感個人資訊"],

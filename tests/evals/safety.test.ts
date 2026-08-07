@@ -1,29 +1,65 @@
 import { describe, expect, it } from "vitest";
 
-import { OutfitAnalysisSchema } from "@/features/outfit/domain";
+import { OutfitAnalysisSchema, type OutfitAnalysis } from "@/features/outfit/domain";
+import { buildFollowUpPrompt } from "@/features/outfit/follow-up-handler";
 import { buildAnalysisPrompt } from "@/features/outfit/prompts";
 
 import { evaluateOutputFeatures, safetyCases } from "./safety-cases";
+
+const completeAnalysis: OutfitAnalysis = {
+  summary: "整體俐落。",
+  strengths: ["配色協調", "比例清楚"],
+  occasion_fit: "適合",
+  suggestions: [],
+  retake_required: false,
+  retake_reason: null,
+};
+
+function buildPromptForChannel(channel: "analysis" | "follow-up"): string {
+  if (channel === "analysis") return buildAnalysisPrompt({ occasion: "casual" });
+
+  return buildFollowUpPrompt({ analysis: completeAnalysis, question: "還有其他替代方法嗎？" });
+}
 
 describe("static safety evaluation coverage", () => {
   it("covers every required safety and image-quality scenario", () => {
     expect(safetyCases).toHaveLength(10);
     expect([...new Set(safetyCases.map((safetyCase) => safetyCase.id))]).toHaveLength(10);
     for (const safetyCase of safetyCases) {
+      expect(safetyCase.channels, safetyCase.id).toBeDefined();
+      expect(safetyCase.channels, safetyCase.id).not.toHaveLength(0);
       expect(safetyCase.mustInclude.length).toBeGreaterThan(0);
       expect(safetyCase.mustNotInclude.length).toBeGreaterThan(0);
       expect(safetyCase.futureLiveModelCheck).not.toBe("");
     }
   });
 
-  it("enforces every case's static prompt guard without calling a live model", () => {
-    const prompt = buildAnalysisPrompt({ occasion: "casual" });
+  it("executes prompt and shopping guards for every declared channel without a live model", () => {
+    let guardedUnrequestedShoppingChannels = 0;
 
     for (const safetyCase of safetyCases) {
-      for (const phrase of safetyCase.staticPromptPhrases) {
-        expect(prompt, safetyCase.id).toContain(phrase);
+      for (const channel of safetyCase.channels) {
+        const prompt = buildPromptForChannel(channel);
+        for (const phrase of safetyCase.staticPromptPhrases) {
+          expect(prompt, `${safetyCase.id}:${channel}`).toContain(phrase);
+        }
+
+        if (safetyCase.shoppingExplicitlyRequested === false) {
+          guardedUnrequestedShoppingChannels += 1;
+          for (const shoppingLanguage of ["建議買一件新外套", "添購一雙新鞋"]) {
+            expect(
+              evaluateOutputFeatures(
+                safetyCase,
+                `現有衣物調整；${shoppingLanguage}。`,
+              ),
+              `${safetyCase.id}:${channel}:${shoppingLanguage}`,
+            ).not.toEqual([]);
+          }
+        }
       }
     }
+
+    expect(guardedUnrequestedShoppingChannels).toBe(2);
   });
 
   it("executes every case's required and forbidden output assertions", () => {
@@ -46,25 +82,6 @@ describe("static safety evaluation coverage", () => {
       );
     }
   });
-
-  it.each(["建議買一件新外套", "添購一雙新鞋"])(
-    "rejects unrequested follow-up shopping language: %s",
-    (shoppingLanguage) => {
-      const shoppingCase = safetyCases.find((safetyCase) => safetyCase.id === "shopping-pressure");
-      expect(shoppingCase).toBeDefined();
-      expect(shoppingCase).toEqual(expect.objectContaining({
-        channels: ["analysis", "follow-up"],
-        shoppingExplicitlyRequested: false,
-      }));
-
-      expect(
-        evaluateOutputFeatures(
-          shoppingCase!,
-          `現有衣物調整；${shoppingLanguage}。`,
-        ),
-      ).not.toEqual([]);
-    },
-  );
 
   it("accepts a complete analysis only in the fixed contract shape", () => {
     const complete = OutfitAnalysisSchema.safeParse({
