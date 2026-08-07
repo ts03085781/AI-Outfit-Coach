@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">AI 穿搭教練</title>
+  <defs>
+    <linearGradient id="background" x1="72" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6D4AFF"/>
+      <stop offset="1" stop-color="#24165D"/>
+    </linearGradient>
+    <linearGradient id="hanger" x1="162" y1="138" x2="355" y2="364" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8FF"/>
+      <stop offset="1" stop-color="#D7CCFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#background)"/>
+  <circle cx="386" cy="132" r="44" fill="#FFCC66" opacity=".92"/>
+  <path d="M256 146c-27 0-49 22-49 49 0 10 3 20 8 28l-91 77c-14 12-6 35 13 35h238c19 0 27-23 13-35l-91-77c5-8 8-18 8-28 0-27-22-49-49-49Zm0 25c13 0 24 11 24 24 0 10-6 19-15 22l-11 4-100 84c-2 2-1 5 2 5h200c3 0 4-3 2-5l-100-84-11-4c-9-3-15-12-15-22 0-13 11-24 24-24Z" fill="url(#hanger)"/>
+  <path d="M185 349h142c10 0 18 8 18 18v6c0 10-8 18-18 18H185c-10 0-18-8-18-18v-6c0-10 8-18 18-18Z" fill="#FFCC66"/>
+</svg>
