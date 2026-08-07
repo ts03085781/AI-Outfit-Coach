@@ -4,6 +4,8 @@ import {
   AnalyzeRequestSchema,
   OccasionSchema,
   OutfitAnalysisSchema,
+  SettingSchema,
+  WeatherSchema,
 } from "@/features/outfit/domain";
 
 describe("outfit domain contract", () => {
@@ -45,6 +47,31 @@ describe("outfit domain contract", () => {
   it("only accepts supported occasions in an analysis request", () => {
     expect(OccasionSchema.parse("work")).toBe("work");
     expect(() => AnalyzeRequestSchema.parse({ occasion: "party" })).toThrow();
+  });
+
+  it("accepts bounded optional weather, setting, and trimmed desired feel", () => {
+    expect(AnalyzeRequestSchema.parse({
+      occasion: "work",
+      weather: "rainy",
+      setting: "mixed",
+      desiredFeel: "  專業但親切  ",
+    })).toEqual({
+      occasion: "work",
+      weather: "rainy",
+      setting: "mixed",
+      desiredFeel: "專業但親切",
+    });
+    expect(WeatherSchema.parse("hot")).toBe("hot");
+    expect(SettingSchema.parse("outdoor")).toBe("outdoor");
+  });
+
+  it("rejects invalid or oversized optional context", () => {
+    expect(() => AnalyzeRequestSchema.parse({ occasion: "casual", weather: "storm" })).toThrow();
+    expect(() => AnalyzeRequestSchema.parse({ occasion: "casual", setting: "office" })).toThrow();
+    expect(() => AnalyzeRequestSchema.parse({
+      occasion: "casual",
+      desiredFeel: "字".repeat(61),
+    })).toThrow();
   });
 
   it("rejects a retake result without a reason", () => {

@@ -4,9 +4,18 @@ export const OccasionSchema = z.enum(["casual", "date", "work", "formal"]);
 
 export type Occasion = z.infer<typeof OccasionSchema>;
 
+export const WeatherSchema = z.enum(["sunny", "rainy", "cold", "hot", "mild"]);
+export const SettingSchema = z.enum(["indoor", "outdoor", "mixed"]);
+
+export type Weather = z.infer<typeof WeatherSchema>;
+export type Setting = z.infer<typeof SettingSchema>;
+
 export const AnalyzeRequestSchema = z.object({
   occasion: OccasionSchema,
-});
+  weather: WeatherSchema.optional(),
+  setting: SettingSchema.optional(),
+  desiredFeel: z.string().trim().max(60).optional(),
+}).strict();
 
 export type AnalyzeRequest = z.infer<typeof AnalyzeRequestSchema>;
 
@@ -40,3 +49,8 @@ export const OutfitAnalysisSchema = z.discriminatedUnion("retake_required", [
 ]);
 
 export type OutfitAnalysis = z.infer<typeof OutfitAnalysisSchema>;
+
+export const AnalyzeSuccessResponseSchema = z.object({
+  analysis: OutfitAnalysisSchema,
+  analysisToken: z.string().min(1).max(1_024),
+}).strict();

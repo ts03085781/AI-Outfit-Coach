@@ -15,12 +15,16 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid #f3a66b;
   outline-offset: 3px;
 }
@@ -76,7 +80,16 @@ h1 { margin: 0 0 10px; font-size: clamp(1.65rem, 8vw, 2.15rem); }
 h2 { margin: 26px 0 10px; font-size: 1.05rem; }
 p { color: #61707b; line-height: 1.55; }
 
+button { min-width: 44px; min-height: 44px; }
+
 .occasion-grid { display: grid; gap: 10px; margin-top: 24px; }
+
+.optional-context { margin-top: 18px; color: #61707b; }
+.optional-context summary { min-height: 44px; padding: 11px 0; cursor: pointer; font-weight: 700; }
+.context-fields { display: grid; gap: 12px; padding: 10px 0 4px; }
+.context-fields label { display: grid; gap: 6px; font-size: .92rem; font-weight: 650; }
+.context-fields input,
+.context-fields select { min-height: 44px; width: 100%; padding: 9px 10px; border: 1px solid #b9c9cf; border-radius: 10px; background: #fff; }
 
 .occasion-grid button,
 .photo-picker {
@@ -115,6 +128,7 @@ p { color: #61707b; line-height: 1.55; }
 .primary-action:disabled { cursor: not-allowed; opacity: .45; }
 .consent-label { display: flex; min-height: 44px; gap: 12px; align-items: center; margin-top: 22px; padding-block: 10px; cursor: pointer; line-height: 1.45; }
 .consent-label input { width: 20px; height: 20px; margin-top: 2px; accent-color: #176b87; }
+.photo-preview { display: block; width: 100%; max-height: 22rem; margin: 18px 0; object-fit: contain; background: #f3f7f8; border-radius: 13px; }
 .summary-card { padding: 16px; background: #e7f1f4; border-radius: 13px; }
 .summary-card p { margin: 0; color: #17202a; font-weight: 650; }
 .fit-label { color: #17202a; font-weight: 700; }
@@ -125,6 +139,9 @@ p { color: #61707b; line-height: 1.55; }
 .primary-suggestion strong { color: #17202a; font-size: 1.08rem; }
 .primary-suggestion p { margin: 8px 0 0; }
 .retake-result p { color: #17202a; font-weight: 650; }
+.result-step button { min-width: 44px; min-height: 44px; }
+.result-step textarea { display: block; width: 100%; min-height: 96px; margin-top: 8px; padding: 10px; border: 1px solid #b9c9cf; border-radius: 10px; resize: vertical; }
+.result-step > section button { margin: 6px 8px 6px 0; padding: 10px 14px; border: 1px solid #176b87; border-radius: 10px; background: #fff; color: #176b87; font-weight: 700; }
 
 @media (prefers-reduced-motion: no-preference) {
   button, .photo-picker { transition: border-color .15s ease, transform .15s ease; }

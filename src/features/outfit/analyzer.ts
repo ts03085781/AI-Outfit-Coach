@@ -1,8 +1,7 @@
-import type { Occasion, OutfitAnalysis } from "./domain";
+import type { AnalyzeRequest, OutfitAnalysis } from "./domain";
 
-export type AnalyzeInput = {
+export type AnalyzeInput = AnalyzeRequest & {
   image: Blob;
-  occasion: Occasion;
   signal?: AbortSignal;
 };
 

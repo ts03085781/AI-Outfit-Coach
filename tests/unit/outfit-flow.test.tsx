@@ -21,6 +21,15 @@ const completeAnalysis = {
 };
 
 const stylesheet = readFileSync("src/app/globals.css", "utf8");
+const createObjectURL = vi.fn(() => "blob:local-preview");
+const revokeObjectURL = vi.fn();
+
+function analysisResponse(analysis = completeAnalysis) {
+  return new Response(JSON.stringify({
+    analysis,
+    analysisToken: "signed-analysis-token",
+  }), { status: 200 });
+}
 
 function chooseOccasionAndPhoto() {
   fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
@@ -31,6 +40,10 @@ function chooseOccasionAndPhoto() {
 
 beforeEach(() => {
   prepareImage.mockClear();
+  createObjectURL.mockClear();
+  revokeObjectURL.mockClear();
+  Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
+  Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
   vi.stubGlobal("fetch", vi.fn());
 });
 
@@ -44,6 +57,37 @@ describe("outfit flow", () => {
     const photoInput = screen.getByLabelText("上傳穿搭照片");
     expect(photoInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
     expect(photoInput).toHaveAttribute("capture", "environment");
+  });
+
+  it("shows exact occasion labels and forwards low-burden optional context", async () => {
+    vi.mocked(fetch).mockResolvedValue(analysisResponse());
+    render(<HomePage />);
+
+    expect(screen.getByRole("button", { name: "工作／面試" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "正式活動" })).toBeVisible();
+    fireEvent.click(screen.getByText("加上選填背景"));
+    fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
+    fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
+    fireEvent.change(screen.getByLabelText("想呈現的感覺"), {
+      target: { value: "專業但親切" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "工作／面試" }));
+    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+      target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "繼續" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
+
+    const analyzeCall = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/analyze");
+    const body = analyzeCall?.[1]?.body;
+    expect(body).toBeInstanceOf(FormData);
+    expect((body as FormData).get("occasion")).toBe("work");
+    expect((body as FormData).get("weather")).toBe("rainy");
+    expect((body as FormData).get("setting")).toBe("mixed");
+    expect((body as FormData).get("desiredFeel")).toBe("專業但親切");
   });
 
   it("requires a photo before continuing to consent", async () => {
@@ -70,10 +114,16 @@ describe("outfit flow", () => {
     expect(analyze).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox", { name: "我同意將這張照片用於本次穿搭分析" }));
     expect(analyze).toBeEnabled();
+    expect(screen.getByRole("img", { name: "本機穿搭照片預覽" })).toHaveAttribute(
+      "src",
+      "blob:local-preview",
+    );
+    expect(screen.getByText(/供應商可能依濫用監控政策短期保留/)).toBeVisible();
+    expect(screen.getByText(/離開或重新整理後，照片與結果都無法恢復/)).toBeVisible();
   });
 
   it("shows the complete result after analysis", async () => {
-    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify(completeAnalysis), { status: 200 }));
+    vi.mocked(fetch).mockResolvedValue(analysisResponse());
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
@@ -93,11 +143,18 @@ describe("outfit flow", () => {
     expect(primarySuggestion).toHaveTextContent(completeAnalysis.suggestions[0].reason);
     expect(primarySuggestion).toHaveTextContent(completeAnalysis.suggestions[0].expected_effect);
     expect(document.querySelectorAll(".suggestion-list li")).toHaveLength(2);
+    expect(screen.getByText(`預期效果：${completeAnalysis.suggestions[1].expected_effect}`)).toBeVisible();
+    expect(screen.getByText(`預期效果：${completeAnalysis.suggestions[2].expected_effect}`)).toBeVisible();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:local-preview");
+    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
+      url === "/api/telemetry"
+      && JSON.parse(String(init?.body)).type === "analysis_success"
+    )).toBe(true);
   });
 
   it("does not render a primary suggestion card when the analysis has no suggestions", async () => {
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ ...completeAnalysis, suggestions: [] }), { status: 200 }),
+      analysisResponse({ ...completeAnalysis, suggestions: [] }),
     );
     render(<HomePage />);
     chooseOccasionAndPhoto();
@@ -135,12 +192,20 @@ describe("outfit flow", () => {
     expect(await screen.findByText("衣物細節不清楚")).toBeVisible();
     expect(screen.getByRole("button", { name: "重新拍照" })).toBeVisible();
     expect(screen.queryByText("場合適合度：適合")).not.toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
+      url === "/api/telemetry"
+      && JSON.parse(String(init?.body)).type === "analysis_retake"
+    )).toBe(true);
   });
 
   it("offers one follow-up and anonymous helpfulness feedback with no image upload", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(new Response(JSON.stringify(completeAnalysis), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ alternative: "調整袖口即可。" }), { status: 200 }));
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/analyze") return analysisResponse();
+      if (url === "/api/follow-up") {
+        return new Response(JSON.stringify({ alternative: "調整袖口即可。" }), { status: 200 });
+      }
+      return new Response(null, { status: 204 });
+    });
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await waitFor(() => expect(screen.getByRole("button", { name: "繼續" })).toBeEnabled());
@@ -155,13 +220,21 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "取得替代方法" }));
 
     expect(await screen.findByText("調整袖口即可。")).toBeVisible();
-    expect(fetch).toHaveBeenLastCalledWith("/api/follow-up", expect.objectContaining({
+    expect(fetch).toHaveBeenCalledWith("/api/follow-up", expect.objectContaining({
       method: "POST",
       headers: { "content-type": "application/json" },
     }));
+    const followUpCall = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/follow-up");
+    expect(JSON.parse(String(followUpCall?.[1]?.body))).toMatchObject({
+      analysisToken: "signed-analysis-token",
+    });
     expect(screen.getByRole("button", { name: "取得替代方法" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
     expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
+    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
+      url === "/api/telemetry"
+      && JSON.parse(String(init?.body)).type === "feedback"
+    )).toBe(true);
   });
 
   it("announces an API failure and lets the user try again", async () => {
@@ -175,5 +248,15 @@ describe("outfit flow", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("現在無法分析照片");
     expect(screen.getByRole("button", { name: "再試一次" })).toBeVisible();
+    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
+      url === "/api/telemetry"
+      && JSON.parse(String(init?.body)).type === "analysis_error"
+    )).toBe(true);
+  });
+
+  it("gives every result control a visible focus style and at least 44px target", () => {
+    expect(stylesheet).toMatch(/\.result-step[\s\S]*?button[\s\S]*?min-height:\s*44px/);
+    expect(stylesheet).toMatch(/\.result-step[\s\S]*?textarea[\s\S]*?min-height:\s*(?:44|9\d)px/);
+    expect(stylesheet).toMatch(/textarea:focus-visible/);
   });
 });

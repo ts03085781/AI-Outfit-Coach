@@ -8,10 +8,11 @@ import type { OutfitAnalysis } from "../domain";
 
 type ResultStepProps = {
   result: OutfitAnalysis;
+  analysisToken?: string;
   onRetake: () => void;
 };
 
-export function ResultStep({ result, onRetake }: ResultStepProps) {
+export function ResultStep({ result, analysisToken, onRetake }: ResultStepProps) {
   const [question, setQuestion] = useState("");
   const [alternative, setAlternative] = useState<string>();
   const [followUpUsed, setFollowUpUsed] = useState(false);
@@ -33,7 +34,7 @@ export function ResultStep({ result, onRetake }: ResultStepProps) {
 
   const submitFollowUp = async () => {
     const trimmedQuestion = question.trim();
-    if (!trimmedQuestion || followUpUsed) return;
+    if (!trimmedQuestion || followUpUsed || !analysisToken) return;
 
     setFollowUpUsed(true);
     setFollowUpError(false);
@@ -41,7 +42,7 @@ export function ResultStep({ result, onRetake }: ResultStepProps) {
       const response = await fetch("/api/follow-up", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ analysis: result, question: trimmedQuestion }),
+        body: JSON.stringify({ analysis: result, analysisToken, question: trimmedQuestion }),
       });
       const body: unknown = await response.json();
       if (
@@ -68,7 +69,7 @@ export function ResultStep({ result, onRetake }: ResultStepProps) {
   };
 
   return (
-    <section aria-labelledby="result-title">
+    <section className="result-step" aria-labelledby="result-title">
       <h1 id="result-title">你的穿搭建議</h1>
       <article className="summary-card">
         <p>{result.summary}</p>
@@ -92,6 +93,7 @@ export function ResultStep({ result, onRetake }: ResultStepProps) {
                 <li key={suggestion.action}>
                   <strong>{suggestion.action}</strong>
                   <span>{suggestion.reason}</span>
+                  <span>預期效果：{suggestion.expected_effect}</span>
                 </li>
               ))}
             </ul>

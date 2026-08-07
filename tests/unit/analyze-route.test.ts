@@ -110,6 +110,45 @@ describe("POST /api/analyze", () => {
     });
   });
 
+  it("forwards strictly validated optional context to the analyzer", async () => {
+    const analyze = vi.fn(async () => completeAnalysis);
+    const formData = new FormData();
+    formData.set("image", validImage(), "outfit.png");
+    formData.set("occasion", "work");
+    formData.set("weather", "rainy");
+    formData.set("setting", "mixed");
+    formData.set("desiredFeel", "  專業但親切  ");
+
+    const response = await handleRequest(
+      new Request("http://localhost/api/analyze", { method: "POST", body: formData }),
+      { analyze },
+    );
+
+    expect(response.status).toBe(200);
+    expect(analyze).toHaveBeenCalledWith(expect.objectContaining({
+      occasion: "work",
+      weather: "rainy",
+      setting: "mixed",
+      desiredFeel: "專業但親切",
+    }));
+  });
+
+  it("rejects invalid optional context before calling the analyzer", async () => {
+    const analyze = vi.fn(async () => completeAnalysis);
+    const formData = new FormData();
+    formData.set("image", validImage(), "outfit.png");
+    formData.set("occasion", "casual");
+    formData.set("weather", "stormy");
+
+    const response = await handleRequest(
+      new Request("http://localhost/api/analyze", { method: "POST", body: formData }),
+      { analyze },
+    );
+
+    expect(response.status).toBe(400);
+    expect(analyze).not.toHaveBeenCalled();
+  });
+
   it("returns INVALID_IMAGE when the multipart payload has no image", async () => {
     const formData = new FormData();
     formData.set("occasion", "casual");

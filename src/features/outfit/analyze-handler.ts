@@ -1,4 +1,4 @@
-import { OccasionSchema } from "./domain";
+import { AnalyzeRequestSchema } from "./domain";
 import type { OutfitAnalyzer } from "./analyzer";
 import {
   AnalyzerSafetyError,
@@ -125,14 +125,21 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
           return json({ error: "INVALID_IMAGE" }, 400);
         }
 
-        const occasion = OccasionSchema.safeParse(formData.get("occasion"));
-        if (!occasion.success) return json({ error: "INVALID_IMAGE" }, 400);
+        const rawContext: Record<string, FormDataEntryValue> = {
+          occasion: formData.get("occasion") ?? "",
+        };
+        for (const key of ["weather", "setting", "desiredFeel"] as const) {
+          const value = formData.get(key);
+          if (value !== null) rawContext[key] = value;
+        }
+        const context = AnalyzeRequestSchema.safeParse(rawContext);
+        if (!context.success) return json({ error: "INVALID_IMAGE" }, 400);
 
         const controller = new AbortController();
         timeout = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
         const analysis = await dependencies.createAnalyzer().analyze({
           image,
-          occasion: occasion.data,
+          ...context.data,
           signal: controller.signal,
         });
 

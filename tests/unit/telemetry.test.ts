@@ -1,40 +1,52 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { track } from "@/lib/telemetry";
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("track", () => {
-  it("accepts a whitelisted anonymous analysis event", () => {
-    expect(() => track({
-      type: "analysis_complete",
+  it("posts a strict whitelisted analysis outcome to the first-party endpoint", () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetch);
+
+    track({
+      type: "analysis_success",
       occasion: "casual",
       latencyBucket: "5-10s",
-    })).not.toThrow();
+    });
+
+    expect(fetch).toHaveBeenCalledWith("/api/telemetry", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        type: "analysis_success",
+        occasion: "casual",
+        latencyBucket: "5-10s",
+      }),
+      keepalive: true,
+    });
   });
 
-  it("rejects an event that tries to include photo content before it reaches the sink", () => {
-    const received: unknown[] = [];
-    const sink = (event: Event) => received.push((event as CustomEvent).detail);
-    window.addEventListener("outfit-telemetry", sink);
+  it.each([
+    { type: "feedback", helpful: true, occasion: "casual" },
+    { type: "analysis_error", occasion: "casual", latencyBucket: "0-5s" },
+    { type: "analysis_retake", occasion: "casual", latencyBucket: "0-5s", helpful: false },
+    { type: "analysis_success", occasion: "casual", latencyBucket: "0-5s", photo: "base64" },
+  ])("rejects an invalid event-field combination before transport", (event) => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
 
-    try {
-      expect(() => track({ type: "analysis_complete", photo: "base64" } as never)).toThrow();
-      expect(received).toEqual([]);
-    } finally {
-      window.removeEventListener("outfit-telemetry", sink);
-    }
+    expect(() => track(event as never)).toThrow();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("sends only whitelisted feedback metadata to the event sink", () => {
-    const received: unknown[] = [];
-    const sink = (event: Event) => received.push((event as CustomEvent).detail);
-    window.addEventListener("outfit-telemetry", sink);
+  it("does not block or throw when telemetry transport fails", async () => {
+    const fetch = vi.fn().mockRejectedValue(new Error("offline"));
+    vi.stubGlobal("fetch", fetch);
 
-    try {
-      track({ type: "feedback", helpful: true });
-      expect(received).toEqual([{ type: "feedback", helpful: true }]);
-      expect(JSON.stringify(received)).not.toContain("建議內容");
-    } finally {
-      window.removeEventListener("outfit-telemetry", sink);
-    }
+    expect(() => track({ type: "feedback", helpful: true })).not.toThrow();
+    await Promise.resolve();
   });
 });

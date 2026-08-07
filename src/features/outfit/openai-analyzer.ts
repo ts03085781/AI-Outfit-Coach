@@ -135,7 +135,15 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
               store: false,
               input: [
                 { role: "system", content: buildAnalysisSystemPrompt() },
-                { role: "user", content: buildAnalysisPrompt({ occasion: input.occasion }) },
+                {
+                  role: "user",
+                  content: buildAnalysisPrompt({
+                    occasion: input.occasion,
+                    weather: input.weather,
+                    setting: input.setting,
+                    desiredFeel: input.desiredFeel,
+                  }),
+                },
                 { role: "user", content: [{ type: "input_image", image_url: imageDataUrl }] },
               ],
               text: {

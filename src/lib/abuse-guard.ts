@@ -59,7 +59,7 @@ function retryAfterSeconds(milliseconds: number): number {
   return Math.max(1, Math.ceil(milliseconds / 1_000));
 }
 
-function isSameOriginBrowserRequest(request: Request): boolean {
+export function isSameOriginRequest(request: Request): boolean {
   const fetchSite = request.headers.get("sec-fetch-site")?.toLowerCase();
   if (fetchSite === "cross-site" || fetchSite === "same-site") return false;
 
@@ -109,7 +109,7 @@ export function createInMemoryAbuseGuard(options: {
 
   return {
     enter(request, endpoint) {
-      if (!isSameOriginBrowserRequest(request)) {
+      if (!isSameOriginRequest(request)) {
         return { allowed: false, response: json({ error: "CROSS_SITE_REQUEST" }, 403) };
       }
 
