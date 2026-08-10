@@ -40,18 +40,16 @@ async function mockSuccessfulAnalysis(page: Page) {
   });
 }
 
-async function reachConsent(page: Page, occasion = "日常外出") {
+async function reachPhotoStep(page: Page, occasion = "日常外出") {
   await page.goto("/");
   await page.getByRole("button", { name: occasion }).click();
   await page.setInputFiles("input[type=file]", fixture);
-  await page.getByRole("button", { name: "繼續" }).click();
   await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
-  await page.getByRole("checkbox").check();
 }
 
 async function completeAnalysis(page: Page, occasion = "日常外出") {
-  await reachConsent(page, occasion);
-  await page.getByRole("button", { name: "開始分析" }).click();
+  await reachPhotoStep(page, occasion);
+  await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).check();
   await expect(page.getByText(analysis.summary)).toBeVisible();
 }
 
@@ -85,13 +83,13 @@ test.describe("mock-only outfit flow", () => {
       });
     });
 
-    await reachConsent(page);
-    await page.getByRole("button", { name: "開始分析" }).click();
+    await reachPhotoStep(page);
+    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).check();
     await expect(page.getByText("衣物被遮住，請重新拍照。")).toBeVisible();
     await page.getByRole("button", { name: "重新拍照" }).click();
 
     await expect(page.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "繼續" })).toBeDisabled();
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
     expect(metrics).toContainEqual(expect.objectContaining({ type: "analysis_retake" }));
   });
 
@@ -161,8 +159,8 @@ test.describe("mock-only outfit flow", () => {
       });
     });
 
-    await reachConsent(page);
-    await page.getByRole("button", { name: "開始分析" }).click();
+    await reachPhotoStep(page);
+    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).check();
     await expect(page.getByText("分析服務暫時無法使用，請稍後再試一次。"))
       .toBeVisible();
     await page.getByRole("button", { name: "再試一次" }).click();

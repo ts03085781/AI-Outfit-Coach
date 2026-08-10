@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   coarseLatencyBucket,
@@ -17,7 +17,7 @@ import {
 } from "./domain";
 import { prepareImage } from "./image";
 
-export type OutfitFlowState = "occasion" | "photo" | "consent" | "analyzing" | "result" | "error";
+export type OutfitFlowState = "occasion" | "photo" | "analyzing" | "result" | "error";
 
 const TELEMETRY_ERROR_CODES = new Set<TelemetryErrorCode>([
   "INVALID_IMAGE",
@@ -71,6 +71,7 @@ export function useOutfitFlow() {
   const [desiredFeel, setDesiredFeel] = useState("");
   const [image, setImage] = useState<Blob>();
   const [consented, setConsented] = useState(false);
+  const consentedRef = useRef(false);
   const [photoError, setPhotoError] = useState<string>();
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
@@ -83,6 +84,8 @@ export function useOutfitFlow() {
 
   const choosePhoto = async (file?: File) => {
     if (!file) return;
+    consentedRef.current = false;
+    setConsented(false);
     setPhotoError(undefined);
     try {
       setImage(await prepareImage(file));
@@ -92,12 +95,13 @@ export function useOutfitFlow() {
     }
   };
 
-  const continueToConsent = () => {
-    if (image) setState("consent");
+  const setConsent = (nextConsented: boolean) => {
+    consentedRef.current = nextConsented;
+    setConsented(nextConsented);
   };
 
   const analyze = async () => {
-    if (!occasion || !image || !consented) return;
+    if (!occasion || !image || !consentedRef.current) return;
     const startedAt = performance.now();
     setAnalysisErrorCode(undefined);
     setState("analyzing");
@@ -153,7 +157,7 @@ export function useOutfitFlow() {
 
   const clearAnalysisState = () => {
     setImage(undefined);
-    setConsented(false);
+    setConsent(false);
     setPhotoError(undefined);
     setResult(undefined);
     setAnalysisToken(undefined);
@@ -174,6 +178,13 @@ export function useOutfitFlow() {
     setState("occasion");
   };
 
+  const backToOccasion = () => {
+    setImage(undefined);
+    setConsent(false);
+    setPhotoError(undefined);
+    setState("occasion");
+  };
+
   const retake = reselectPhoto;
 
   return {
@@ -190,14 +201,14 @@ export function useOutfitFlow() {
     analysisErrorMessage: ANALYSIS_ERROR_MESSAGES[analysisErrorCode ?? "AI_UNAVAILABLE"],
     chooseOccasion,
     choosePhoto,
-    continueToConsent,
     setWeather,
     setSetting,
     setDesiredFeel,
-    setConsented,
+    setConsented: setConsent,
     analyze,
     retake,
     reselectPhoto,
     restart,
+    backToOccasion,
   };
 }

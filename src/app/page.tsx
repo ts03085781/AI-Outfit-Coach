@@ -1,6 +1,5 @@
 "use client";
 
-import { ConsentStep } from "@/features/outfit/components/ConsentStep";
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
 import { ResultStep } from "@/features/outfit/components/ResultStep";
 import type { Setting, Weather } from "@/features/outfit/domain";
@@ -15,16 +14,16 @@ const occasions = [
 
 export default function HomePage() {
   const flow = useOutfitFlow();
-  const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : flow.state === "consent" ? 3 : 4;
+  const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
 
   return (
     <main className="flow-shell">
-      <div className="flow-header" aria-label={`步驟 ${step}／4`}>
+      <div className="flow-header" aria-label={`步驟 ${step}／3`}>
         <span>衣櫥指南</span>
-        <span>{step}/4</span>
+        <span>{step}/3</span>
       </div>
       <div className="stitch-progress" aria-hidden="true">
-        {[1, 2, 3, 4].map((segment) => <i className={segment <= step ? "is-current" : ""} key={segment} />)}
+        {[1, 2, 3].map((segment) => <i className={segment <= step ? "is-current" : ""} key={segment} />)}
       </div>
       <div className="flow-card">
         {flow.state === "occasion" ? (
@@ -86,8 +85,7 @@ export default function HomePage() {
             </div>
           </section>
         ) : null}
-        {flow.state === "photo" ? <PhotoStep hasPhoto={Boolean(flow.image)} error={flow.photoError} onChoosePhoto={flow.choosePhoto} onContinue={flow.continueToConsent} /> : null}
-        {flow.state === "consent" && flow.image ? <ConsentStep image={flow.image} consented={flow.consented} onConsentChange={flow.setConsented} onAnalyze={flow.analyze} /> : null}
+        {flow.state === "photo" ? <PhotoStep hasPhoto={Boolean(flow.image)} image={flow.image} consented={flow.consented} error={flow.photoError} onChoosePhoto={flow.choosePhoto} onConsentChange={flow.setConsented} onAnalyze={flow.analyze} onBack={flow.backToOccasion} /> : null}
         {flow.state === "analyzing" ? <section role="status" aria-live="polite"><h1>正在分析你的穿搭</h1><p>這通常只要幾秒鐘。</p></section> : null}
         {flow.state === "result" && flow.result ? <ResultStep result={flow.result} analysisToken={flow.analysisToken} onRetake={flow.retake} onReselectPhoto={flow.reselectPhoto} onRestart={flow.restart} /> : null}
         {flow.state === "error" ? <section aria-labelledby="error-title"><h1 id="error-title">分析暫時停住了</h1><p role="alert">{flow.analysisErrorMessage}</p><button className="primary-action" type="button" onClick={flow.analyze}>再試一次</button></section> : null}
