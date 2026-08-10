@@ -72,6 +72,7 @@ export function useOutfitFlow() {
   const [image, setImage] = useState<Blob>();
   const [consented, setConsented] = useState(false);
   const consentedRef = useRef(false);
+  const photoRequestRef = useRef(0);
   const [photoError, setPhotoError] = useState<string>();
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
@@ -84,12 +85,17 @@ export function useOutfitFlow() {
 
   const choosePhoto = async (file?: File) => {
     if (!file) return;
+    const requestId = photoRequestRef.current + 1;
+    photoRequestRef.current = requestId;
+    setImage(undefined);
     consentedRef.current = false;
     setConsented(false);
     setPhotoError(undefined);
     try {
-      setImage(await prepareImage(file));
+      const preparedImage = await prepareImage(file);
+      if (photoRequestRef.current === requestId) setImage(preparedImage);
     } catch (error) {
+      if (photoRequestRef.current !== requestId) return;
       setImage(undefined);
       setPhotoError(error instanceof Error ? error.message : "照片處理失敗，請重新選擇");
     }
@@ -156,6 +162,7 @@ export function useOutfitFlow() {
   };
 
   const clearAnalysisState = () => {
+    photoRequestRef.current += 1;
     setImage(undefined);
     setConsent(false);
     setPhotoError(undefined);
@@ -179,6 +186,7 @@ export function useOutfitFlow() {
   };
 
   const backToOccasion = () => {
+    photoRequestRef.current += 1;
     setImage(undefined);
     setConsent(false);
     setPhotoError(undefined);

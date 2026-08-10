@@ -24,6 +24,16 @@ const stylesheet = readFileSync("src/app/globals.css", "utf8");
 const createObjectURL = vi.fn(() => "blob:local-preview");
 const revokeObjectURL = vi.fn();
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+  return { promise, resolve, reject };
+}
+
 function analysisResponse(analysis = completeAnalysis) {
   return new Response(JSON.stringify({
     analysis,
@@ -113,6 +123,46 @@ describe("outfit flow", () => {
     );
     expect(screen.getByText(/供應商可能依濫用監控政策短期保留/)).toBeVisible();
     expect(screen.getByText(/離開或重新整理後，照片與結果都無法恢復/)).toBeVisible();
+  });
+
+  it("does not restore a photo whose preparation completes after returning to occasion", async () => {
+    const pendingImage = deferred<File>();
+    prepareImage.mockImplementationOnce(() => pendingImage.promise);
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+      target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "返回" }));
+    pendingImage.resolve(new File(["outfit"], "outfit.jpg", { type: "image/jpeg" }));
+    await Promise.resolve();
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+
+    expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("clears the old photo while a replacement is still being prepared", async () => {
+    const pendingReplacement = deferred<File>();
+    prepareImage.mockImplementationOnce(async (file: File) => file)
+      .mockImplementationOnce(() => pendingReplacement.promise);
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+      target: { files: [new File(["old"], "old.jpg", { type: "image/jpeg" })] },
+    });
+    await screen.findByRole("img", { name: "本機穿搭照片預覽" });
+    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+      target: { files: [new File(["new"], "new.jpg", { type: "image/jpeg" })] },
+    });
+
+    await waitFor(() => expect(screen.queryByRole("checkbox")).not.toBeInTheDocument());
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/analyze")).toBe(false);
+
+    pendingReplacement.resolve(new File(["new"], "new.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ })).toBeVisible();
   });
 
   it("shows the complete result after analysis", async () => {
