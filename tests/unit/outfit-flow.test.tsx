@@ -41,9 +41,9 @@ function analysisResponse(analysis = completeAnalysis) {
   }), { status: 200 });
 }
 
-function chooseOccasionAndPhoto() {
+function chooseOccasionAndPhoto(source = "選擇照片") {
   fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-  fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+  fireEvent.change(screen.getByLabelText(source), {
     target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
   });
 }
@@ -58,15 +58,29 @@ beforeEach(() => {
 });
 
 describe("outfit flow", () => {
-  it("moves from occasion to a labelled camera photo step", () => {
+  it("offers separate camera and photo-library inputs", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
     expect(screen.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
-    const photoInput = screen.getByLabelText("上傳穿搭照片");
-    expect(photoInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
-    expect(photoInput).toHaveAttribute("capture", "environment");
+    const cameraInput = screen.getByLabelText("拍照");
+    const libraryInput = screen.getByLabelText("選擇照片");
+    expect(cameraInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+    expect(cameraInput).toHaveAttribute("capture", "environment");
+    expect(libraryInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+    expect(libraryInput).not.toHaveAttribute("capture");
+  });
+
+  it.each(["拍照", "選擇照片"])("previews a photo from the %s input", async (source) => {
+    render(<HomePage />);
+    chooseOccasionAndPhoto(source);
+
+    expect(await screen.findByRole("img", { name: "本機穿搭照片預覽" })).toHaveAttribute(
+      "src",
+      "blob:local-preview",
+    );
+    expect(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ })).not.toBeChecked();
   });
 
   it("shows exact occasion labels and forwards low-burden optional context", async () => {
@@ -82,7 +96,7 @@ describe("outfit flow", () => {
       target: { value: "專業但親切" },
     });
     fireEvent.click(screen.getByRole("button", { name: "工作／面試" }));
-    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+    fireEvent.change(screen.getByLabelText("選擇照片"), {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -131,7 +145,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+    fireEvent.change(screen.getByLabelText("選擇照片"), {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
     fireEvent.click(screen.getByRole("button", { name: "返回" }));
@@ -150,11 +164,11 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+    fireEvent.change(screen.getByLabelText("選擇照片"), {
       target: { files: [new File(["old"], "old.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+    fireEvent.change(screen.getByLabelText("選擇照片"), {
       target: { files: [new File(["new"], "new.jpg", { type: "image/jpeg" })] },
     });
 
@@ -345,7 +359,7 @@ describe("outfit flow", () => {
     expect(screen.queryByRole("heading", { name: "你的穿搭建議" })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("上傳穿搭照片"), {
+    fireEvent.change(screen.getByLabelText("選擇照片"), {
       target: { files: [new File(["outfit-two"], "outfit-two.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });

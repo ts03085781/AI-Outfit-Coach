@@ -40,10 +40,10 @@ async function mockSuccessfulAnalysis(page: Page) {
   });
 }
 
-async function reachPhotoStep(page: Page, occasion = "日常外出") {
+async function reachPhotoStep(page: Page, occasion = "日常外出", source = "選擇照片") {
   await page.goto("/");
   await page.getByRole("button", { name: occasion }).click();
-  await page.setInputFiles("input[type=file]", fixture);
+  await page.getByLabel(source).setInputFiles(fixture);
   await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
 }
 
@@ -55,6 +55,22 @@ async function completeAnalysis(page: Page, occasion = "日常外出") {
 
 test.describe("mock-only outfit flow", () => {
   test.use({ viewport: { width: 390, height: 844 } });
+
+  test("offers separate camera and photo-library inputs", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "日常外出" }).click();
+
+    await expect(page.getByLabel("拍照")).toHaveAttribute("capture", "environment");
+    await expect(page.getByLabel("選擇照片")).not.toHaveAttribute("capture");
+  });
+
+  test("accepts a photo from either upload source", async ({ page }) => {
+    for (const source of ["拍照", "選擇照片"]) {
+      await reachPhotoStep(page, "日常外出", source);
+      await expect(page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }))
+        .not.toBeChecked();
+    }
+  });
 
   for (const occasion of occasions) {
     test(`completes the ${occasion} analysis without login or external upload`, async ({ page }) => {

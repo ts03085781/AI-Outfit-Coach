@@ -109,7 +109,8 @@ button { min-width: 44px; min-height: 44px; }
 .occasion-grid button:hover,
 .photo-picker:hover { border-color: #176b87; }
 
-.photo-picker { display: grid; gap: 8px; margin: 22px 0 12px; }
+.photo-picker-options { display: grid; gap: 10px; margin: 22px 0 12px; }
+.photo-picker { display: grid; gap: 8px; margin: 0; }
 .photo-picker input { max-width: 100%; }
 
 .primary-action {
