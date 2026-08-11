@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
@@ -40,12 +41,37 @@ function LanguageSelect() {
 function OutfitFlowPage() {
   const locale = useLocale() as AppLocale;
   const t = useTranslations();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const flow = useOutfitFlow(locale);
   const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
   const showLanguageSelect = flow.state === "occasion" || flow.state === "photo";
 
   return (
     <main className="flow-shell">
+      <header className="app-header">
+        <button
+          aria-expanded={isMenuOpen}
+          aria-label={t("header.menu")}
+          className="menu-toggle"
+          type="button"
+          onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
+        >
+          <span aria-hidden="true">☰</span>
+        </button>
+        <img alt={t("header.iconAlt")} className="app-header-icon" src="/icon-512.png" />
+        <span aria-hidden="true" className="app-header-spacer" />
+      </header>
+      {isMenuOpen ? (
+        <>
+          <button
+            aria-label={t("header.backdrop")}
+            className="menu-backdrop"
+            type="button"
+            onClick={() => setIsMenuOpen(false)}
+          />
+          <aside aria-label={t("header.menu")} className="menu-drawer" />
+        </>
+      ) : null}
       <div className="flow-header" aria-label={t("step", { step })}>
         <span>{t("appName")}</span>
         <span>{step}/3</span>

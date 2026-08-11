@@ -36,6 +36,67 @@ textarea:focus-visible {
   padding: 18px 16px 28px;
 }
 
+.app-header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 14px;
+}
+
+.menu-toggle {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #176b87;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 1.5rem;
+}
+
+.app-header-icon {
+  width: 36px;
+  height: 36px;
+  margin: 0 auto;
+}
+
+.app-header-spacer { width: 44px; height: 44px; }
+
+.menu-backdrop,
+.menu-drawer {
+  position: fixed;
+  inset: 0;
+}
+
+.menu-backdrop {
+  z-index: 10;
+  padding: 0;
+  background: rgb(23 32 42 / 38%);
+  border: 0;
+  animation: menu-backdrop-in .2s ease-out both;
+}
+
+.menu-drawer {
+  z-index: 11;
+  width: min(80vw, 20rem);
+  background: #fff;
+  border-right: 1px solid #d6e0e3;
+  box-shadow: 12px 0 30px rgb(23 32 42 / 14%);
+  animation: menu-drawer-in .2s ease-out both;
+}
+
+@keyframes menu-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes menu-drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
 .flow-header {
   display: flex;
   justify-content: space-between;
@@ -158,6 +219,11 @@ button { min-width: 44px; min-height: 44px; }
 @media (prefers-reduced-motion: no-preference) {
   button, .photo-picker { transition: border-color .15s ease, transform .15s ease; }
   button:not(:disabled):active { transform: translateY(1px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-backdrop,
+  .menu-drawer { transition: none; animation: none; }
 }
 
 @media (max-width: 340px) {
