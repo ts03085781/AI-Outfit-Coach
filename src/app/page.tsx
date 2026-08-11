@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
@@ -42,19 +42,26 @@ function OutfitFlowPage() {
   const locale = useLocale() as AppLocale;
   const t = useTranslations();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
   const flow = useOutfitFlow(locale);
   const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
   const showLanguageSelect = flow.state === "occasion" || flow.state === "photo";
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+    menuToggleRef.current?.focus();
+  };
 
   return (
     <main className="flow-shell">
       <header className="app-header">
         <button
+          ref={menuToggleRef}
+          aria-controls="menu-drawer"
           aria-expanded={isMenuOpen}
-          aria-label={t("header.menu")}
+          aria-label={t(isMenuOpen ? "header.closeMenu" : "header.openMenu")}
           className={`menu-toggle${isMenuOpen ? " is-menu-open" : ""}`}
           type="button"
-          onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
+          onClick={() => isMenuOpen ? closeMenu() : setIsMenuOpen(true)}
         >
           <span aria-hidden="true">☰</span>
         </button>
@@ -67,14 +74,15 @@ function OutfitFlowPage() {
             aria-label={t("header.backdrop")}
             className="menu-backdrop"
             type="button"
-            onClick={() => setIsMenuOpen(false)}
+            onClick={closeMenu}
           />
-          <aside aria-label={t("header.menu")} className="menu-drawer" />
+          <aside id="menu-drawer" aria-label={t("header.menu")} className="menu-drawer" />
         </>
       ) : null}
+      <div className="flow-content" inert={isMenuOpen}>
       <div className="flow-header" aria-label={t("step", { step })}>
         <span>{t("appName")}</span>
-        <span>{t("step", { step })}</span>
+        <span>{step}/3</span>
       </div>
       <div className="stitch-progress" aria-hidden="true">
         {[1, 2, 3].map((segment) => <i className={segment <= step ? "is-current" : ""} key={segment} />)}
@@ -138,6 +146,7 @@ function OutfitFlowPage() {
         {flow.state === "analyzing" ? <section role="status" aria-live="polite"><h1>{t("analyzing.title")}</h1><p>{t("analyzing.description")}</p></section> : null}
         {flow.state === "result" && flow.result ? <ResultStep result={flow.result} analysisToken={flow.analysisToken} locale={locale} onRetake={flow.retake} onReselectPhoto={flow.reselectPhoto} onRestart={flow.restart} /> : null}
         {flow.state === "error" ? <section aria-labelledby="error-title"><h1 id="error-title">{t("error.title")}</h1><p role="alert">{flow.analysisErrorMessage}</p><button className="primary-action" type="button" onClick={flow.analyze}>{t("error.retry")}</button></section> : null}
+      </div>
       </div>
     </main>
   );

@@ -31,29 +31,45 @@ it("shows the brand icon above the existing step header", () => {
   expect(screen.getByRole("button", { name: "開啟選單" })).toHaveAttribute("aria-expanded", "false");
   expect(stepHeader.querySelectorAll("span")).toHaveLength(2);
   expect(stepHeader.querySelectorAll("span")[0]).toHaveTextContent("衣櫥指南");
-  expect(stepHeader.querySelectorAll("span")[1]).toHaveTextContent("步驟 1／3");
-  expect(stepHeader).toHaveTextContent("步驟 1／3");
+  expect(stepHeader.querySelectorAll("span")[1]).toHaveTextContent("1/3");
+  expect(stepHeader).toHaveTextContent("1/3");
   expect(stepHeader).toBeVisible();
 });
 
-it("opens and closes the drawer through the hamburger", () => {
+it("opens an identified drawer while making the flow controls inert", () => {
   render(<HomePage />);
   const menuButton = screen.getByRole("button", { name: "開啟選單" });
 
   fireEvent.click(menuButton);
+  const drawer = screen.getByRole("complementary", { name: "選單" });
+
   expect(menuButton).toHaveAttribute("aria-expanded", "true");
+  expect(menuButton).toHaveAttribute("aria-label", "關閉選單");
+  expect(menuButton).toHaveAttribute("aria-controls", "menu-drawer");
   expect(menuButton).toHaveClass("is-menu-open");
-  expect(screen.getByRole("button", { name: "關閉選單" })).toBeVisible();
+  expect(drawer).toHaveAttribute("id", "menu-drawer");
+  expect(screen.getByRole("heading", { name: "今天要去哪裡？" }).closest("[inert]")).not.toBeNull();
+  expect(screen.getByRole("button", { name: "關閉選單背景" })).toBeVisible();
+
+  fireEvent.keyDown(drawer, { key: "Escape" });
+  expect(drawer).toBeInTheDocument();
+
   fireEvent.click(menuButton);
   expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  expect(menuButton).toHaveAttribute("aria-label", "開啟選單");
   expect(menuButton).not.toHaveClass("is-menu-open");
-  expect(screen.queryByRole("button", { name: "關閉選單" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "關閉選單背景" })).not.toBeInTheDocument();
 });
 
-it("closes the drawer when its backdrop is clicked", () => {
+it("returns focus to the hamburger when its backdrop is clicked", () => {
   render(<HomePage />);
-  fireEvent.click(screen.getByRole("button", { name: "開啟選單" }));
-  fireEvent.click(screen.getByRole("button", { name: "關閉選單" }));
+  const menuButton = screen.getByRole("button", { name: "開啟選單" });
 
-  expect(screen.getByRole("button", { name: "開啟選單" })).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(menuButton);
+  const backdrop = screen.getByRole("button", { name: "關閉選單背景" });
+  backdrop.focus();
+  fireEvent.click(backdrop);
+
+  expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  expect(menuButton).toHaveFocus();
 });
