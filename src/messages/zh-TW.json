@@ -1,5 +1,6 @@
 {
   "appName": "衣櫥指南",
+  "header": {"menu": "開啟選單", "iconAlt": "衣櫥指南圖示", "backdrop": "關閉選單"},
   "step": "步驟 {step}／3",
   "language": "選擇語言",
   "localeName": {"zh-TW": "繁體中文", "en": "English", "ja": "日本語", "ko": "한국어"},
