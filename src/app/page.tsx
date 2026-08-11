@@ -52,7 +52,7 @@ function OutfitFlowPage() {
         <button
           aria-expanded={isMenuOpen}
           aria-label={t("header.menu")}
-          className="menu-toggle"
+          className={`menu-toggle${isMenuOpen ? " is-menu-open" : ""}`}
           type="button"
           onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
         >
@@ -73,8 +73,7 @@ function OutfitFlowPage() {
         </>
       ) : null}
       <div className="flow-header" aria-label={t("step", { step })}>
-        <span>{t("appName")}</span>
-        <span>{step}/3</span>
+        <span>{t("step", { step })}</span>
       </div>
       <div className="stitch-progress" aria-hidden="true">
         {[1, 2, 3].map((segment) => <i className={segment <= step ? "is-current" : ""} key={segment} />)}

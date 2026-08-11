@@ -29,6 +29,7 @@ it("shows the brand icon above the existing step header", () => {
   expect(brandIcon).toHaveAttribute("src", "/icon-512.png");
   expect(brandIcon.compareDocumentPosition(stepHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(screen.getByRole("button", { name: "開啟選單" })).toHaveAttribute("aria-expanded", "false");
+  expect(stepHeader).toHaveTextContent("步驟 1／3");
   expect(stepHeader).toBeVisible();
 });
 
@@ -38,9 +39,11 @@ it("opens and closes the drawer through the hamburger", () => {
 
   fireEvent.click(menuButton);
   expect(menuButton).toHaveAttribute("aria-expanded", "true");
+  expect(menuButton).toHaveClass("is-menu-open");
   expect(screen.getByRole("button", { name: "關閉選單" })).toBeVisible();
   fireEvent.click(menuButton);
   expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  expect(menuButton).not.toHaveClass("is-menu-open");
   expect(screen.queryByRole("button", { name: "關閉選單" })).not.toBeInTheDocument();
 });
 

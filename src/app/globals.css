@@ -56,6 +56,11 @@ textarea:focus-visible {
   font-size: 1.5rem;
 }
 
+.menu-toggle.is-menu-open {
+  position: relative;
+  z-index: 12;
+}
+
 .app-header-icon {
   width: 36px;
   height: 36px;
