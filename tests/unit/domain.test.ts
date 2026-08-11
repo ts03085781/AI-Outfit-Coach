@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AnalyzeRequestSchema,
+  LocaleSchema,
   OccasionSchema,
   OutfitAnalysisSchema,
   SettingSchema,
@@ -13,7 +14,7 @@ describe("outfit domain contract", () => {
     const result = OutfitAnalysisSchema.parse({
       summary: "整體俐落。",
       strengths: ["配色協調", "比例清楚"],
-      occasion_fit: "適合",
+      occasion_fit: "good",
       suggestions: [],
       retake_required: false,
       retake_reason: null,
@@ -44,19 +45,24 @@ describe("outfit domain contract", () => {
     ).toThrow();
   });
 
-  it("only accepts supported occasions in an analysis request", () => {
+  it("only accepts supported occasions and locales in an analysis request", () => {
     expect(OccasionSchema.parse("work")).toBe("work");
-    expect(() => AnalyzeRequestSchema.parse({ occasion: "party" })).toThrow();
+    expect(LocaleSchema.parse("zh-TW")).toBe("zh-TW");
+    expect(LocaleSchema.parse("en")).toBe("en");
+    expect(() => AnalyzeRequestSchema.parse({ occasion: "party", locale: "zh-TW" })).toThrow();
+    expect(() => AnalyzeRequestSchema.parse({ occasion: "work", locale: "zh-Hant" })).toThrow();
   });
 
   it("accepts bounded optional weather, setting, and trimmed desired feel", () => {
     expect(AnalyzeRequestSchema.parse({
       occasion: "work",
+      locale: "ja",
       weather: "rainy",
       setting: "mixed",
       desiredFeel: "  專業但親切  ",
     })).toEqual({
       occasion: "work",
+      locale: "ja",
       weather: "rainy",
       setting: "mixed",
       desiredFeel: "專業但親切",
@@ -66,10 +72,11 @@ describe("outfit domain contract", () => {
   });
 
   it("rejects invalid or oversized optional context", () => {
-    expect(() => AnalyzeRequestSchema.parse({ occasion: "casual", weather: "storm" })).toThrow();
-    expect(() => AnalyzeRequestSchema.parse({ occasion: "casual", setting: "office" })).toThrow();
+    expect(() => AnalyzeRequestSchema.parse({ occasion: "casual", locale: "zh-TW", weather: "storm" })).toThrow();
+    expect(() => AnalyzeRequestSchema.parse({ occasion: "casual", locale: "zh-TW", setting: "office" })).toThrow();
     expect(() => AnalyzeRequestSchema.parse({
       occasion: "casual",
+      locale: "zh-TW",
       desiredFeel: "字".repeat(61),
     })).toThrow();
   });
@@ -98,7 +105,7 @@ describe("outfit domain contract", () => {
       OutfitAnalysisSchema.parse({
         summary: "整體俐落。",
         strengths: ["配色協調", "比例清楚"],
-        occasion_fit: "適合",
+        occasion_fit: "good",
         suggestions: [],
         retake_required: false,
         retake_reason: "衣物細節不清楚",
@@ -110,7 +117,7 @@ describe("outfit domain contract", () => {
     expect(() => OutfitAnalysisSchema.parse({
       summary: "s".repeat(280),
       strengths: ["a".repeat(160), "b".repeat(160)],
-      occasion_fit: "適合",
+      occasion_fit: "good",
       suggestions: [{
         action: "a".repeat(160),
         reason: "r".repeat(240),
@@ -135,7 +142,7 @@ describe("outfit domain contract", () => {
     expect(() => OutfitAnalysisSchema.parse({
       summary: "整體俐落。",
       strengths: ["配色協調", "比例清楚"],
-      occasion_fit: "適合",
+      occasion_fit: "good",
       suggestions: [],
       retake_required: false,
       retake_reason: null,

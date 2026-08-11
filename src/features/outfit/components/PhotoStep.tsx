@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+
+import type { ImagePreparationErrorCode } from "../image";
 
 type PhotoStepProps = {
   hasPhoto: boolean;
   image?: Blob;
   consented: boolean;
-  error?: string;
+  error?: ImagePreparationErrorCode;
   onChoosePhoto: (file?: File) => void;
   onConsentChange: (consented: boolean) => void;
   onAnalyze: () => void;
@@ -23,6 +26,8 @@ export function PhotoStep({
   onAnalyze,
   onBack,
 }: PhotoStepProps) {
+  const t = useTranslations("photo");
+  const imageError = useTranslations("imageError");
   const [previewUrl, setPreviewUrl] = useState<string>();
 
   useEffect(() => {
@@ -39,16 +44,16 @@ export function PhotoStep({
 
   return (
     <section aria-labelledby="photo-title">
-      <button className="photo-back" type="button" onClick={onBack}>返回</button>
-      <h1 id="photo-title">拍下完整穿搭</h1>
-      <p>請站遠一點，讓上衣、下身與鞋子都入鏡。</p>
-      <p>{hasPhoto ? "已選好照片，想換一張嗎？" : "拍照或從相簿選擇照片"}</p>
+      <button className="photo-back" type="button" onClick={onBack}>{t("back")}</button>
+      <h1 id="photo-title">{t("title")}</h1>
+      <p>{t("description")}</p>
+      <p>{hasPhoto ? t("chosen") : t("empty")}</p>
       <div className="photo-picker-options">
         <label className="photo-picker" htmlFor="outfit-camera">
-          <span>拍照</span>
+          <span>{t("camera")}</span>
           <input
             id="outfit-camera"
-            aria-label="拍照"
+            aria-label={t("camera")}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             capture="environment"
@@ -56,24 +61,24 @@ export function PhotoStep({
           />
         </label>
         <label className="photo-picker" htmlFor="outfit-library">
-          <span>選擇照片</span>
+          <span>{t("library")}</span>
           <input
             id="outfit-library"
-            aria-label="選擇照片"
+            aria-label={t("library")}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={(event) => onChoosePhoto(event.target.files?.[0])}
           />
         </label>
       </div>
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <p role="alert">{imageError(error)}</p> : null}
       {hasPhoto && previewUrl ? (
         <>
           {/* The source is a local object URL and never leaves the browser through this element. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="photo-preview" src={previewUrl} alt="本機穿搭照片預覽" />
-          <p>照片會傳給 AI 供應商完成本次分析；供應商可能依濫用監控政策短期保留，實際期限上線前仍須確認。</p>
-          <p>本服務不建立照片或結果紀錄。離開或重新整理後，照片與結果都無法恢復。</p>
+          <img className="photo-preview" src={previewUrl} alt={t("preview")} />
+          <p>{t("providerPrivacy")}</p>
+          <p>{t("localPrivacy")}</p>
           <label className="consent-label">
             <input
               type="checkbox"
@@ -84,7 +89,7 @@ export function PhotoStep({
                 if (nextConsented) onAnalyze();
               }}
             />
-            我同意將這張照片用於本次穿搭分析；勾選後會立即上傳並開始分析
+            {t("consent")}
           </label>
         </>
       ) : null}

@@ -8,7 +8,7 @@ import type { OutfitAnalysis } from "@/features/outfit/domain";
 const analysis: OutfitAnalysis = {
   summary: "整體俐落。",
   strengths: ["配色協調", "比例清楚"],
-  occasion_fit: "適合",
+  occasion_fit: "good",
   suggestions: [],
   retake_required: false,
   retake_reason: null,

@@ -7,6 +7,8 @@ import {
   track,
   type TelemetryErrorCode,
 } from "@/lib/telemetry";
+import type { AppLocale } from "@/lib/i18n/config";
+import { messages } from "@/lib/i18n/messages";
 
 import {
   AnalyzeSuccessResponseSchema,
@@ -15,7 +17,7 @@ import {
   type Setting,
   type Weather,
 } from "./domain";
-import { prepareImage } from "./image";
+import { ImagePreparationError, prepareImage, type ImagePreparationErrorCode } from "./image";
 
 export type OutfitFlowState = "occasion" | "photo" | "analyzing" | "result" | "error";
 
@@ -33,20 +35,6 @@ const TELEMETRY_ERROR_CODES = new Set<TelemetryErrorCode>([
   "INVALID_RESPONSE",
 ]);
 
-const ANALYSIS_ERROR_MESSAGES: Record<TelemetryErrorCode, string> = {
-  INVALID_IMAGE: "這張照片目前無法處理，請改用清楚的 JPEG、PNG 或 WebP 照片。",
-  AI_TIMEOUT: "分析等待逾時，請再試一次。",
-  AI_UNAVAILABLE: "分析服務暫時無法使用，請稍後再試一次。",
-  AI_AUTHORIZATION: "OpenAI 專案的額度或權限目前無法使用，請檢查 Platform 設定。",
-  AI_RATE_LIMITED: "目前分析次數較多，請稍後再試一次。",
-  AI_REFUSED: "這張照片目前無法由模型分析，請改用清楚、完整的單人穿搭照。",
-  AI_INVALID_RESPONSE: "模型回覆格式暫時異常，請再試一次。",
-  AI_SAFETY_REJECTED: "這張照片目前無法完成安全檢查，請改用清楚、完整的單人穿搭照。",
-  RATE_LIMITED: "目前分析次數較多，請稍後再試一次。",
-  RATE_LIMIT_UNAVAILABLE: "分析服務暫時無法使用，請稍後再試一次。",
-  INVALID_RESPONSE: "模型回覆格式暫時異常，請再試一次。",
-};
-
 class AnalysisRequestError extends Error {
   constructor(readonly code: TelemetryErrorCode) {
     super(code);
@@ -63,7 +51,7 @@ function errorCodeFromBody(body: unknown): TelemetryErrorCode {
     : "INVALID_RESPONSE";
 }
 
-export function useOutfitFlow() {
+export function useOutfitFlow(locale: AppLocale) {
   const [state, setState] = useState<OutfitFlowState>("occasion");
   const [occasion, setOccasion] = useState<Occasion>();
   const [weather, setWeather] = useState<Weather>();
@@ -73,7 +61,7 @@ export function useOutfitFlow() {
   const [consented, setConsented] = useState(false);
   const consentedRef = useRef(false);
   const photoRequestRef = useRef(0);
-  const [photoError, setPhotoError] = useState<string>();
+  const [photoError, setPhotoError] = useState<ImagePreparationErrorCode>();
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
   const [analysisErrorCode, setAnalysisErrorCode] = useState<TelemetryErrorCode>();
@@ -97,7 +85,7 @@ export function useOutfitFlow() {
     } catch (error) {
       if (photoRequestRef.current !== requestId) return;
       setImage(undefined);
-      setPhotoError(error instanceof Error ? error.message : "照片處理失敗，請重新選擇");
+      setPhotoError(error instanceof ImagePreparationError ? error.code : "PROCESSING_FAILED");
     }
   };
 
@@ -114,6 +102,7 @@ export function useOutfitFlow() {
     try {
       const formData = new FormData();
       formData.set("occasion", occasion);
+      formData.set("locale", locale);
       if (weather) formData.set("weather", weather);
       if (setting) formData.set("setting", setting);
       const trimmedDesiredFeel = desiredFeel.trim();
@@ -206,7 +195,7 @@ export function useOutfitFlow() {
     photoError,
     result,
     analysisToken,
-    analysisErrorMessage: ANALYSIS_ERROR_MESSAGES[analysisErrorCode ?? "AI_UNAVAILABLE"],
+    analysisErrorMessage: messages[locale].error[analysisErrorCode ?? "AI_UNAVAILABLE"],
     chooseOccasion,
     choosePhoto,
     setWeather,

@@ -4,6 +4,9 @@ export const OccasionSchema = z.enum(["casual", "date", "work", "formal"]);
 
 export type Occasion = z.infer<typeof OccasionSchema>;
 
+export const LocaleSchema = z.enum(["zh-TW", "en", "ja", "ko"]);
+export type Locale = z.infer<typeof LocaleSchema>;
+
 export const WeatherSchema = z.enum(["sunny", "rainy", "cold", "hot", "mild"]);
 export const SettingSchema = z.enum(["indoor", "outdoor", "mixed"]);
 
@@ -12,6 +15,7 @@ export type Setting = z.infer<typeof SettingSchema>;
 
 export const AnalyzeRequestSchema = z.object({
   occasion: OccasionSchema,
+  locale: LocaleSchema,
   weather: WeatherSchema.optional(),
   setting: SettingSchema.optional(),
   desiredFeel: z.string().trim().max(60).optional(),
@@ -29,7 +33,7 @@ const CompleteOutfitAnalysisSchema = z
   .object({
     summary: z.string().min(1).max(280),
     strengths: z.array(z.string().min(1).max(160)).length(2),
-    occasion_fit: z.enum(["適合", "稍需調整", "不太適合"]),
+    occasion_fit: z.enum(["good", "adjust", "poor"]),
     suggestions: z.array(SuggestionSchema).max(3),
     retake_required: z.literal(false),
     retake_reason: z.null(),

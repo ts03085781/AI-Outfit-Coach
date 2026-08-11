@@ -82,7 +82,7 @@ const TransportAnalysisSchema = z
   .object({
     summary: z.string().min(1).max(280).nullable(),
     strengths: z.array(z.string().min(1).max(160)).length(2).nullable(),
-    occasion_fit: z.enum(["適合", "稍需調整", "不太適合"]).nullable(),
+    occasion_fit: z.enum(["good", "adjust", "poor"]).nullable(),
     suggestions: z.array(SuggestionSchema).max(3).nullable(),
     retake_required: z.boolean(),
     retake_reason: z.string().min(1).max(240).nullable(),
@@ -193,11 +193,12 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
               model,
               store: false,
               input: [
-                { role: "system", content: buildAnalysisSystemPrompt() },
+                { role: "system", content: buildAnalysisSystemPrompt(input.locale) },
                 {
                   role: "user",
                   content: buildAnalysisPrompt({
                     occasion: input.occasion,
+                    locale: input.locale,
                     weather: input.weather,
                     setting: input.setting,
                     desiredFeel: input.desiredFeel,
@@ -225,10 +226,12 @@ export class OpenAIOutfitAnalyzer implements OutfitAnalyzer {
 
         try {
           const analysis = parseAnalysis(response.output_text);
-          assertSafeAnalysis(analysis);
+          assertSafeAnalysis(analysis, input.locale);
           return analysis;
         } catch (error) {
-          if (error instanceof UnsafeModelOutputError) throw new AnalyzerSafetyError();
+          if (error instanceof UnsafeModelOutputError && error.reason !== "language") {
+            throw new AnalyzerSafetyError();
+          }
           if (attempt === 1) throw new AnalyzerProviderError("AI_INVALID_RESPONSE");
         }
       }

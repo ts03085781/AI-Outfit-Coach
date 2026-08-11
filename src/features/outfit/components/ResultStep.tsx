@@ -1,20 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { track } from "@/lib/telemetry";
 
 import type { OutfitAnalysis } from "../domain";
+import type { AppLocale } from "@/lib/i18n/config";
 
 type ResultStepProps = {
   result: OutfitAnalysis;
   analysisToken?: string;
+  locale: AppLocale;
   onRetake: () => void;
   onReselectPhoto: () => void;
   onRestart: () => void;
 };
 
-export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, onRestart }: ResultStepProps) {
+function fitMessageKey(fit: string) {
+  if (fit === "good" || fit === "適合") return "fitGood";
+  if (fit === "adjust" || fit === "稍需調整") return "fitAdjust";
+  return "fitPoor";
+}
+
+export function ResultStep({ result, analysisToken, locale, onRetake, onReselectPhoto, onRestart }: ResultStepProps) {
+  const t = useTranslations("result");
   const [question, setQuestion] = useState("");
   const [alternative, setAlternative] = useState<string>();
   const [followUpUsed, setFollowUpUsed] = useState(false);
@@ -23,10 +33,10 @@ export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, o
 
   if (result.retake_required) {
     return (
-      <section className="retake-result" aria-label="重拍建議">
+      <section className="retake-result" aria-label={t("retakeLabel")}>
         <p>{result.retake_reason}</p>
         <button className="primary-action" type="button" onClick={onRetake}>
-          重新拍照
+          {t("retake")}
         </button>
       </section>
     );
@@ -44,7 +54,7 @@ export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, o
       const response = await fetch("/api/follow-up", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ analysis: result, analysisToken, question: trimmedQuestion }),
+        body: JSON.stringify({ analysis: result, analysisToken, question: trimmedQuestion, locale }),
       });
       const body: unknown = await response.json();
       if (
@@ -72,22 +82,22 @@ export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, o
 
   return (
     <section className="result-step" aria-labelledby="result-title">
-      <h1 id="result-title">你的穿搭建議</h1>
+      <h1 id="result-title">{t("title")}</h1>
       <article className="summary-card">
         <p>{result.summary}</p>
       </article>
-      <h2>做得很好的地方</h2>
+      <h2>{t("strengths")}</h2>
       <ul>
         {result.strengths.map((strength) => <li key={strength}>{strength}</li>)}
       </ul>
-      <p className="fit-label">場合適合度：{result.occasion_fit}</p>
+      <p className="fit-label">{t("fit", { fit: t(fitMessageKey(result.occasion_fit)) })}</p>
       {primarySuggestion ? (
         <>
-          <h2>可以試試</h2>
+          <h2>{t("suggestions")}</h2>
           <article className="primary-suggestion">
             <strong>{primarySuggestion.action}</strong>
             <p>{primarySuggestion.reason}</p>
-            <p>預期效果：{primarySuggestion.expected_effect}</p>
+            <p>{t("effect", { effect: primarySuggestion.expected_effect })}</p>
           </article>
           {secondarySuggestions.length > 0 ? (
             <ul className="suggestion-list">
@@ -95,7 +105,7 @@ export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, o
                 <li key={suggestion.action}>
                   <strong>{suggestion.action}</strong>
                   <span>{suggestion.reason}</span>
-                  <span>預期效果：{suggestion.expected_effect}</span>
+                  <span>{t("effect", { effect: suggestion.expected_effect })}</span>
                 </li>
               ))}
             </ul>
@@ -103,9 +113,9 @@ export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, o
         </>
       ) : null}
       <section aria-labelledby="follow-up-title">
-        <h2 id="follow-up-title">還想確認一件事嗎？</h2>
+        <h2 id="follow-up-title">{t("followUpTitle")}</h2>
         <label>
-          想再問一個穿搭問題
+          {t("followUpLabel")}
           <textarea
             value={question}
             maxLength={160}
@@ -118,20 +128,20 @@ export function ResultStep({ result, analysisToken, onRetake, onReselectPhoto, o
           disabled={followUpUsed || !question.trim()}
           onClick={submitFollowUp}
         >
-          取得替代方法
+          {t("followUpButton")}
         </button>
         {alternative ? <p>{alternative}</p> : null}
-        {followUpError ? <p role="alert">這次追問暫時無法完成。</p> : null}
+        {followUpError ? <p role="alert">{t("followUpError")}</p> : null}
       </section>
       <section aria-labelledby="feedback-title">
-        <h2 id="feedback-title">這項建議有幫助嗎？</h2>
-        <button type="button" disabled={feedbackSent} onClick={() => submitFeedback(true)}>有幫助</button>
-        <button type="button" disabled={feedbackSent} onClick={() => submitFeedback(false)}>沒幫助</button>
-        {feedbackSent ? <p>謝謝你的回饋。</p> : null}
+        <h2 id="feedback-title">{t("feedbackTitle")}</h2>
+        <button type="button" disabled={feedbackSent} onClick={() => submitFeedback(true)}>{t("helpful")}</button>
+        <button type="button" disabled={feedbackSent} onClick={() => submitFeedback(false)}>{t("notHelpful")}</button>
+        {feedbackSent ? <p>{t("thanks")}</p> : null}
       </section>
-      <nav className="result-navigation" aria-label="重新開始">
-        <button type="button" onClick={onReselectPhoto}>重新選擇照片</button>
-        <button type="button" onClick={onRestart}>返回第一步驟</button>
+      <nav className="result-navigation" aria-label={t("navigation")}>
+        <button type="button" onClick={onReselectPhoto}>{t("reselect")}</button>
+        <button type="button" onClick={onRestart}>{t("restart")}</button>
       </nav>
     </section>
   );

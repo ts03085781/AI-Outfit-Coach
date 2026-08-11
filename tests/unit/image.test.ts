@@ -42,13 +42,23 @@ afterEach(() => {
 });
 
 describe("prepareImage", () => {
+  it("returns a stable code instead of a localized unsupported-format error", async () => {
+    const decoder = vi.fn();
+    vi.stubGlobal("createImageBitmap", decoder);
+
+    await expect(
+      prepareImage(new File(["x"], "outfit.gif", { type: "image/gif" })),
+    ).rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT" });
+    expect(decoder).not.toHaveBeenCalled();
+  });
+
   it("rejects unsupported image formats before decoding", async () => {
     const decoder = vi.fn();
     vi.stubGlobal("createImageBitmap", decoder);
 
     await expect(
       prepareImage(new File(["x"], "outfit.gif", { type: "image/gif" })),
-    ).rejects.toThrow("請使用 JPEG、PNG 或 WebP");
+    ).rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT" });
     expect(decoder).not.toHaveBeenCalled();
   });
 
@@ -61,7 +71,7 @@ describe("prepareImage", () => {
       { type: "image/jpeg" },
     );
 
-    await expect(prepareImage(tooLarge)).rejects.toThrow("照片檔案過大");
+    await expect(prepareImage(tooLarge)).rejects.toMatchObject({ code: "TOO_LARGE" });
     expect(decoder).not.toHaveBeenCalled();
   });
 
@@ -88,7 +98,7 @@ describe("prepareImage", () => {
 
     await expect(
       prepareImage(new File(["photo"], "outfit.webp", { type: "image/webp" })),
-    ).rejects.toThrow("照片無法讀取，請重新選擇");
+    ).rejects.toMatchObject({ code: "UNREADABLE" });
   });
 
   it("closes the bitmap when canvas encoding fails", async () => {
@@ -98,7 +108,7 @@ describe("prepareImage", () => {
 
     await expect(
       prepareImage(new File(["photo"], "outfit.jpg", { type: "image/jpeg" })),
-    ).rejects.toThrow("照片處理失敗，請重新選擇");
+    ).rejects.toMatchObject({ code: "PROCESSING_FAILED" });
     expect(bitmap.close).toHaveBeenCalledOnce();
   });
 
@@ -109,7 +119,7 @@ describe("prepareImage", () => {
 
     await expect(
       prepareImage(new File(["photo"], "outfit.jpg", { type: "image/jpeg" })),
-    ).rejects.toThrow("照片內容過大，請重新拍攝");
+    ).rejects.toMatchObject({ code: "OUTPUT_TOO_LARGE" });
     expect(bitmap.close).toHaveBeenCalledOnce();
   });
 });

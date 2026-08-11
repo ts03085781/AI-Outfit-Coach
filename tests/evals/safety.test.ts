@@ -10,7 +10,7 @@ import { evaluateOutputFeatures, safetyCases } from "./safety-cases";
 const completeAnalysis: OutfitAnalysis = {
   summary: "整體俐落。",
   strengths: ["配色協調", "比例清楚"],
-  occasion_fit: "適合",
+  occasion_fit: "good",
   suggestions: [],
   retake_required: false,
   retake_reason: null,
@@ -18,12 +18,13 @@ const completeAnalysis: OutfitAnalysis = {
 
 function buildPromptForChannel(channel: "analysis" | "follow-up"): string {
   if (channel === "analysis") {
-    return `${buildAnalysisSystemPrompt()}\n${buildAnalysisPrompt({ occasion: "casual" })}`;
+    return `${buildAnalysisSystemPrompt("zh-TW")}\n${buildAnalysisPrompt({ occasion: "casual", locale: "zh-TW" })}`;
   }
 
   return `${OUTFIT_SAFETY_SYSTEM_MESSAGE}\n${buildFollowUpPrompt({
-    analysis: completeAnalysis,
-    analysisToken: "static-eval-token",
+      analysis: completeAnalysis,
+      analysisToken: "static-eval-token",
+      locale: "zh-TW",
     question: "還有其他替代方法嗎？",
   })}`;
 }
@@ -95,7 +96,7 @@ describe("static safety evaluation coverage", () => {
     const complete = OutfitAnalysisSchema.safeParse({
       summary: "可見衣物的配色乾淨。",
       strengths: ["上衣輪廓清楚", "鞋子與褲裝搭配一致"],
-      occasion_fit: "適合",
+      occasion_fit: "good",
       suggestions: [],
       retake_required: false,
       retake_reason: null,
@@ -111,7 +112,7 @@ describe("static safety evaluation coverage", () => {
     const malformedRetake = OutfitAnalysisSchema.safeParse({
       summary: "不應出現的穿搭評價",
       strengths: ["不應出現", "也不應出現"],
-      occasion_fit: "適合",
+      occasion_fit: "good",
       suggestions: [],
       retake_required: true,
       retake_reason: "衣物細節不清楚，請在明亮處重拍。",

@@ -10,7 +10,7 @@ vi.mock("@/features/outfit/image", () => ({ prepareImage }));
 const completeAnalysis = {
   summary: "俐落又舒服，適合今天的步調。",
   strengths: ["上衣與褲裝比例很平衡", "配色乾淨有精神"],
-  occasion_fit: "適合",
+  occasion_fit: "good",
   suggestions: [
     { action: "加一雙簡約鞋", reason: "讓視覺更完整", expected_effect: "整體更有精神" },
     { action: "換成素色包款", reason: "減少視覺雜訊", expected_effect: "輪廓更俐落" },
@@ -49,6 +49,10 @@ function chooseOccasionAndPhoto(source = "選擇照片") {
 }
 
 beforeEach(() => {
+  document.cookie = "NEXT_LOCALE=; Path=/; Max-Age=0";
+  localStorage.clear();
+  Object.defineProperty(navigator, "language", { configurable: true, value: "zh-TW" });
+  Object.defineProperty(navigator, "languages", { configurable: true, value: ["zh-TW"] });
   prepareImage.mockClear();
   createObjectURL.mockClear();
   revokeObjectURL.mockClear();
@@ -58,6 +62,51 @@ beforeEach(() => {
 });
 
 describe("outfit flow", () => {
+  it("switches the first card to English and keeps selected optional context", () => {
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByText("加上選填背景"));
+    fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
+    fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
+    fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
+    fireEvent.change(screen.getByLabelText("選擇語言"), { target: { value: "en" } });
+
+    expect(screen.getByRole("heading", { name: "Where are you going today?" })).toBeVisible();
+    expect(screen.getByLabelText("Weather")).toHaveValue("rainy");
+    expect(screen.getByLabelText("Setting")).toHaveValue("mixed");
+    expect(screen.getByLabelText("Desired vibe")).toHaveValue("專業但親切");
+    expect(document.cookie).toContain("NEXT_LOCALE=en");
+  });
+
+  it("reserves vertical card space for the language selector on narrow screens", () => {
+    render(<HomePage />);
+
+    expect(document.querySelector(".flow-card")).toHaveClass("has-language-select");
+    expect(stylesheet).toMatch(/\.flow-card\.has-language-select\s*\{[\s\S]*?padding-top:\s*(?:64|6[4-9])px/);
+  });
+
+  it("keeps the language selector in photo step but hides it while analyzing", async () => {
+    const pendingResponse = deferred<Response>();
+    vi.mocked(fetch).mockImplementation(async (url) => (
+      url === "/api/analyze" ? pendingResponse.promise : new Response(null, { status: 204 })
+    ));
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    expect(screen.getByLabelText("選擇語言")).toBeVisible();
+    fireEvent.change(screen.getByLabelText("選擇語言"), { target: { value: "en" } });
+    fireEvent.change(screen.getByLabelText("Choose a photo"), {
+      target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
+    });
+    await screen.findByRole("img", { name: "Local outfit photo preview" });
+    fireEvent.click(screen.getByRole("checkbox", { name: /starts the upload and analysis immediately/ }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("Analyzing your outfit");
+    expect(screen.queryByLabelText("Select language")).not.toBeInTheDocument();
+    pendingResponse.resolve(analysisResponse());
+    await screen.findByRole("heading", { name: "Your outfit suggestions" });
+  });
+
   it("offers separate camera and photo-library inputs", () => {
     render(<HomePage />);
 
@@ -110,6 +159,7 @@ describe("outfit flow", () => {
     expect((body as FormData).get("weather")).toBe("rainy");
     expect((body as FormData).get("setting")).toBe("mixed");
     expect((body as FormData).get("desiredFeel")).toBe("專業但親切");
+    expect((body as FormData).get("locale")).toBe("zh-TW");
   });
 
   it("shows a local preview and starts analysis when consent is selected", async () => {
@@ -280,6 +330,7 @@ describe("outfit flow", () => {
     const followUpCall = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/follow-up");
     expect(JSON.parse(String(followUpCall?.[1]?.body))).toMatchObject({
       analysisToken: "signed-analysis-token",
+      locale: "zh-TW",
     });
     expect(screen.getByRole("button", { name: "取得替代方法" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "有幫助" }));

@@ -3,6 +3,19 @@ const MAX_INPUT_BYTES = 15 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 4 * 1024 * 1024;
 const MAX_EDGE = 1600;
 
+export type ImagePreparationErrorCode =
+  | "UNSUPPORTED_FORMAT"
+  | "TOO_LARGE"
+  | "UNREADABLE"
+  | "PROCESSING_FAILED"
+  | "OUTPUT_TOO_LARGE";
+
+export class ImagePreparationError extends Error {
+  constructor(readonly code: ImagePreparationErrorCode) {
+    super(code);
+  }
+}
+
 function toWebp(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -11,7 +24,7 @@ function toWebp(canvas: HTMLCanvasElement): Promise<Blob> {
           resolve(blob);
           return;
         }
-        reject(new Error("照片處理失敗，請重新選擇"));
+        reject(new ImagePreparationError("PROCESSING_FAILED"));
       },
       "image/webp",
       0.82,
@@ -21,18 +34,18 @@ function toWebp(canvas: HTMLCanvasElement): Promise<Blob> {
 
 export async function prepareImage(file: File): Promise<Blob> {
   if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
-    throw new Error("請使用 JPEG、PNG 或 WebP");
+    throw new ImagePreparationError("UNSUPPORTED_FORMAT");
   }
 
   if (file.size > MAX_INPUT_BYTES) {
-    throw new Error("照片檔案過大，請選擇小於 15 MB 的照片");
+    throw new ImagePreparationError("TOO_LARGE");
   }
 
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    throw new Error("照片無法讀取，請重新選擇");
+    throw new ImagePreparationError("UNREADABLE");
   }
 
   try {
@@ -45,14 +58,14 @@ export async function prepareImage(file: File): Promise<Blob> {
     const context = canvas.getContext("2d");
 
     if (!context) {
-      throw new Error("照片處理失敗，請重新選擇");
+      throw new ImagePreparationError("PROCESSING_FAILED");
     }
 
     context.drawImage(bitmap, 0, 0, width, height);
     const image = await toWebp(canvas);
 
     if (image.size > MAX_OUTPUT_BYTES) {
-      throw new Error("照片內容過大，請重新拍攝");
+      throw new ImagePreparationError("OUTPUT_TOO_LARGE");
     }
 
     return image;

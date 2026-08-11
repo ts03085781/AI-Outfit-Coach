@@ -20,7 +20,7 @@ import { createInMemoryAbuseGuard, type AbuseGuard } from "@/lib/abuse-guard";
 const completeAnalysis = {
   summary: "整體俐落。",
   strengths: ["配色協調", "比例清楚"],
-  occasion_fit: "適合" as const,
+  occasion_fit: "good" as const,
   suggestions: [],
   retake_required: false as const,
   retake_reason: null,
@@ -32,10 +32,11 @@ function validImage(type = "image/png") {
   return new Blob([validPng], { type });
 }
 
-function makeMultipartRequest(image: Blob, occasion = "casual", headers?: HeadersInit) {
+function makeMultipartRequest(image: Blob, occasion = "casual", headers?: HeadersInit, locale = "zh-TW") {
   const formData = new FormData();
   formData.set("image", image, "outfit-image");
   formData.set("occasion", occasion);
+  formData.set("locale", locale);
   return new Request("http://localhost/api/analyze", { method: "POST", body: formData, headers });
 }
 
@@ -116,6 +117,7 @@ describe("POST /api/analyze", () => {
     const formData = new FormData();
     formData.set("image", validImage(), "outfit.png");
     formData.set("occasion", "work");
+    formData.set("locale", "ja");
     formData.set("weather", "rainy");
     formData.set("setting", "mixed");
     formData.set("desiredFeel", "  專業但親切  ");
@@ -131,6 +133,7 @@ describe("POST /api/analyze", () => {
       weather: "rainy",
       setting: "mixed",
       desiredFeel: "專業但親切",
+      locale: "ja",
     }));
   });
 
@@ -143,6 +146,17 @@ describe("POST /api/analyze", () => {
 
     const response = await handleRequest(
       new Request("http://localhost/api/analyze", { method: "POST", body: formData }),
+      { analyze },
+    );
+
+    expect(response.status).toBe(400);
+    expect(analyze).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unsupported locale before calling the analyzer", async () => {
+    const analyze = vi.fn(async () => completeAnalysis);
+    const response = await handleRequest(
+      makeMultipartRequest(validImage(), "casual", undefined, "zh-Hant"),
       { analyze },
     );
 

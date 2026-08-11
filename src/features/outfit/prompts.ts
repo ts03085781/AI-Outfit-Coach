@@ -1,8 +1,21 @@
-import type { AnalyzeRequest } from "./domain";
-import { OUTFIT_SAFETY_SYSTEM_MESSAGE } from "./safety-rules";
+import type { AnalyzeRequest, Locale } from "./domain";
+import { getOutfitSafetySystemMessage } from "./safety-rules";
 
-export function buildAnalysisSystemPrompt(): string {
-  return `${OUTFIT_SAFETY_SYSTEM_MESSAGE}
+const LANGUAGE_NAMES: Record<Locale, string> = {
+  "zh-TW": "繁體中文（台灣）",
+  en: "English",
+  ja: "日本語",
+  ko: "한국어",
+};
+
+export function outputLanguageInstruction(locale: Locale): string {
+  return `Write every natural-language value in ${LANGUAGE_NAMES[locale]} only. Keep JSON field names and occasion_fit codes unchanged.`;
+}
+
+export function buildAnalysisSystemPrompt(locale: Locale = "zh-TW"): string {
+  return `${getOutfitSafetySystemMessage(locale)}
+
+${outputLanguageInstruction(locale)}
 
 回覆必須是符合 OutfitAnalysisSchema 的 JSON。`;
 }

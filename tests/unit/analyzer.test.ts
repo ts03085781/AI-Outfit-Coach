@@ -13,7 +13,7 @@ import {
 const completeAnalysis = {
   summary: "整體俐落。",
   strengths: ["配色協調", "比例清楚"],
-  occasion_fit: "適合",
+  occasion_fit: "good",
   suggestions: [],
   retake_required: false,
   retake_reason: null,
@@ -53,6 +53,7 @@ function retakeTransport(reason: string) {
 function makeInput() {
   return {
     occasion: "casual" as const,
+    locale: "zh-TW" as const,
     image: new Blob(["image-bytes"], { type: "image/webp" }),
   };
 }
@@ -74,12 +75,12 @@ describe("OpenAIOutfitAnalyzer", () => {
   it("returns the retake union without adding complete-analysis fields", async () => {
     process.env.OPENAI_VISION_MODEL = "vision-test-model";
     const analyzer = new OpenAIOutfitAnalyzer(
-      createClient([JSON.stringify(retakeTransport("衣物細節不清楚"))]),
+      createClient([JSON.stringify(retakeTransport("衣物細節不清晰，請重新拍攝。"))]),
     );
 
     await expect(analyzer.analyze(makeInput())).resolves.toEqual({
       retake_required: true,
-      retake_reason: "衣物細節不清楚",
+      retake_reason: "衣物細節不清晰，請重新拍攝。",
     });
   });
 
@@ -103,6 +104,50 @@ describe("OpenAIOutfitAnalyzer", () => {
     await expect(analyzer.analyze(makeInput())).resolves.toEqual(completeAnalysis);
     expect(requests).toHaveLength(2);
     expect(requests.every((request) => request.store === false)).toBe(true);
+  });
+
+  it("retries exactly once when the first response is not in the requested locale", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    const requests: Parameters<OpenAIResponsesClient["responses"]["create"]>[0][] = [];
+    const client: OpenAIResponsesClient = {
+      responses: {
+        create: async (request) => {
+          requests.push(request);
+          return {
+            output_text: JSON.stringify({
+              ...completeAnalysis,
+              summary: requests.length === 1
+                ? "The outfit colors work well with the jacket."
+                : completeAnalysis.summary,
+            }),
+          };
+        },
+      },
+    };
+
+    await expect(new OpenAIOutfitAnalyzer(client).analyze(makeInput())).resolves.toEqual(completeAnalysis);
+    expect(requests).toHaveLength(2);
+  });
+
+  it("retries when one otherwise valid analysis field is in another language", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    const requests: Parameters<OpenAIResponsesClient["responses"]["create"]>[0][] = [];
+    const client: OpenAIResponsesClient = {
+      responses: {
+        create: async (request) => {
+          requests.push(request);
+          return {
+            output_text: JSON.stringify(requests.length === 1 ? {
+              ...completeAnalysis,
+              strengths: ["配色協調。", "The outfit proportion is clear."],
+            } : completeAnalysis),
+          };
+        },
+      },
+    };
+
+    await expect(new OpenAIOutfitAnalyzer(client).analyze(makeInput())).resolves.toEqual(completeAnalysis);
+    expect(requests).toHaveLength(2);
   });
 
   it("sends a top-level object transport schema without oneOf", async () => {
@@ -242,6 +287,26 @@ describe("OpenAIOutfitAnalyzer", () => {
     expect(system).toContain("不可極端節食");
     expect(system).toContain("不可施加購物壓力");
     expect(system).toContain("不可回覆穿搭範圍外的要求");
+  });
+
+  it("instructs the model to answer in the requested locale", async () => {
+    process.env.OPENAI_VISION_MODEL = "vision-test-model";
+    let request: Parameters<OpenAIResponsesClient["responses"]["create"]>[0] | undefined;
+    const client: OpenAIResponsesClient = {
+      responses: {
+        create: async (nextRequest) => {
+          request = nextRequest;
+          return { output_text: JSON.stringify({
+            ...completeAnalysis,
+            summary: "The outfit colors work well.",
+            strengths: ["The shirt color is coordinated.", "The outfit proportion is clear."],
+          }) };
+        },
+      },
+    };
+
+    await new OpenAIOutfitAnalyzer(client).analyze({ ...makeInput(), locale: "en" });
+    expect(request?.input.find((message) => message.role === "system")?.content).toContain("English");
   });
 
   it("fails closed instead of returning schema-valid unsafe analysis", async () => {

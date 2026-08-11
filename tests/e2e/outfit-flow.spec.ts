@@ -6,7 +6,7 @@ const occasions = ["日常外出", "約會", "工作／面試", "正式活動"] 
 const analysis = {
   summary: "這套已經有好基礎，配色乾淨而且輪廓清楚。",
   strengths: ["上衣和褲裝的比例清爽", "鞋子讓整體保持一致"],
-  occasion_fit: "適合",
+  occasion_fit: "good",
   suggestions: [
     {
       action: "把上衣下擺整理平整",
@@ -33,6 +33,7 @@ async function mockTelemetry(page: Page, received: unknown[] = []) {
 async function mockSuccessfulAnalysis(page: Page) {
   await page.route("**/api/analyze", async (route) => {
     expect(route.request().method()).toBe("POST");
+    expect(route.request().postDataBuffer()?.toString()).toContain('name="locale"');
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ analysis, analysisToken: "mock-signed-analysis-token" }),
@@ -49,9 +50,17 @@ async function reachPhotoStep(page: Page, occasion = "日常外出", source = "�
 
 async function completeAnalysis(page: Page, occasion = "日常外出") {
   await reachPhotoStep(page, occasion);
-  await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).check();
+  await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).click();
   await expect(page.getByText(analysis.summary)).toBeVisible();
 }
+
+test.beforeEach(async ({ context }) => {
+  await context.addCookies([{
+    name: "NEXT_LOCALE",
+    value: "zh-TW",
+    url: "http://127.0.0.1:3000",
+  }]);
+});
 
 test.describe("mock-only outfit flow", () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -62,6 +71,14 @@ test.describe("mock-only outfit flow", () => {
 
     await expect(page.getByLabel("拍照")).toHaveAttribute("capture", "environment");
     await expect(page.getByLabel("選擇照片")).not.toHaveAttribute("capture");
+  });
+
+  test("changes the interface language without discarding the selected photo", async ({ page }) => {
+    await reachPhotoStep(page);
+    await page.getByLabel("選擇語言").selectOption("en");
+
+    await expect(page.getByRole("heading", { name: "Capture your full outfit" })).toBeVisible();
+    await expect(page.getByRole("img", { name: "Local outfit photo preview" })).toBeVisible();
   });
 
   test("accepts a photo from either upload source", async ({ page }) => {
@@ -100,7 +117,7 @@ test.describe("mock-only outfit flow", () => {
     });
 
     await reachPhotoStep(page);
-    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).check();
+    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).click();
     await expect(page.getByText("衣物被遮住，請重新拍照。")).toBeVisible();
     await page.getByRole("button", { name: "重新拍照" }).click();
 
@@ -176,7 +193,7 @@ test.describe("mock-only outfit flow", () => {
     });
 
     await reachPhotoStep(page);
-    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).check();
+    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).click();
     await expect(page.getByText("分析服務暫時無法使用，請稍後再試一次。"))
       .toBeVisible();
     await page.getByRole("button", { name: "再試一次" }).click();

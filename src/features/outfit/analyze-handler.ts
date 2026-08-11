@@ -128,6 +128,7 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
 
         const rawContext: Record<string, FormDataEntryValue> = {
           occasion: formData.get("occasion") ?? "",
+          locale: formData.get("locale") ?? "",
         };
         for (const key of ["weather", "setting", "desiredFeel"] as const) {
           const value = formData.get(key);
