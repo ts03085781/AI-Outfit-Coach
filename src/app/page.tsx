@@ -73,6 +73,7 @@ function OutfitFlowPage() {
         </>
       ) : null}
       <div className="flow-header" aria-label={t("step", { step })}>
+        <span>{t("appName")}</span>
         <span>{t("step", { step })}</span>
       </div>
       <div className="stitch-progress" aria-hidden="true">

@@ -29,6 +29,9 @@ it("shows the brand icon above the existing step header", () => {
   expect(brandIcon).toHaveAttribute("src", "/icon-512.png");
   expect(brandIcon.compareDocumentPosition(stepHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(screen.getByRole("button", { name: "開啟選單" })).toHaveAttribute("aria-expanded", "false");
+  expect(stepHeader.querySelectorAll("span")).toHaveLength(2);
+  expect(stepHeader.querySelectorAll("span")[0]).toHaveTextContent("衣櫥指南");
+  expect(stepHeader.querySelectorAll("span")[1]).toHaveTextContent("步驟 1／3");
   expect(stepHeader).toHaveTextContent("步驟 1／3");
   expect(stepHeader).toBeVisible();
 });
