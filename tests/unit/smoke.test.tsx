@@ -23,9 +23,16 @@ it("uses the server-selected locale before client effects run", () => {
 it("shows the brand icon above the existing step header", () => {
   render(<HomePage />);
 
-  expect(screen.getByRole("img", { name: "衣櫥指南圖示" })).toHaveAttribute("src", "/icon-512.png");
+  const brandIcon = screen.getByRole("img", { name: "衣櫥指南圖示" });
+  const brandHeader = brandIcon.closest("header");
+  const stepHeader = screen.getByLabelText("步驟 1／3");
+
+  expect(brandIcon).toHaveAttribute("src", "/icon-512.png");
+  expect(brandHeader).not.toBeNull();
+  expect(brandHeader!.compareDocumentPosition(stepHeader) & Node.DOCUMENT_POSITION_FOLLOWING)
+    .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(screen.getByRole("button", { name: "開啟選單" })).toHaveAttribute("aria-expanded", "false");
-  expect(screen.getByLabelText("步驟 1／3")).toBeVisible();
+  expect(stepHeader).toBeVisible();
 });
 
 it("opens and closes the drawer through the hamburger", () => {
