@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI 穿搭教練",
-    short_name: "穿搭教練",
+    name: "AI StyleCue",
+    short_name: "AI StyleCue",
     start_url: "/",
     display: "standalone",
     icons: [

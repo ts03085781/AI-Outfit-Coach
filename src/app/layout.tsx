@@ -6,8 +6,12 @@ import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI 穿搭教練",
-  description: "給今天的一點穿搭靈感"
+  title: "AI StyleCue",
+  description: "每天出門前，讓 AI 成為你的貼身穿搭顧問。只要選擇今天的場合並拍下穿搭，AI 就會分析整體搭配、指出亮點，並提供具體又容易實行的改善建議。無論是日常外出、約會、面試或正式活動，都能更快找到適合自己的搭配方向——不評判身材、不製造購物壓力，專注用現有衣物，幫你穿得更有自信。",
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
