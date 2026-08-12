@@ -64,30 +64,27 @@ beforeEach(() => {
 });
 
 describe("outfit flow", () => {
-  it("switches the first card to English and keeps selected optional context", () => {
+  it("keeps selected optional context in the first card", () => {
     render(<AnalyzePage />);
 
     fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
     fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
-    fireEvent.change(screen.getByLabelText("選擇語言"), { target: { value: "en" } });
-
-    expect(screen.getByRole("heading", { name: "Where are you going today?" })).toBeVisible();
-    expect(screen.getByLabelText("Weather")).toHaveValue("rainy");
-    expect(screen.getByLabelText("Setting")).toHaveValue("mixed");
-    expect(screen.getByLabelText("Desired vibe")).toHaveValue("專業但親切");
-    expect(document.cookie).toContain("NEXT_LOCALE=en");
+    expect(screen.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
+    expect(screen.getByLabelText("天氣")).toHaveValue("rainy");
+    expect(screen.getByLabelText("地點環境")).toHaveValue("mixed");
+    expect(screen.getByLabelText("想呈現的感覺")).toHaveValue("專業但親切");
   });
 
-  it("reserves vertical card space for the language selector on narrow screens", () => {
+  it("does not show a language selector or reserve its space in the first step", () => {
     render(<HomePage />);
 
-    expect(document.querySelector(".flow-card")).toHaveClass("has-language-select");
-    expect(stylesheet).toMatch(/\.flow-card\.has-language-select\s*\{[\s\S]*?padding-top:\s*(?:64|6[4-9])px/);
+    expect(screen.queryByLabelText("選擇語言")).not.toBeInTheDocument();
+    expect(document.querySelector(".flow-card")).not.toHaveClass("has-language-select");
   });
 
-  it("keeps the language selector in photo step but hides it while analyzing", async () => {
+  it("does not show a language selector in the photo or analyzing steps", async () => {
     const pendingResponse = deferred<Response>();
     vi.mocked(fetch).mockImplementation(async (url) => (
       url === "/api/analyze" ? pendingResponse.promise : new Response(null, { status: 204 })
@@ -95,18 +92,17 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-    expect(screen.getByLabelText("選擇語言")).toBeVisible();
-    fireEvent.change(screen.getByLabelText("選擇語言"), { target: { value: "en" } });
-    fireEvent.change(screen.getByLabelText("Choose a photo"), {
+    expect(screen.queryByLabelText("選擇語言")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("選擇照片"), {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
-    await screen.findByRole("img", { name: "Local outfit photo preview" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /starts the upload and analysis immediately/ }));
+    await screen.findByRole("img", { name: "本機穿搭照片預覽" });
+    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("Analyzing your outfit");
-    expect(screen.queryByLabelText("Select language")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
+    expect(screen.queryByLabelText("選擇語言")).not.toBeInTheDocument();
     pendingResponse.resolve(analysisResponse());
-    await screen.findByRole("heading", { name: "Your outfit suggestions" });
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
   });
 
   it("offers separate camera and photo-library inputs", () => {

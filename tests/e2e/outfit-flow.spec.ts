@@ -73,12 +73,14 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByLabel("選擇照片")).not.toHaveAttribute("capture");
   });
 
-  test("changes the interface language without discarding the selected photo", async ({ page }) => {
-    await reachPhotoStep(page);
+  test("uses the language selected in settings", async ({ page }) => {
+    await page.goto("/settings");
     await page.getByLabel("選擇語言").selectOption("en");
 
-    await expect(page.getByRole("heading", { name: "Capture your full outfit" })).toBeVisible();
-    await expect(page.getByRole("img", { name: "Local outfit photo preview" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+    await page.goto("/analyze");
+    await expect(page.getByRole("heading", { name: "Where are you going today?" })).toBeVisible();
+    await expect(page.getByLabel("Select language")).toHaveCount(0);
   });
 
   test("accepts a photo from either upload source", async ({ page }) => {

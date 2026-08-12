@@ -76,7 +76,7 @@
   },
   "navigation": { "label": "주요 탐색", "home": "홈", "analyzeOutfit": "코디 분석", "settings": "설정" },
   "home": { "eyebrow": "데일리 옷장 노트", "iconAlt": "코디 가이드 아이콘", "title": "오늘에 꼭 맞게 입으세요.", "cta": "내 코디 촬영하기", "weather": { "label": "현재 위치 날씨", "location": "현재 위치", "loading": "현재 위치 날씨를 가져오는 중…", "retry": "현재 위치 날씨 가져오기", "blocked": "위치 정보가 차단되었습니다. 탭하여 다시 시도하세요", "range": "오늘의 최고／최저", "uv": "자외선 지수", "condition": { "clear": "맑음", "partlyCloudy": "구름 조금", "cloudy": "흐림", "fog": "안개", "rain": "비", "snow": "눈", "storm": "뇌우" } }, "trends": { "eyebrow": "이번 주 셀렉션", "title": "지금 인기", "count": "3가지 추천", "items": { "linen": { "title": "통기성 좋은 리넨 팬츠", "description": "습한 오후에도 가벼운 실루엣" }, "shirt": { "title": "가벼운 반소매 셔츠", "description": "평일과 주말을 한 벌로" }, "sneakers": { "title": "저채도 스니커즈", "description": "기본 아이템의 차분한 마무리" } } } },
-  "settings": { "eyebrow": "코디 가이드", "title": "설정 기능은 준비 중입니다", "description": "곧 이곳에서 취향과 알림을 관리할 수 있습니다." },
+  "settings": { "eyebrow": "코디 가이드", "title": "설정", "description": "원하는 인터페이스 언어를 선택하세요.", "language": "인터페이스 언어" },
   "error": {
     "title": "분석이 잠시 멈췄습니다",
     "retry": "다시 시도",

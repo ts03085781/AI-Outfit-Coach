@@ -76,7 +76,7 @@
   },
   "navigation": { "label": "メインナビゲーション", "home": "ホーム", "analyzeOutfit": "コーデを分析", "settings": "設定" },
   "home": { "eyebrow": "毎日のワードローブノート", "iconAlt": "コーデガイドのアイコン", "title": "今日は、ちょうどよく。", "cta": "コーデを撮影する", "weather": { "label": "現在地の天気", "location": "現在地", "loading": "現在地の天気を取得中…", "retry": "現在地の天気を取得", "blocked": "位置情報がブロックされています。タップして再試行", "range": "今日の最高／最低", "uv": "UV指数", "condition": { "clear": "晴れ", "partlyCloudy": "晴れ時々くもり", "cloudy": "くもり", "fog": "霧", "rain": "雨", "snow": "雪", "storm": "雷雨" } }, "trends": { "eyebrow": "今週のセレクト", "title": "いま注目", "count": "3 アイテム", "items": { "linen": { "title": "リネンのワイドパンツ", "description": "蒸し暑い午後にも軽やか" }, "shirt": { "title": "薄手の半袖シャツ", "description": "平日も週末も一枚で" }, "sneakers": { "title": "低彩度スニーカー", "description": "ベーシックを静かに締める" } } } },
-  "settings": { "eyebrow": "コーデガイド", "title": "設定は準備中です", "description": "好みと通知はここで管理できるようになります。" },
+  "settings": { "eyebrow": "コーデガイド", "title": "設定", "description": "表示言語を選択してください。", "language": "表示言語" },
   "error": {
     "title": "分析が一時停止しました",
     "retry": "もう一度試す",

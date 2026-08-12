@@ -97,7 +97,7 @@
       }
     }
   },
-  "settings": { "eyebrow": "衣櫥指南", "title": "設定即將推出", "description": "之後可在這裡管理你的偏好與通知。" },
+  "settings": { "eyebrow": "衣櫥指南", "title": "設定", "description": "選擇你偏好的介面語言。", "language": "介面語言" },
   "error": {
     "title": "分析暫時停住了",
     "retry": "再試一次",
