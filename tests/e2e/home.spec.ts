@@ -1,0 +1,23 @@
+import { expect, test } from "@playwright/test";
+
+test("opens the magazine-style homepage and links to analysis", async ({ context, page }) => {
+  await context.addCookies([{
+    name: "NEXT_LOCALE",
+    value: "zh-TW",
+    url: "http://127.0.0.1:3000",
+  }]);
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "今天，穿得剛剛好。" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "分析穿搭" })).toHaveAttribute("href", "/analyze");
+  await expect(page.getByRole("link", { name: "首頁" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("link", { name: "分析穿搭" }).click();
+  await expect(page).toHaveURL(/\/analyze$/);
+  await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "分析穿搭" })).toHaveAttribute("aria-current", "page");
+
+  await page.getByRole("link", { name: "設定" }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole("heading", { name: "設定即將推出" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "設定" })).toHaveAttribute("aria-current", "page");
+});

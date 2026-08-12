@@ -18,7 +18,7 @@
   "occasion": {
     "title": "今天要去哪裡？",
     "description": "選最接近的一種，我會依此調整建議。",
-    "optional": "進階選項（可不選）",
+    "optional": "加上選填背景",
     "weather": "天氣",
     "setting": "地點環境",
     "desiredFeel": "想呈現的感覺",
@@ -77,6 +77,27 @@
     "retake": "重新拍照",
     "retakeLabel": "重拍建議"
   },
+  "navigation": { "label": "主要導覽", "home": "首頁", "analyzeOutfit": "分析穿搭", "settings": "設定" },
+  "home": {
+    "eyebrow": "每日衣櫥筆記",
+    "iconAlt": "衣櫥指南圖示",
+    "title": "今天，穿得剛剛好。",
+    "cta": "拍下我的穿搭",
+    "weather": {
+      "label": "當地天氣", "location": "目前位置", "loading": "正在取得所在地天氣…", "retry": "點擊取得所在地天氣", "blocked": "定位已被封鎖，點擊後再次嘗試",
+      "range": "今日高低溫", "uv": "紫外線",
+      "condition": { "clear": "晴朗", "partlyCloudy": "晴時多雲", "cloudy": "多雲", "fog": "有霧", "rain": "有雨", "snow": "下雪", "storm": "雷雨" }
+    },
+    "trends": {
+      "eyebrow": "本週選物", "title": "正流行", "count": "3 件精選",
+      "items": {
+        "linen": { "title": "透氣亞麻寬褲", "description": "適合悶熱午後的輕盈輪廓" },
+        "shirt": { "title": "薄透短袖襯衫", "description": "一件解決通勤與週末" },
+        "sneakers": { "title": "低飽和球鞋", "description": "用色彩為基本款收尾" }
+      }
+    }
+  },
+  "settings": { "eyebrow": "衣櫥指南", "title": "設定即將推出", "description": "之後可在這裡管理你的偏好與通知。" },
   "error": {
     "title": "分析暫時停住了",
     "retry": "再試一次",

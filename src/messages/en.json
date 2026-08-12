@@ -81,6 +81,13 @@
     "retake": "Retake photo",
     "retakeLabel": "Retake guidance"
   },
+  "navigation": { "label": "Main navigation", "home": "Home", "analyzeOutfit": "Analyze outfit", "settings": "Settings" },
+  "home": {
+    "eyebrow": "Daily wardrobe notes", "iconAlt": "Outfit Guide icon", "title": "Dress for today.", "cta": "Photograph my outfit",
+    "weather": { "label": "Local weather", "location": "Current location", "loading": "Getting local weather…", "retry": "Get local weather", "blocked": "Location is blocked. Tap to try again", "range": "Today’s range", "uv": "UV index", "condition": { "clear": "Clear", "partlyCloudy": "Partly cloudy", "cloudy": "Cloudy", "fog": "Foggy", "rain": "Rain", "snow": "Snow", "storm": "Thunderstorms" } },
+    "trends": { "eyebrow": "This week’s edit", "title": "Trending now", "count": "3 picks", "items": { "linen": { "title": "Breathable linen trousers", "description": "An easy silhouette for humid afternoons" }, "shirt": { "title": "Lightweight short-sleeve shirt", "description": "One piece for workdays and weekends" }, "sneakers": { "title": "Muted-tone sneakers", "description": "A quiet finish for the basics" } } }
+  },
+  "settings": { "eyebrow": "Outfit Guide", "title": "Settings are coming soon", "description": "Your preferences and notifications will live here." },
   "error": {
     "title": "Analysis paused",
     "retry": "Try again",

@@ -42,7 +42,7 @@ async function mockSuccessfulAnalysis(page: Page) {
 }
 
 async function reachPhotoStep(page: Page, occasion = "日常外出", source = "選擇照片") {
-  await page.goto("/");
+  await page.goto("/analyze");
   await page.getByRole("button", { name: occasion }).click();
   await page.getByLabel(source).setInputFiles(fixture);
   await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
@@ -66,7 +66,7 @@ test.describe("mock-only outfit flow", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("offers separate camera and photo-library inputs", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/analyze");
     await page.getByRole("button", { name: "日常外出" }).click();
 
     await expect(page.getByLabel("拍照")).toHaveAttribute("capture", "environment");

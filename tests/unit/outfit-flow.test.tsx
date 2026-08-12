@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import HomePage from "@/app/page";
+import AnalyzePage from "@/app/analyze/page";
+
+const HomePage = AnalyzePage;
 
 const { prepareImage } = vi.hoisted(() => ({ prepareImage: vi.fn(async (file: File) => file) }));
 
@@ -63,7 +65,7 @@ beforeEach(() => {
 
 describe("outfit flow", () => {
   it("switches the first card to English and keeps selected optional context", () => {
-    render(<HomePage />);
+    render(<AnalyzePage />);
 
     fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });

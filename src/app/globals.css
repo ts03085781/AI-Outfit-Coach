@@ -9,8 +9,8 @@ body {
 }
 
 body {
-  background: #f3f7f8;
-  color: #17202a;
+  background: #fcf8f4;
+  color: #382a20;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -25,7 +25,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid #f3a66b;
+  outline: 3px solid #b75036;
   outline-offset: 3px;
 }
 
@@ -35,6 +35,60 @@ textarea:focus-visible {
   margin: 0 auto;
   padding: 18px 16px 28px;
 }
+
+.app-page-with-nav { padding-bottom: 100px; }
+
+.app-navigation {
+  position: fixed;
+  z-index: 5;
+  bottom: 0;
+  left: 50%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: min(100%, 32rem);
+  min-height: 68px;
+  transform: translateX(-50%);
+  background: rgb(255 250 243 / 96%);
+  border-top: 1px solid #e4d6c5;
+  backdrop-filter: blur(10px);
+}
+
+.app-navigation a { display: grid; min-height: 68px; place-content: center; gap: 3px; color: #77695e; font-size: .72rem; font-weight: 700; text-align: center; text-decoration: none; }
+.app-navigation a span { font-size: 1.22rem; line-height: 1; }
+.app-navigation a.is-current { color: #b75036; }
+
+.home-shell,
+.settings-shell { width: min(100%, 32rem); min-height: 100dvh; margin: 0 auto; padding: 22px 16px 100px; }
+.home-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.home-header p,
+.section-heading p,
+.settings-shell section > p:first-child { margin: 0; color: #897669; font-size: .72rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.home-header img { width: 34px; height: 34px; }
+.home-shell > h1,
+.settings-shell h1 { max-width: 12ch; margin: 0 0 22px; color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.1rem, 11vw, 3rem); font-weight: 500; letter-spacing: -.06em; }
+.weather-card { padding: 20px; color: #3d2d1c; background: #f4dfbf; border: 1px solid #e5c89b; border-radius: 8px; }
+.weather-card-empty { display: grid; min-height: 174px; place-content: center; text-align: center; }
+.weather-card-empty p { margin: 0; color: #6e5841; }
+.weather-card-empty button { padding: 10px 14px; color: #8d3b28; background: transparent; border: 1px solid currentColor; border-radius: 4px; cursor: pointer; font-weight: 750; }
+.weather-main { display: flex; align-items: center; justify-content: space-between; }
+.weather-location { margin: 0; font-size: .9rem; font-weight: 750; }
+.weather-temperature { margin: 10px 0 2px; font-size: 3.6rem; font-weight: 780; letter-spacing: -.1em; line-height: .9; }
+.weather-condition { margin: 8px 0 0; color: #6e5841; font-size: .85rem; }
+.weather-icon { font-size: 3.5rem; }
+.weather-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 22px 0 0; }
+.weather-details div { padding: 10px; background: #faedd7; }
+.weather-details dt { color: #735d46; font-size: .72rem; }
+.weather-details dd { margin: 4px 0 0; font-size: .92rem; font-weight: 800; }
+.trend-section { margin-top: 28px; }
+.section-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 11px; }
+.section-heading h2 { margin: 4px 0 0; color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: 1.5rem; font-weight: 500; }
+.section-heading > span { color: #897669; font-size: .75rem; font-weight: 700; }
+.trend-list { display: grid; gap: 9px; }.trend-list > a { color: inherit; text-decoration: none; }
+.trend-list article { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 9px; background: #fffdfa; border: 1px solid #eadfd4; border-radius: 5px; }
+.trend-swatch { width: 48px; height: 48px; flex: none; background: #d9d3a6; }
+.trend-swatch.shirt { background: #ddbb9d; }.trend-swatch.sneakers { background: #c8c5de; }
+.trend-list h3 { margin: 0; color: #493629; font-size: .88rem; }.trend-list p { margin: 4px 0 0; color: #897669; font-size: .75rem; }
+.settings-shell { display: grid; place-items: center; text-align: center; }.settings-shell section { max-width: 24rem; }.settings-shell h1 { max-width: none; margin-inline: auto; }.settings-shell section > p:last-child { color: #77695e; line-height: 1.6; }
 
 .app-header {
   display: grid;

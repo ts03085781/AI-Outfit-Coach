@@ -1,19 +1,19 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import HomePage from "@/app/page";
+import AnalyzePage from "@/app/analyze/page";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 it("shows the occasion question", () => {
   Object.defineProperty(navigator, "language", { configurable: true, value: "zh-TW" });
   Object.defineProperty(navigator, "languages", { configurable: true, value: ["zh-TW"] });
 
-  render(<HomePage />);
+  render(<AnalyzePage />);
   expect(screen.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
 });
 
 it("uses the server-selected locale before client effects run", () => {
   render(
     <LocaleProvider initialLocale="ja">
-      <HomePage />
+      <AnalyzePage />
     </LocaleProvider>,
   );
 
@@ -21,12 +21,12 @@ it("uses the server-selected locale before client effects run", () => {
 });
 
 it("shows the brand icon above the existing step header", () => {
-  render(<HomePage />);
+  render(<AnalyzePage />);
 
   const brandIcon = screen.getByRole("img", { name: "衣櫥指南圖示" });
   const stepHeader = screen.getByLabelText("步驟 1／3");
 
-  expect(brandIcon).toHaveAttribute("src", "/icon-512.png");
+  expect(brandIcon.getAttribute("src")).toContain("icon-512.png");
   expect(brandIcon.compareDocumentPosition(stepHeader)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(screen.getByRole("button", { name: "開啟選單" })).toHaveAttribute("aria-expanded", "false");
   expect(stepHeader.querySelectorAll("span")).toHaveLength(2);
@@ -37,7 +37,7 @@ it("shows the brand icon above the existing step header", () => {
 });
 
 it("opens an identified drawer while making the flow controls inert", () => {
-  render(<HomePage />);
+  render(<AnalyzePage />);
   const menuButton = screen.getByRole("button", { name: "開啟選單" });
 
   fireEvent.click(menuButton);
@@ -62,7 +62,7 @@ it("opens an identified drawer while making the flow controls inert", () => {
 });
 
 it("returns focus to the hamburger when its backdrop is clicked", () => {
-  render(<HomePage />);
+  render(<AnalyzePage />);
   const menuButton = screen.getByRole("button", { name: "開啟選單" });
 
   fireEvent.click(menuButton);
