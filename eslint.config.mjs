@@ -7,7 +7,14 @@ const compat = new FlatCompat({
 
 const config = [
   ...compat.extends("next/core-web-vitals"),
-  globalIgnores([".next/**", "node_modules/**", "playwright-report/**", "test-results/**"])
+  globalIgnores([
+    ".next/**",
+    "node_modules/**",
+    "playwright-report/**",
+    "test-results/**",
+    ".worktrees/**",
+    ".pnpm-store/**"
+  ])
 ];
 
 export default config;
