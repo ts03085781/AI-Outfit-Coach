@@ -11,7 +11,7 @@
   "occasion": {
     "title": "今日はどこへ行きますか？",
     "description": "最も近いものを選ぶと、提案を合わせます。",
-    "optional": "任意の情報を追加",
+    "optional": "追加の選択肢（任意",
     "weather": "天気",
     "setting": "場所",
     "desiredFeel": "なりたい印象",

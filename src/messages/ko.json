@@ -11,7 +11,7 @@
   "occasion": {
     "title": "오늘 어디에 가시나요?",
     "description": "가장 가까운 항목을 고르면 제안을 맞춰 드립니다.",
-    "optional": "선택 정보 추가",
+    "optional": "추가 선택 사항 (선택 가능)",
     "weather": "날씨",
     "setting": "장소",
     "desiredFeel": "원하는 분위기",

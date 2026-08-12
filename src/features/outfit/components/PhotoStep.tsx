@@ -77,8 +77,8 @@ export function PhotoStep({
           {/* The source is a local object URL and never leaves the browser through this element. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="photo-preview" src={previewUrl} alt={t("preview")} />
-          <p>{t("providerPrivacy")}</p>
-          <p>{t("localPrivacy")}</p>
+          {/* <p>{t("providerPrivacy")}</p>
+          <p>{t("localPrivacy")}</p> */}
           <label className="consent-label">
             <input
               type="checkbox"

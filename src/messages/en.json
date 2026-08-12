@@ -1,9 +1,99 @@
 {
-  "appName": "Outfit Guide", "header": {"menu": "Menu", "openMenu": "Open menu", "closeMenu": "Close menu", "iconAlt": "Outfit Guide icon", "backdrop": "Close menu backdrop"}, "step": "Step {step}/3", "language": "Select language", "localeName": {"zh-TW": "繁體中文", "en": "English", "ja": "日本語", "ko": "한국어"},
-  "occasion": {"title": "Where are you going today?", "description": "Choose the closest option and I’ll tailor the suggestion.", "optional": "Add optional context", "weather": "Weather", "setting": "Setting", "desiredFeel": "Desired vibe", "desiredPlaceholder": "For example: polished and approachable", "unspecified": "No preference", "casual": "Everyday outing", "date": "Date", "work": "Work / interview", "formal": "Formal event"},
-  "weather": {"sunny": "Sunny", "rainy": "Rainy", "cold": "Cool", "hot": "Warm", "mild": "Mild"}, "setting": {"indoor": "Indoors", "outdoor": "Outdoors", "mixed": "Both indoors and outdoors"},
-  "photo": {"back": "Back", "title": "Capture your full outfit", "description": "Stand back so your top, bottom, and shoes are all visible.", "empty": "Take a photo or choose one from your library", "chosen": "Photo selected. Want to replace it?", "camera": "Take a photo", "library": "Choose a photo", "preview": "Local outfit photo preview", "providerPrivacy": "Your photo is sent to the AI provider for this analysis. The provider may keep it briefly for abuse monitoring; confirm the exact retention period before launch.", "localPrivacy": "This service does not keep photos or results. They cannot be restored after you leave or refresh.", "consent": "I agree to use this photo for this outfit analysis; selecting this starts the upload and analysis immediately"},
-  "analyzing": {"title": "Analyzing your outfit", "description": "This usually takes just a few seconds."},
-  "result": {"title": "Your outfit suggestions", "strengths": "What’s working well", "fit": "Occasion fit: {fit}", "fitGood": "Good fit", "fitAdjust": "Needs minor adjustments", "fitPoor": "Not an ideal fit", "suggestions": "Try this", "effect": "Expected effect: {effect}", "followUpTitle": "Want to check one more thing?", "followUpLabel": "Ask one more outfit question", "followUpButton": "Get an alternative", "followUpError": "This follow-up could not be completed.", "feedbackTitle": "Was this helpful?", "helpful": "Helpful", "notHelpful": "Not helpful", "thanks": "Thanks for your feedback.", "navigation": "Start again", "reselect": "Choose another photo", "restart": "Return to step one", "retake": "Retake photo", "retakeLabel": "Retake guidance"},
-  "error": {"title": "Analysis paused", "retry": "Try again", "INVALID_IMAGE": "This photo cannot be processed. Please use a clear JPEG, PNG, or WebP image.", "AI_TIMEOUT": "The analysis timed out. Please try again.", "AI_UNAVAILABLE": "Analysis is temporarily unavailable. Please try again shortly.", "AI_AUTHORIZATION": "The OpenAI project quota or permission is unavailable. Check the Platform settings.", "AI_RATE_LIMITED": "There are many analysis requests right now. Please try again shortly.", "AI_REFUSED": "This photo cannot be analyzed. Use a clear, full-body outfit photo of one person.", "AI_INVALID_RESPONSE": "The model response format was invalid. Please try again.", "AI_SAFETY_REJECTED": "This photo did not pass the safety check. Use a clear, full-body outfit photo of one person.", "RATE_LIMITED": "There are many analysis requests right now. Please try again shortly.", "RATE_LIMIT_UNAVAILABLE": "Analysis is temporarily unavailable. Please try again shortly.", "INVALID_RESPONSE": "The model response format was invalid. Please try again."}
+  "appName": "Outfit Guide",
+  "header": {
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "iconAlt": "Outfit Guide icon",
+    "backdrop": "Close menu backdrop"
+  },
+  "step": "Step {step}/3",
+  "language": "Select language",
+  "localeName": {
+    "zh-TW": "繁體中文",
+    "en": "English",
+    "ja": "日本語",
+    "ko": "한국어"
+  },
+  "occasion": {
+    "title": "Where are you going today?",
+    "description": "Choose the closest option and I’ll tailor the suggestion.",
+    "optional": "Additional options (optional)",
+    "weather": "Weather",
+    "setting": "Setting",
+    "desiredFeel": "Desired vibe",
+    "desiredPlaceholder": "For example: polished and approachable",
+    "unspecified": "No preference",
+    "casual": "Everyday outing",
+    "date": "Date",
+    "work": "Work / interview",
+    "formal": "Formal event"
+  },
+  "weather": {
+    "sunny": "Sunny",
+    "rainy": "Rainy",
+    "cold": "Cool",
+    "hot": "Warm",
+    "mild": "Mild"
+  },
+  "setting": {
+    "indoor": "Indoors",
+    "outdoor": "Outdoors",
+    "mixed": "Both indoors and outdoors"
+  },
+  "photo": {
+    "back": "Back",
+    "title": "Capture your full outfit",
+    "description": "Stand back so your top, bottom, and shoes are all visible.",
+    "empty": "Take a photo or choose one from your library",
+    "chosen": "Photo selected. Want to replace it?",
+    "camera": "Take a photo",
+    "library": "Choose a photo",
+    "preview": "Local outfit photo preview",
+    "providerPrivacy": "Your photo is sent to the AI provider for this analysis. The provider may keep it briefly for abuse monitoring; confirm the exact retention period before launch.",
+    "localPrivacy": "This service does not keep photos or results. They cannot be restored after you leave or refresh.",
+    "consent": "I agree to use this photo for this outfit analysis; selecting this starts the upload and analysis immediately"
+  },
+  "analyzing": {
+    "title": "Analyzing your outfit",
+    "description": "This usually takes just a few seconds."
+  },
+  "result": {
+    "title": "Your outfit suggestions",
+    "strengths": "What’s working well",
+    "fit": "Occasion fit: {fit}",
+    "fitGood": "Good fit",
+    "fitAdjust": "Needs minor adjustments",
+    "fitPoor": "Not an ideal fit",
+    "suggestions": "Try this",
+    "effect": "Expected effect: {effect}",
+    "followUpTitle": "Want to check one more thing?",
+    "followUpLabel": "Ask one more outfit question",
+    "followUpButton": "Get an alternative",
+    "followUpError": "This follow-up could not be completed.",
+    "feedbackTitle": "Was this helpful?",
+    "helpful": "Helpful",
+    "notHelpful": "Not helpful",
+    "thanks": "Thanks for your feedback.",
+    "navigation": "Start again",
+    "reselect": "Choose another photo",
+    "restart": "Return to step one",
+    "retake": "Retake photo",
+    "retakeLabel": "Retake guidance"
+  },
+  "error": {
+    "title": "Analysis paused",
+    "retry": "Try again",
+    "INVALID_IMAGE": "This photo cannot be processed. Please use a clear JPEG, PNG, or WebP image.",
+    "AI_TIMEOUT": "The analysis timed out. Please try again.",
+    "AI_UNAVAILABLE": "Analysis is temporarily unavailable. Please try again shortly.",
+    "AI_AUTHORIZATION": "The OpenAI project quota or permission is unavailable. Check the Platform settings.",
+    "AI_RATE_LIMITED": "There are many analysis requests right now. Please try again shortly.",
+    "AI_REFUSED": "This photo cannot be analyzed. Use a clear, full-body outfit photo of one person.",
+    "AI_INVALID_RESPONSE": "The model response format was invalid. Please try again.",
+    "AI_SAFETY_REJECTED": "This photo did not pass the safety check. Use a clear, full-body outfit photo of one person.",
+    "RATE_LIMITED": "There are many analysis requests right now. Please try again shortly.",
+    "RATE_LIMIT_UNAVAILABLE": "Analysis is temporarily unavailable. Please try again shortly.",
+    "INVALID_RESPONSE": "The model response format was invalid. Please try again."
+  }
 }
