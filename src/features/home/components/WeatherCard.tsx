@@ -28,6 +28,14 @@ function iconFor(condition: WeatherSnapshot["condition"]) {
   })[condition];
 }
 
+export function uvRiskLevelFor(uvIndex: number) {
+  if (uvIndex <= 2) return "low";
+  if (uvIndex <= 5) return "moderate";
+  if (uvIndex <= 7) return "high";
+  if (uvIndex <= 10) return "veryHigh";
+  return "extreme";
+}
+
 export function WeatherCard() {
   const t = useTranslations("home.weather");
   const [weather, setWeather] = useState<WeatherState>({ status: "loading" });
@@ -66,7 +74,7 @@ export function WeatherCard() {
     </div>
     <dl className="weather-details">
       <div><dt>{t("range")}</dt><dd>{snapshot.lowTemperature}° — {snapshot.highTemperature}°</dd></div>
-      <div><dt>{t("uv")}</dt><dd>{snapshot.uvIndex}</dd></div>
+      <div><dt>{t("uv")}</dt><dd>{snapshot.uvIndex}<small>{t(`uvRisk.${uvRiskLevelFor(snapshot.uvIndex)}`)}</small></dd></div>
     </dl>
   </section>;
 }

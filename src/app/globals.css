@@ -79,6 +79,7 @@ textarea:focus-visible {
 .weather-details div { padding: 10px; background: #faedd7; }
 .weather-details dt { color: #735d46; font-size: .72rem; }
 .weather-details dd { margin: 4px 0 0; font-size: .92rem; font-weight: 800; }
+.weather-details dd small { display: block; margin-top: 5px; color: #735d46; font-size: .68rem; font-weight: 600; line-height: 1.4; }
 .trend-section { margin-top: 28px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 11px; }
 .section-heading h2 { margin: 4px 0 0; color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: 1.5rem; font-weight: 500; }

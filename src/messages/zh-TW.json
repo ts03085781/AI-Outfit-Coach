@@ -85,7 +85,7 @@
     "cta": "拍下我的穿搭",
     "weather": {
       "label": "當地天氣", "location": "目前位置", "loading": "正在取得所在地天氣…", "retry": "點擊取得所在地天氣", "blocked": "定位已被封鎖，點擊後再次嘗試",
-      "range": "今日高低溫", "uv": "紫外線",
+      "range": "今日高低溫", "uv": "紫外線", "uvRisk": { "low": "低量級：風險小，對人體無特殊危險", "moderate": "中量級：長時間有輕微曬傷風險", "high": "高量級：無防護曝曬容易曬傷", "veryHigh": "過量級：極高風險，短時間內會損害皮膚與眼睛", "extreme": "危險級：極端危險，數分鐘至 15 分鐘內就容易曬傷" },
       "condition": { "clear": "晴朗", "partlyCloudy": "晴時多雲", "cloudy": "多雲", "fog": "有霧", "rain": "有雨", "snow": "下雪", "storm": "雷雨" }
     },
     "trends": {

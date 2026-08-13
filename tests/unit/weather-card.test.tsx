@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 
-import { WeatherCard } from "@/features/home/components/WeatherCard";
+import { uvRiskLevelFor, WeatherCard } from "@/features/home/components/WeatherCard";
 import { fetchWeatherSnapshot } from "@/features/home/weather";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
@@ -19,17 +19,26 @@ beforeEach(() => {
   });
 });
 
-it("renders the Bootstrap rain icon for rainy weather", async () => {
+it("classifies UV index boundaries", () => {
+  expect(uvRiskLevelFor(2)).toBe("low");
+  expect(uvRiskLevelFor(3)).toBe("moderate");
+  expect(uvRiskLevelFor(6)).toBe("high");
+  expect(uvRiskLevelFor(8)).toBe("veryHigh");
+  expect(uvRiskLevelFor(11)).toBe("extreme");
+});
+
+it("renders the Bootstrap rain icon and high UV guidance", async () => {
   mockedFetchWeatherSnapshot.mockResolvedValue({
     currentTemperature: 24,
     highTemperature: 26,
     lowTemperature: 22,
-    uvIndex: 2,
+    uvIndex: 6,
     condition: "rain",
   });
 
   render(<LocaleProvider initialLocale="zh-TW"><WeatherCard /></LocaleProvider>);
 
   expect(await screen.findByTestId("weather-icon-rain")).toBeVisible();
+  expect(screen.getByText("高量級：無防護曝曬容易曬傷")).toBeVisible();
   expect(screen.queryByText("☂")).not.toBeInTheDocument();
 });
