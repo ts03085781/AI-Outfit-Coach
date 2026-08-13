@@ -77,27 +77,68 @@
     "retake": "重新拍照",
     "retakeLabel": "重拍建議"
   },
-  "navigation": { "label": "主要導覽", "home": "首頁", "analyzeOutfit": "分析穿搭", "settings": "設定" },
+  "navigation": {
+    "label": "主要導覽",
+    "home": "首頁",
+    "analyzeOutfit": "分析穿搭",
+    "settings": "設定"
+  },
   "home": {
     "eyebrow": "每日衣櫥筆記",
     "iconAlt": "衣櫥指南圖示",
     "title": "今天，穿得剛剛好。",
     "cta": "拍下我的穿搭",
     "weather": {
-      "label": "當地天氣", "location": "目前位置", "loading": "正在取得所在地天氣…", "retry": "點擊取得所在地天氣", "blocked": "定位已被封鎖，點擊後再次嘗試",
-      "range": "今日高低溫", "uv": "紫外線", "uvRisk": { "low": "低量級：風險小，對人體無特殊危險", "moderate": "中量級：長時間有輕微曬傷風險", "high": "高量級：無防護曝曬容易曬傷", "veryHigh": "過量級：極高風險，短時間內會損害皮膚與眼睛", "extreme": "危險級：極端危險，數分鐘至 15 分鐘內就容易曬傷" },
-      "condition": { "clear": "晴朗", "partlyCloudy": "晴時多雲", "cloudy": "多雲", "fog": "有霧", "rain": "有雨", "snow": "下雪", "storm": "雷雨" }
+      "label": "當地天氣",
+      "location": "目前位置",
+      "loading": "正在取得所在地天氣…",
+      "retry": "點擊取得所在地天氣",
+      "blocked": "定位已被封鎖，請到瀏覽器網站設定開啟定位權限",
+      "range": "今日高低溫",
+      "uv": "紫外線",
+      "uvRisk": {
+        "low": "低量級：風險小，對人體無特殊危險",
+        "moderate": "中量級：長時間有輕微曬傷風險",
+        "high": "高量級：無防護曝曬容易曬傷",
+        "veryHigh": "過量級：極高風險，短時間內會損害皮膚與眼睛",
+        "extreme": "危險級：極端危險，數分鐘至 15 分鐘內就容易曬傷"
+      },
+      "condition": {
+        "clear": "晴朗",
+        "partlyCloudy": "晴時多雲",
+        "cloudy": "多雲",
+        "fog": "有霧",
+        "rain": "有雨",
+        "snow": "下雪",
+        "storm": "雷雨"
+      }
     },
     "trends": {
-      "eyebrow": "本週選物", "title": "正流行", "count": "3 件精選",
+      "eyebrow": "本週選物",
+      "title": "正流行",
+      "count": "3 件精選",
       "items": {
-        "linen": { "title": "透氣亞麻寬褲", "description": "適合悶熱午後的輕盈輪廓" },
-        "shirt": { "title": "薄透短袖襯衫", "description": "一件解決通勤與週末" },
-        "sneakers": { "title": "低飽和球鞋", "description": "用色彩為基本款收尾" }
+        "linen": {
+          "title": "透氣亞麻寬褲",
+          "description": "適合悶熱午後的輕盈輪廓"
+        },
+        "shirt": {
+          "title": "薄透短袖襯衫",
+          "description": "一件解決通勤與週末"
+        },
+        "sneakers": {
+          "title": "低飽和球鞋",
+          "description": "用色彩為基本款收尾"
+        }
       }
     }
   },
-  "settings": { "eyebrow": "衣櫥指南", "title": "設定", "description": "選擇你偏好的介面語言。", "language": "介面語言" },
+  "settings": {
+    "eyebrow": "衣櫥指南",
+    "title": "設定",
+    "description": "選擇你偏好的介面語言。",
+    "language": "介面語言"
+  },
   "error": {
     "title": "分析暫時停住了",
     "retry": "再試一次",
