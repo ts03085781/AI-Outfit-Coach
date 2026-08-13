@@ -7,3 +7,4 @@ test-results/
 *.tsbuildinfo
 .superpowers/
 .worktrees/
+.pnpm-store/
