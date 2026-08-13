@@ -15,14 +15,27 @@ export function AppNavigation() {
   const pathname = usePathname() ?? "/";
   const t = useTranslations("navigation");
 
-  return <nav aria-label={t("label")} className="app-navigation">
-    {destinations.map((destination) => {
-      const isCurrent = pathname === destination.href;
-      const Icon = destination.Icon;
-      return <Link aria-current={isCurrent ? "page" : undefined} className={isCurrent ? "is-current" : undefined} href={destination.href} key={destination.href}>
-        <span aria-hidden="true"><Icon data-testid={`navigation-icon-${destination.key}`} /></span>
-        {t(destination.key === "analyze" ? "analyzeOutfit" : destination.key)}
-      </Link>;
-    })}
-  </nav>;
+  return (
+    <nav aria-label={t("label")} className="app-navigation">
+      {destinations.map((destination) => {
+        const isCurrent = pathname === destination.href;
+        const Icon = destination.Icon;
+        return (
+          <Link
+            aria-current={isCurrent ? "page" : undefined}
+            className={isCurrent ? "is-current" : undefined}
+            href={destination.href}
+            key={destination.href}
+          >
+            <span aria-hidden="true">
+              <Icon data-testid={`navigation-icon-${destination.key}`} />
+            </span>
+            {/* {t(
+              destination.key === "analyze" ? "analyzeOutfit" : destination.key,
+            )} */}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }

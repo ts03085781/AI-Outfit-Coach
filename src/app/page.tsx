@@ -10,17 +10,40 @@ const trendItems = ["linen", "shirt", "sneakers"] as const;
 export default function HomePage() {
   const t = useTranslations("home");
 
-  return <main className="home-shell app-page-with-nav">
-    {/* <header className="home-header"><p>{t("eyebrow")}</p><Image alt={t("iconAlt")} height={34} src="/icon-512.png" width={34} /></header> */}
-    <h1>{t("title")}</h1>
-    <WeatherCard />
-    <section aria-labelledby="trends-title" className="trend-section">
-      <div className="section-heading"><div><p>{t("trends.eyebrow")}</p><h2 id="trends-title">{t("trends.title")}</h2></div><span>{t("trends.count")}</span></div>
-      <div className="trend-list">{trendItems.map((item) => {
-        const title = t(`trends.items.${item}.title`);
-        return <a href={`https://www.google.com/search?q=${encodeURIComponent(title)}`} key={item} rel="noreferrer" target="_blank"><article><span aria-hidden="true" className={`trend-swatch ${item}`} /><div><h3>{title}</h3><p>{t(`trends.items.${item}.description`)}</p></div></article></a>;
-      })}</div>
-    </section>
-    <AppNavigation />
-  </main>;
+  return (
+    <main className="home-shell app-page-with-nav">
+      <h1>{t("title")}</h1>
+      <WeatherCard />
+      <section aria-labelledby="trends-title" className="trend-section">
+        <div className="section-heading">
+          <div>
+            <p>{t("trends.eyebrow")}</p>
+          </div>
+          <span>{t("trends.count")}</span>
+        </div>
+        <div className="trend-list">
+          {trendItems.map((item) => {
+            const title = t(`trends.items.${item}.title`);
+            return (
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(title)}`}
+                key={item}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <article>
+                  <span aria-hidden="true" className={`trend-swatch ${item}`} />
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{t(`trends.items.${item}.description`)}</p>
+                  </div>
+                </article>
+              </a>
+            );
+          })}
+        </div>
+      </section>
+      <AppNavigation />
+    </main>
+  );
 }

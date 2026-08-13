@@ -44,10 +44,20 @@ export function PhotoStep({
 
   return (
     <section aria-labelledby="photo-title">
-      <button className="photo-back" type="button" onClick={onBack}>{t("back")}</button>
+      <button className="photo-back" type="button" onClick={onBack}>
+        {t("back")}
+      </button>
       <h1 id="photo-title">{t("title")}</h1>
       <p>{t("description")}</p>
-      <p>{hasPhoto ? t("chosen") : t("empty")}</p>
+      {/* <p>{hasPhoto ? t("chosen") : t("empty")}</p> */}
+      {error ? <p role="alert">{imageError(error)}</p> : null}
+      {/* The source is a local object URL and never leaves the browser through this element. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {previewUrl ? (
+        <img className="photo-preview" src={previewUrl} alt={t("preview")} />
+      ) : (
+        <div className="photo-preview photo-preview-empty" />
+      )}
       <div className="photo-picker-options">
         <label className="photo-picker" htmlFor="outfit-camera">
           <span>{t("camera")}</span>
@@ -70,29 +80,19 @@ export function PhotoStep({
             onChange={(event) => onChoosePhoto(event.target.files?.[0])}
           />
         </label>
+        <label className="consent-label">
+          <input
+            type="checkbox"
+            checked={consented}
+            onChange={(event) => {
+              const nextConsented = event.target.checked;
+              onConsentChange(nextConsented);
+              if (nextConsented) onAnalyze();
+            }}
+          />
+          {t("consent")}
+        </label>
       </div>
-      {error ? <p role="alert">{imageError(error)}</p> : null}
-      {hasPhoto && previewUrl ? (
-        <>
-          {/* The source is a local object URL and never leaves the browser through this element. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="photo-preview" src={previewUrl} alt={t("preview")} />
-          <p>{t("providerPrivacy")}</p>
-          <p>{t("localPrivacy")}</p>
-          <label className="consent-label">
-            <input
-              type="checkbox"
-              checked={consented}
-              onChange={(event) => {
-                const nextConsented = event.target.checked;
-                onConsentChange(nextConsented);
-                if (nextConsented) onAnalyze();
-              }}
-            />
-            {t("consent")}
-          </label>
-        </>
-      ) : null}
     </section>
   );
 }

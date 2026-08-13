@@ -33,7 +33,7 @@ textarea:focus-visible {
   width: min(100%, 32rem);
   min-height: 100dvh;
   margin: 0 auto;
-  padding: 18px 16px 28px;
+  padding: 30px 30px 100px;
 }
 
 .app-page-with-nav { padding-bottom: 100px; }
@@ -54,18 +54,18 @@ textarea:focus-visible {
 }
 
 .app-navigation a { display: grid; min-height: 68px; place-content: center; gap: 3px; color: #77695e; font-size: .72rem; font-weight: 700; text-align: center; text-decoration: none; }
-.app-navigation a span { font-size: 1.22rem; line-height: 1; }
+.app-navigation a span { font-size: 1.7rem; line-height: 1; }
 .app-navigation a.is-current { color: #b75036; }
 
 .home-shell,
-.settings-shell { width: min(100%, 32rem); min-height: 100dvh; margin: 0 auto; padding: 22px 16px 100px; }
+.settings-shell { width: min(100%, 32rem); min-height: 100dvh; margin: 0 auto; padding: 30px 30px 100px; }
 .home-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
 .home-header p,
 .section-heading p,
-.settings-shell section > p:first-child { margin: 0; color: #897669; font-size: .72rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.settings-shell section > p:first-child { margin: 0; color: #897669; font-size: 1.1rem; letter-spacing: .11em; text-transform: uppercase; }
 .home-header img { width: 34px; height: 34px; }
 .home-shell > h1,
-.settings-shell h1 { max-width: 12ch; margin: 0 0 22px; color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.1rem, 11vw, 3rem); font-weight: 500; letter-spacing: -.06em; }
+.settings-shell h1 { margin: 0 0 22px; color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.1rem, 11vw, 3rem); font-weight: 500; letter-spacing: -.06em; }
 .weather-card { padding: 20px; color: #3d2d1c; background: #f4dfbf; border: 1px solid #e5c89b; border-radius: 8px; }
 .weather-card-empty { display: grid; min-height: 174px; place-content: center; text-align: center; }
 .weather-card-empty p { margin: 0; color: #6e5841; }
@@ -76,17 +76,17 @@ textarea:focus-visible {
 .weather-condition { margin: 8px 0 0; color: #6e5841; font-size: .85rem; }
 .weather-icon { font-size: 3.5rem; }
 .weather-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 22px 0 0; }
-.weather-details div { padding: 10px; background: #faedd7; }
+.weather-details div { padding: 10px; background: #faedd7; border-radius: 6px; }
 .weather-details dt { color: #735d46; font-size: .72rem; }
-.weather-details dd { margin: 4px 0 0; font-size: .92rem; font-weight: 800; }
+.weather-details dd { margin: 4px 0 0; font-size: 1.1rem; font-weight: 600; }
 .weather-details dd small { display: block; margin-top: 5px; color: #735d46; font-size: .68rem; font-weight: 600; line-height: 1.4; }
 .trend-section { margin-top: 28px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 11px; }
 .section-heading h2 { margin: 4px 0 0; color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: 1.5rem; font-weight: 500; }
-.section-heading > span { color: #897669; font-size: .75rem; font-weight: 700; }
+.section-heading > span { color: #897669; font-size: .75rem; }
 .trend-list { display: grid; gap: 9px; }.trend-list > a { color: inherit; text-decoration: none; }
 .trend-list article { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 9px; background: #fffdfa; border: 1px solid #eadfd4; border-radius: 5px; }
-.trend-swatch { width: 48px; height: 48px; flex: none; background: #d9d3a6; }
+.trend-swatch { width: 48px; height: 48px; flex: none; background: #d9d3a6; border-radius: 6px; }
 .trend-swatch.shirt { background: #ddbb9d; }.trend-swatch.sneakers { background: #c8c5de; }
 .trend-list h3 { margin: 0; color: #493629; font-size: .88rem; }.trend-list p { margin: 4px 0 0; color: #897669; font-size: .75rem; }
 .settings-shell { display: grid; place-items: center; text-align: center; }.settings-shell section { max-width: 24rem; }.settings-shell h1 { max-width: none; margin-inline: auto; }.settings-shell section > p:last-child { color: #77695e; line-height: 1.6; }
@@ -187,11 +187,12 @@ textarea:focus-visible {
 .flow-card {
   position: relative;
   min-width: 0;
-  padding: 24px;
-  background: #fff;
-  border: 1px solid #d6e0e3;
-  border-radius: 20px;
-  box-shadow: 0 12px 30px rgb(23 32 42 / 7%);
+  padding-top: 16px;
+  /* padding: 24px; */
+  /* background: #fff; */
+  /* border: 1px solid #d6e0e3; */
+  /* border-radius: 20px; */
+  /* box-shadow: 0 12px 30px rgb(23 32 42 / 7%); */
 }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
@@ -208,14 +209,14 @@ p { color: #61707b; line-height: 1.55; }
 
 button { min-width: 44px; min-height: 44px; }
 
-.occasion-grid { display: grid; gap: 10px; margin-top: 24px; }
+.occasion-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
 
 .optional-context { margin-top: 18px; color: #61707b; }
 .optional-context summary { min-height: 44px; padding: 11px 0; cursor: pointer; font-weight: 700; }
 .context-fields { display: grid; gap: 12px; padding: 10px 0 4px; }
 .context-fields label { display: grid; gap: 6px; font-size: .92rem; font-weight: 650; }
 .context-fields input,
-.context-fields select { min-height: 44px; width: 100%; padding: 9px 10px; border: 1px solid #b9c9cf; border-radius: 10px; background: #fff; }
+.context-fields select { min-height: 44px; width: 100%; padding: 9px 10px; border: 1px solid #eadfd4; border-radius: 10px; background: #fffdfa; }
 
 .occasion-grid button,
 .photo-picker {
@@ -224,18 +225,19 @@ button { min-width: 44px; min-height: 44px; }
   width: 100%;
   min-height: 52px;
   padding: 13px 15px;
-  color: #17202a;
-  background: #fff;
-  border: 1px solid #b9c9cf;
+  background: #fffdfa;
+  border: 1px solid #eadfd4;
   border-radius: 13px;
   cursor: pointer;
   text-align: left;
+  color:#493629;
+  width: calc(50% - 5px);
 }
 
 .occasion-grid button:hover,
-.photo-picker:hover { border-color: #176b87; }
+.photo-picker:hover { border-color: #493629; }
 
-.photo-picker-options { display: flex; flex-flow: column; gap: 10px; margin: 22px 0 12px; }
+.photo-picker-options { display: flex; flex-flow: column; gap: 10px; margin: 22px 0 12px; align-items: center; justify-content: center; cursor: pointer; }
 .photo-picker { display: flex; flex-flow: column; gap: 8px; margin: 0; }
 .photo-picker input { display:none; }
 
@@ -256,8 +258,8 @@ button { min-width: 44px; min-height: 44px; }
 .photo-back { min-height: 44px; margin: -8px 0 14px -8px; padding: 8px; color: #176b87; background: transparent; border: 0; cursor: pointer; font-weight: 700; }
 .consent-label { display: flex; min-height: 44px; gap: 12px; align-items: center; margin-top: 22px; padding-block: 10px; cursor: pointer; line-height: 1.45; }
 .consent-label input { width: 20px; height: 20px; margin-top: 2px; accent-color: #176b87; }
-.photo-preview { display: block; width: 100%; max-height: 22rem; margin: 18px 0; object-fit: contain; background: #f3f7f8; border-radius: 13px; }
-.summary-card { padding: 16px; background: #e7f1f4; border-radius: 13px; }
+.photo-preview { display: block; width: 100%; height: 22rem; margin: 18px 0; object-fit: contain; background: #f4dfbf; border-radius: 13px; }
+.summary-card { padding: 16px; background: #f4dfbf; border-radius: 13px; }
 .summary-card p { margin: 0; color: #17202a; font-weight: 650; }
 .fit-label { color: #17202a; font-weight: 700; }
 .suggestion-list { padding: 0; list-style: none; }
@@ -271,7 +273,7 @@ button { min-width: 44px; min-height: 44px; }
 .result-step textarea { display: block; width: 100%; min-height: 96px; margin-top: 8px; padding: 10px; border: 1px solid #b9c9cf; border-radius: 10px; resize: vertical; }
 .result-step > section button { margin: 6px 8px 6px 0; padding: 10px 14px; border: 1px solid #176b87; border-radius: 10px; background: #fff; color: #176b87; font-weight: 700; }
 .result-navigation { display: grid; gap: 10px; margin-top: 28px; }
-.result-navigation button { min-height: 44px; padding: 10px 14px; border: 1px solid #61707b; border-radius: 10px; background: #fff; color: #17202a; cursor: pointer; font-weight: 700; }
+.result-navigation button { min-height: 44px; padding: 10px 14px;   background: #fffdfa; border: 1px solid #eadfd4; color:#493629; border-radius: 13px; cursor: pointer; font-weight: 700; }
 .result-navigation button:focus-visible { outline: 3px solid #f3a66b; outline-offset: 3px; }
 
 @media (prefers-reduced-motion: no-preference) {

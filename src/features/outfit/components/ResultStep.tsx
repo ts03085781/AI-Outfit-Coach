@@ -23,7 +23,14 @@ function fitMessageKey(fit: string) {
   return "fitPoor";
 }
 
-export function ResultStep({ result, analysisToken, locale, onRetake, onReselectPhoto, onRestart }: ResultStepProps) {
+export function ResultStep({
+  result,
+  analysisToken,
+  locale,
+  onRetake,
+  onReselectPhoto,
+  onRestart,
+}: ResultStepProps) {
   const t = useTranslations("result");
   const [question, setQuestion] = useState("");
   const [alternative, setAlternative] = useState<string>();
@@ -54,15 +61,20 @@ export function ResultStep({ result, analysisToken, locale, onRetake, onReselect
       const response = await fetch("/api/follow-up", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ analysis: result, analysisToken, question: trimmedQuestion, locale }),
+        body: JSON.stringify({
+          analysis: result,
+          analysisToken,
+          question: trimmedQuestion,
+          locale,
+        }),
       });
       const body: unknown = await response.json();
       if (
-        !response.ok
-        || typeof body !== "object"
-        || body === null
-        || !("alternative" in body)
-        || typeof body.alternative !== "string"
+        !response.ok ||
+        typeof body !== "object" ||
+        body === null ||
+        !("alternative" in body) ||
+        typeof body.alternative !== "string"
       ) {
         throw new Error("follow-up failed");
       }
@@ -88,9 +100,13 @@ export function ResultStep({ result, analysisToken, locale, onRetake, onReselect
       </article>
       <h2>{t("strengths")}</h2>
       <ul>
-        {result.strengths.map((strength) => <li key={strength}>{strength}</li>)}
+        {result.strengths.map((strength) => (
+          <li key={strength}>{strength}</li>
+        ))}
       </ul>
-      <p className="fit-label">{t("fit", { fit: t(fitMessageKey(result.occasion_fit)) })}</p>
+      <p className="fit-label">
+        {t("fit", { fit: t(fitMessageKey(result.occasion_fit)) })}
+      </p>
       {primarySuggestion ? (
         <>
           <h2>{t("suggestions")}</h2>
@@ -105,14 +121,16 @@ export function ResultStep({ result, analysisToken, locale, onRetake, onReselect
                 <li key={suggestion.action}>
                   <strong>{suggestion.action}</strong>
                   <span>{suggestion.reason}</span>
-                  <span>{t("effect", { effect: suggestion.expected_effect })}</span>
+                  <span>
+                    {t("effect", { effect: suggestion.expected_effect })}
+                  </span>
                 </li>
               ))}
             </ul>
           ) : null}
         </>
       ) : null}
-      <section aria-labelledby="follow-up-title">
+      {/* <section aria-labelledby="follow-up-title">
         <h2 id="follow-up-title">{t("followUpTitle")}</h2>
         <label>
           {t("followUpLabel")}
@@ -132,16 +150,32 @@ export function ResultStep({ result, analysisToken, locale, onRetake, onReselect
         </button>
         {alternative ? <p>{alternative}</p> : null}
         {followUpError ? <p role="alert">{t("followUpError")}</p> : null}
-      </section>
+      </section> */}
       <section aria-labelledby="feedback-title">
         <h2 id="feedback-title">{t("feedbackTitle")}</h2>
-        <button type="button" disabled={feedbackSent} onClick={() => submitFeedback(true)}>{t("helpful")}</button>
-        <button type="button" disabled={feedbackSent} onClick={() => submitFeedback(false)}>{t("notHelpful")}</button>
+        <button
+          type="button"
+          disabled={feedbackSent}
+          onClick={() => submitFeedback(true)}
+        >
+          {t("helpful")}
+        </button>
+        <button
+          type="button"
+          disabled={feedbackSent}
+          onClick={() => submitFeedback(false)}
+        >
+          {t("notHelpful")}
+        </button>
         {feedbackSent ? <p>{t("thanks")}</p> : null}
       </section>
       <nav className="result-navigation" aria-label={t("navigation")}>
-        <button type="button" onClick={onReselectPhoto}>{t("reselect")}</button>
-        <button type="button" onClick={onRestart}>{t("restart")}</button>
+        <button type="button" onClick={onReselectPhoto}>
+          {t("reselect")}
+        </button>
+        <button type="button" onClick={onRestart}>
+          {t("restart")}
+        </button>
       </nav>
     </section>
   );
