@@ -2,13 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  BsCloud,
+  BsCloudFog,
+  BsCloudLightningRain,
+  BsCloudRain,
+  BsCloudSun,
+  BsSnow,
+  BsSun,
+} from "react-icons/bs";
 
 import { fetchWeatherSnapshot, type WeatherSnapshot } from "@/features/home/weather";
 
 type WeatherState = { status: "loading" | "unavailable" | "blocked" | "ready"; snapshot?: WeatherSnapshot };
 
 function iconFor(condition: WeatherSnapshot["condition"]) {
-  return ({ clear: "☀", partlyCloudy: "⛅", cloudy: "☁", fog: "〰", rain: "☂", snow: "❄", storm: "ϟ" })[condition];
+  return ({
+    clear: BsSun,
+    partlyCloudy: BsCloudSun,
+    cloudy: BsCloud,
+    fog: BsCloudFog,
+    rain: BsCloudRain,
+    snow: BsSnow,
+    storm: BsCloudLightningRain,
+  })[condition];
 }
 
 export function WeatherCard() {
@@ -41,10 +58,11 @@ export function WeatherCard() {
   </section>;
 
   const snapshot = weather.snapshot;
+  const WeatherIcon = iconFor(snapshot.condition);
   return <section aria-label={t("label")} className="weather-card">
     <div className="weather-main">
       <div><p className="weather-location">{t("location")}</p><p className="weather-temperature">{snapshot.currentTemperature}°</p><p className="weather-condition">{t(`condition.${snapshot.condition}`)}</p></div>
-      <span aria-hidden="true" className="weather-icon">{iconFor(snapshot.condition)}</span>
+      <span aria-hidden="true" className="weather-icon"><WeatherIcon data-testid={`weather-icon-${snapshot.condition}`} /></span>
     </div>
     <dl className="weather-details">
       <div><dt>{t("range")}</dt><dd>{snapshot.lowTemperature}° — {snapshot.highTemperature}°</dd></div>
