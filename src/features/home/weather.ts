@@ -8,6 +8,30 @@ export type WeatherSnapshot = {
   condition: WeatherCondition;
 };
 
+export type WeatherCoordinates = {
+  latitude: number;
+  longitude: number;
+};
+
+export type CachedWeather = WeatherCoordinates & {
+  snapshot: WeatherSnapshot;
+  cachedAt: number;
+};
+
+export const WEATHER_CACHE_KEY = "ai-outfit-coach.weather";
+export const WEATHER_CACHE_TTL_MS = 60 * 60_000;
+export const WEATHER_CACHE_DISTANCE_KM = 5;
+
+const weatherConditions: WeatherCondition[] = [
+  "clear",
+  "partlyCloudy",
+  "cloudy",
+  "fog",
+  "rain",
+  "snow",
+  "storm",
+];
+
 type WeatherResponse = {
   current?: { temperature_2m?: unknown; weather_code?: unknown };
   daily?: {
@@ -20,6 +44,66 @@ type WeatherResponse = {
 function firstNumber(value: unknown): number | undefined {
   const candidate = Array.isArray(value) ? value[0] : undefined;
   return typeof candidate === "number" && Number.isFinite(candidate) ? candidate : undefined;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isWeatherSnapshot(value: unknown): value is WeatherSnapshot {
+  if (!value || typeof value !== "object") return false;
+  const snapshot = value as Record<string, unknown>;
+  return isFiniteNumber(snapshot.currentTemperature)
+    && isFiniteNumber(snapshot.highTemperature)
+    && isFiniteNumber(snapshot.lowTemperature)
+    && isFiniteNumber(snapshot.uvIndex)
+    && typeof snapshot.condition === "string"
+    && weatherConditions.includes(snapshot.condition as WeatherCondition);
+}
+
+function distanceInKilometres(from: WeatherCoordinates, to: WeatherCoordinates): number {
+  const degreesToRadians = Math.PI / 180;
+  const latitudeDelta = (to.latitude - from.latitude) * degreesToRadians;
+  const longitudeDelta = (to.longitude - from.longitude) * degreesToRadians;
+  const fromLatitude = from.latitude * degreesToRadians;
+  const toLatitude = to.latitude * degreesToRadians;
+  const haversine = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+  return 6_371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+export function readCachedWeather(storage: Pick<Storage, "getItem">): CachedWeather | undefined {
+  try {
+    const serialized = storage.getItem(WEATHER_CACHE_KEY);
+    if (!serialized) return undefined;
+    const value = JSON.parse(serialized) as Record<string, unknown>;
+    if (
+      !value || typeof value !== "object"
+      || !isFiniteNumber(value.latitude)
+      || !isFiniteNumber(value.longitude)
+      || !isFiniteNumber(value.cachedAt)
+      || !isWeatherSnapshot(value.snapshot)
+    ) return undefined;
+    return value as CachedWeather;
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeCachedWeather(
+  storage: Pick<Storage, "setItem">,
+  cachedWeather: CachedWeather,
+): void {
+  storage.setItem(WEATHER_CACHE_KEY, JSON.stringify(cachedWeather));
+}
+
+export function shouldRefreshWeather(
+  cachedWeather: CachedWeather,
+  coordinates: WeatherCoordinates,
+  now: number,
+): boolean {
+  return now - cachedWeather.cachedAt > WEATHER_CACHE_TTL_MS
+    || distanceInKilometres(cachedWeather, coordinates) > WEATHER_CACHE_DISTANCE_KM;
 }
 
 export function weatherConditionFromCode(code: number): WeatherCondition {
