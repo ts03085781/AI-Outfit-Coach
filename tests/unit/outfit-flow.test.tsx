@@ -99,7 +99,11 @@ describe("outfit flow", () => {
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
     fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
+    const status = screen.getByRole("status");
+    const spinner = status.querySelector("svg[aria-hidden='true']");
+    expect(status).toHaveTextContent("正在分析你的穿搭");
+    expect(spinner).toHaveClass("analyzing-spinner");
+    expect(spinner?.parentElement).toHaveClass("analyzing-loader");
     expect(screen.queryByLabelText("選擇語言")).not.toBeInTheDocument();
     pendingResponse.resolve(analysisResponse());
     await screen.findByRole("heading", { name: "你的穿搭建議" });

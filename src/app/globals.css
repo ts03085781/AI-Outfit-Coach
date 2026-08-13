@@ -209,6 +209,23 @@ p { color: #61707b; line-height: 1.55; }
 
 button { min-width: 44px; min-height: 44px; }
 
+.analyzing-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+}
+
+.analyzing-spinner {
+  width: 32px;
+  height: 32px;
+  animation: analyzing-spinner-rotation 0.8s linear infinite;
+}
+
+@keyframes analyzing-spinner-rotation {
+  to { transform: rotate(360deg); }
+}
+
 .occasion-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
 
 .optional-context { margin-top: 18px; color: #61707b; }

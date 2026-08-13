@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
+import { ImSpinner8 } from "react-icons/im";
 
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
 import { ResultStep } from "@/features/outfit/components/ResultStep";
@@ -127,6 +128,9 @@ export function OutfitFlowPage() {
             <section role="status" aria-live="polite">
               <h1>{t("analyzing.title")}</h1>
               <p>{t("analyzing.description")}</p>
+              <div className="analyzing-loader">
+                <ImSpinner8 className="analyzing-spinner" aria-hidden="true" />
+              </div>
             </section>
           ) : null}
           {flow.state === "result" && flow.result ? (
