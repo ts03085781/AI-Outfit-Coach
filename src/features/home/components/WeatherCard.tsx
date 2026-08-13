@@ -12,7 +12,13 @@ import {
   BsSun,
 } from "react-icons/bs";
 
-import { fetchWeatherSnapshot, type WeatherSnapshot } from "@/features/home/weather";
+import {
+  fetchWeatherSnapshot,
+  readCachedWeather,
+  shouldRefreshWeather,
+  type WeatherSnapshot,
+  writeCachedWeather,
+} from "@/features/home/weather";
 
 type WeatherState = { status: "loading" | "unavailable" | "blocked" | "ready"; snapshot?: WeatherSnapshot };
 
@@ -40,21 +46,34 @@ export function WeatherCard() {
   const t = useTranslations("home.weather");
   const [weather, setWeather] = useState<WeatherState>({ status: "loading" });
 
-  const requestWeather = () => {
+  const requestWeather = (force = false) => {
+    const cachedWeather = readCachedWeather(localStorage);
+    if (cachedWeather) {
+      setWeather({ status: "ready", snapshot: cachedWeather.snapshot });
+    } else {
+      setWeather({ status: "loading" });
+    }
     if (!navigator.geolocation) {
-      setWeather({ status: "unavailable" });
+      if (!cachedWeather) setWeather({ status: "unavailable" });
       return;
     }
-    setWeather({ status: "loading" });
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
+        const coordinates = { latitude: coords.latitude, longitude: coords.longitude };
+        if (cachedWeather && !force && !shouldRefreshWeather(cachedWeather, coordinates, Date.now())) return;
         try {
-          setWeather({ status: "ready", snapshot: await fetchWeatherSnapshot(coords.latitude, coords.longitude) });
+          const snapshot = await fetchWeatherSnapshot(coordinates.latitude, coordinates.longitude);
+          writeCachedWeather(localStorage, { ...coordinates, snapshot, cachedAt: Date.now() });
+          setWeather({ status: "ready", snapshot });
         } catch {
-          setWeather({ status: "unavailable" });
+          if (!cachedWeather) setWeather({ status: "unavailable" });
         }
       },
-      (error) => setWeather({ status: error.code === error.PERMISSION_DENIED ? "blocked" : "unavailable" }),
+      (error) => {
+        if (!cachedWeather) {
+          setWeather({ status: error.code === error.PERMISSION_DENIED ? "blocked" : "unavailable" });
+        }
+      },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 15 * 60_000 },
     );
   };
@@ -62,7 +81,7 @@ export function WeatherCard() {
   useEffect(() => { requestWeather(); }, []);
 
   if (weather.status !== "ready" || !weather.snapshot) return <section aria-live="polite" className="weather-card weather-card-empty">
-    {weather.status === "loading" ? <p>{t("loading")}</p> : <button onClick={requestWeather} type="button">{t(weather.status === "blocked" ? "blocked" : "retry")}</button>}
+    {weather.status === "loading" ? <p>{t("loading")}</p> : <button onClick={() => requestWeather(true)} type="button">{t(weather.status === "blocked" ? "blocked" : "retry")}</button>}
   </section>;
 
   const snapshot = weather.snapshot;
