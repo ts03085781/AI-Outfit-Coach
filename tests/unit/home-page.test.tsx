@@ -5,6 +5,7 @@ import HomePage from "@/app/page";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 beforeEach(() => {
+  localStorage.clear();
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: { getCurrentPosition: vi.fn((_success, error) => error({ code: 1 })) },
