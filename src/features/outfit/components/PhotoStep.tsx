@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
 
 import type { ImagePreparationErrorCode } from "../image";
 
 type PhotoStepProps = {
-  hasPhoto: boolean;
   image?: Blob;
   consented: boolean;
   error?: ImagePreparationErrorCode;
@@ -17,7 +16,6 @@ type PhotoStepProps = {
 };
 
 export function PhotoStep({
-  hasPhoto,
   image,
   consented,
   error,
@@ -28,6 +26,7 @@ export function PhotoStep({
 }: PhotoStepProps) {
   const t = useTranslations("photo");
   const imageError = useTranslations("imageError");
+  const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string>();
 
   useEffect(() => {
@@ -42,6 +41,14 @@ export function PhotoStep({
     };
   }, [image]);
 
+  const hasPreview = Boolean(image && previewUrl);
+  const openPhotoPicker = () => inputRef.current?.click();
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    onChoosePhoto(file);
+  };
+
   return (
     <section aria-labelledby="photo-title">
       <button className="photo-back" type="button" onClick={onBack}>
@@ -49,37 +56,37 @@ export function PhotoStep({
       </button>
       <h1 id="photo-title">{t("title")}</h1>
       <p>{t("description")}</p>
-      {/* <p>{hasPhoto ? t("chosen") : t("empty")}</p> */}
       {error ? <p role="alert">{imageError(error)}</p> : null}
-      {/* The source is a local object URL and never leaves the browser through this element. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {previewUrl ? (
-        <img className="photo-preview" src={previewUrl} alt={t("preview")} />
+      <input
+        ref={inputRef}
+        id="outfit-photo"
+        className="photo-file-input"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handlePhotoChange}
+      />
+      {hasPreview ? (
+        <div className="photo-preview-shell">
+          {/* The source is a local object URL and never leaves the browser through this element. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="photo-preview" src={previewUrl} alt={t("preview")} />
+          <button className="photo-replace" type="button" onClick={openPhotoPicker}>
+            {t("replacePhoto")}
+          </button>
+        </div>
       ) : (
-        <div className="photo-preview photo-preview-empty" />
+        <button
+          aria-label={t("addPhoto")}
+          className="photo-upload-empty"
+          type="button"
+          onClick={openPhotoPicker}
+        >
+          <span className="photo-upload-plus" aria-hidden="true">+</span>
+          <span className="photo-upload-title">{t("addPhoto")}</span>
+          <span className="photo-upload-hint">{t("fileHint")}</span>
+        </button>
       )}
-      <div className="photo-picker-options">
-        <label className="photo-picker" htmlFor="outfit-camera">
-          <span>{t("camera")}</span>
-          <input
-            id="outfit-camera"
-            aria-label={t("camera")}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            capture="environment"
-            onChange={(event) => onChoosePhoto(event.target.files?.[0])}
-          />
-        </label>
-        <label className="photo-picker" htmlFor="outfit-library">
-          <span>{t("library")}</span>
-          <input
-            id="outfit-library"
-            aria-label={t("library")}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(event) => onChoosePhoto(event.target.files?.[0])}
-          />
-        </label>
+      {hasPreview ? (
         <label className="consent-label">
           <input
             type="checkbox"
@@ -92,7 +99,7 @@ export function PhotoStep({
           />
           {t("consent")}
         </label>
-      </div>
+      ) : null}
     </section>
   );
 }

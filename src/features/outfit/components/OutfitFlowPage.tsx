@@ -114,7 +114,6 @@ export function OutfitFlowPage() {
           ) : null}
           {flow.state === "photo" ? (
             <PhotoStep
-              hasPhoto={Boolean(flow.image)}
               image={flow.image}
               consented={flow.consented}
               error={flow.photoError}

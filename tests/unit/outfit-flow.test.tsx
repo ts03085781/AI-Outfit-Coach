@@ -43,10 +43,12 @@ function analysisResponse(analysis = completeAnalysis) {
   }), { status: 200 });
 }
 
-function chooseOccasionAndPhoto(source = "選擇照片") {
+function chooseOccasionAndPhoto(
+  file = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" }),
+) {
   fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-  fireEvent.change(screen.getByLabelText(source), {
-    target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
+  fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
+    target: { files: [file] },
   });
 }
 
@@ -93,7 +95,7 @@ describe("outfit flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
     expect(screen.queryByLabelText("選擇語言")).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("選擇照片"), {
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -109,29 +111,45 @@ describe("outfit flow", () => {
     await screen.findByRole("heading", { name: "你的穿搭建議" });
   });
 
-  it("offers separate camera and photo-library inputs", () => {
+  it("shows one upload surface and hides consent before a photo is prepared", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
-    expect(screen.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
-    const cameraInput = screen.getByLabelText("拍照");
-    const libraryInput = screen.getByLabelText("選擇照片");
-    expect(cameraInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
-    expect(cameraInput).toHaveAttribute("capture", "environment");
-    expect(libraryInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
-    expect(libraryInput).not.toHaveAttribute("capture");
+    expect(screen.getByRole("button", { name: "加入一張全身照" })).toBeVisible();
+    expect(screen.getByText("JPG、PNG、WebP，單張照片")).toBeVisible();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "拍照" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "選擇照片" })).not.toBeInTheDocument();
+
+    const input = document.querySelector("#outfit-photo");
+    expect(input).toHaveAttribute("type", "file");
+    expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+    expect(input).not.toHaveAttribute("capture");
   });
 
-  it.each(["拍照", "選擇照片"])("previews a photo from the %s input", async (source) => {
+  it("opens the shared file input from the empty upload surface", () => {
+    const inputClick = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
     render(<HomePage />);
-    chooseOccasionAndPhoto(source);
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "加入一張全身照" }));
+
+    expect(inputClick).toHaveBeenCalledTimes(1);
+    inputClick.mockRestore();
+  });
+
+  it("shows replacement and consent controls only after preparation succeeds", async () => {
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
 
     expect(await screen.findByRole("img", { name: "本機穿搭照片預覽" })).toHaveAttribute(
       "src",
       "blob:local-preview",
     );
+    expect(screen.getByRole("button", { name: "更換照片" })).toBeVisible();
     expect(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ })).not.toBeChecked();
+    expect(screen.queryByRole("button", { name: "加入一張全身照" })).not.toBeInTheDocument();
   });
 
   it("shows exact occasion labels and forwards low-burden optional context", async () => {
@@ -147,7 +165,7 @@ describe("outfit flow", () => {
       target: { value: "專業但親切" },
     });
     fireEvent.click(screen.getByRole("button", { name: "工作／面試" }));
-    fireEvent.change(screen.getByLabelText("選擇照片"), {
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -197,7 +215,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-    fireEvent.change(screen.getByLabelText("選擇照片"), {
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
     fireEvent.click(screen.getByRole("button", { name: "返回" }));
@@ -216,11 +234,11 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-    fireEvent.change(screen.getByLabelText("選擇照片"), {
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["old"], "old.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.change(screen.getByLabelText("選擇照片"), {
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["new"], "new.jpg", { type: "image/jpeg" })] },
     });
 
@@ -412,7 +430,7 @@ describe("outfit flow", () => {
     expect(screen.queryByRole("heading", { name: "你的穿搭建議" })).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("選擇照片"), {
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit-two"], "outfit-two.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
