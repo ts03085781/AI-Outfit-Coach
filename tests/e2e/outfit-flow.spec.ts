@@ -83,6 +83,7 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.locator("#outfit-photo")).not.toHaveAttribute("capture");
 
     const uploadBox = await upload.boundingBox();
+    expect(uploadBox?.width).toBeGreaterThanOrEqual(44);
     expect(uploadBox?.height).toBeGreaterThanOrEqual(352);
     await expect(upload).toHaveCSS("border-top-style", "dashed");
     await page.keyboard.press("Tab");
@@ -107,18 +108,55 @@ test.describe("mock-only outfit flow", () => {
 
     const replace = page.getByRole("button", { name: "更換照片" });
     await expect(replace).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }))
-      .not.toBeChecked();
+    const consent = page.getByRole("checkbox", {
+      name: /勾選後會立即上傳並開始分析/,
+    });
+    await expect(consent).not.toBeChecked();
     const fileChooserPromise = page.waitForEvent("filechooser");
     await replace.click();
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixture);
-    await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }))
-      .not.toBeChecked();
+    const preview = page.getByRole("img", { name: "本機穿搭照片預覽" });
+    const previewShell = page.locator(".photo-preview-shell");
+    await expect(preview).toBeVisible();
+    await expect(consent).not.toBeChecked();
 
+    const previewBox = await preview.boundingBox();
+    const previewShellBox = await previewShell.boundingBox();
     const replaceBox = await replace.boundingBox();
+    expect(previewBox).not.toBeNull();
+    expect(previewShellBox).not.toBeNull();
+    expect(replaceBox).not.toBeNull();
+    if (!previewBox || !previewShellBox || !replaceBox) {
+      throw new Error("Expected rendered preview controls to have bounding boxes");
+    }
+    expect(previewBox.x).toBeGreaterThanOrEqual(previewShellBox.x);
+    expect(previewBox.y).toBeGreaterThanOrEqual(previewShellBox.y);
+    expect(previewBox.x + previewBox.width)
+      .toBeLessThanOrEqual(previewShellBox.x + previewShellBox.width);
+    expect(previewBox.y + previewBox.height)
+      .toBeLessThanOrEqual(previewShellBox.y + previewShellBox.height);
+    expect(replaceBox.width).toBeGreaterThanOrEqual(44);
     expect(replaceBox?.height).toBeGreaterThanOrEqual(44);
+    expect(replaceBox.x + (replaceBox.width / 2))
+      .toBeGreaterThan(previewShellBox.x + (previewShellBox.width / 2));
+    expect(replaceBox.y + (replaceBox.height / 2))
+      .toBeLessThan(previewShellBox.y + (previewShellBox.height / 2));
+    expect(replaceBox.x).toBeGreaterThanOrEqual(previewShellBox.x);
+    expect(replaceBox.y).toBeGreaterThanOrEqual(previewShellBox.y);
+    expect(replaceBox.x + replaceBox.width)
+      .toBeLessThanOrEqual(previewShellBox.x + previewShellBox.width);
+    expect(replaceBox.y + replaceBox.height)
+      .toBeLessThanOrEqual(previewShellBox.y + previewShellBox.height);
+    expect(await replace.evaluate((element) => {
+      const channels = getComputedStyle(element).backgroundColor.match(/[\d.]+/g)?.map(Number);
+      return channels?.length === 4 ? channels[3] : channels?.length === 3 ? 1 : 0;
+    })).toBeGreaterThanOrEqual(0.9);
+
+    const consentTarget = page.locator("label", { has: consent });
+    const consentTargetBox = await consentTarget.boundingBox();
+    expect(consentTargetBox?.width).toBeGreaterThanOrEqual(44);
+    expect(consentTargetBox?.height).toBeGreaterThanOrEqual(44);
     await page.keyboard.press("Tab");
     await replace.focus();
     await expect(replace).toBeFocused();
