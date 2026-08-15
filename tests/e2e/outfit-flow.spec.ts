@@ -41,10 +41,13 @@ async function mockSuccessfulAnalysis(page: Page) {
   });
 }
 
-async function reachPhotoStep(page: Page, occasion = "日常外出", source = "選擇照片") {
+async function reachPhotoStep(page: Page, occasion = "日常外出") {
   await page.goto("/analyze");
   await page.getByRole("button", { name: occasion }).click();
-  await page.getByLabel(source).setInputFiles(fixture);
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "加入一張全身照" }).click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles(fixture);
   await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
 }
 
@@ -65,12 +68,28 @@ test.beforeEach(async ({ context }) => {
 test.describe("mock-only outfit flow", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("offers separate camera and photo-library inputs", async ({ page }) => {
+  test("shows one empty upload surface before photo selection", async ({ page }) => {
     await page.goto("/analyze");
     await page.getByRole("button", { name: "日常外出" }).click();
 
-    await expect(page.getByLabel("拍照")).toHaveAttribute("capture", "environment");
-    await expect(page.getByLabel("選擇照片")).not.toHaveAttribute("capture");
+    const upload = page.getByRole("button", { name: "加入一張全身照" });
+    await expect(upload).toBeVisible();
+    await expect(page.getByText("JPG、PNG、WebP，單張照片")).toBeVisible();
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expect(page.locator("#outfit-photo")).toHaveAttribute(
+      "accept",
+      "image/jpeg,image/png,image/webp",
+    );
+    await expect(page.locator("#outfit-photo")).not.toHaveAttribute("capture");
+
+    const uploadBox = await upload.boundingBox();
+    expect(uploadBox?.height).toBeGreaterThanOrEqual(352);
+    await expect(upload).toHaveCSS("border-top-style", "dashed");
+    await page.keyboard.press("Tab");
+    await upload.focus();
+    await expect(upload).toBeFocused();
+    expect(await upload.evaluate((element) => getComputedStyle(element).outlineStyle))
+      .not.toBe("none");
   });
 
   test("uses the language selected in settings", async ({ page }) => {
@@ -83,12 +102,28 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByLabel("Select language")).toHaveCount(0);
   });
 
-  test("accepts a photo from either upload source", async ({ page }) => {
-    for (const source of ["拍照", "選擇照片"]) {
-      await reachPhotoStep(page, "日常外出", source);
-      await expect(page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }))
-        .not.toBeChecked();
-    }
+  test("replaces a prepared photo and restores consent only when ready", async ({ page }) => {
+    await reachPhotoStep(page);
+
+    const replace = page.getByRole("button", { name: "更換照片" });
+    await expect(replace).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }))
+      .not.toBeChecked();
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await replace.click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(fixture);
+    await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }))
+      .not.toBeChecked();
+
+    const replaceBox = await replace.boundingBox();
+    expect(replaceBox?.height).toBeGreaterThanOrEqual(44);
+    await page.keyboard.press("Tab");
+    await replace.focus();
+    await expect(replace).toBeFocused();
+    expect(await replace.evaluate((element) => getComputedStyle(element).outlineStyle))
+      .not.toBe("none");
   });
 
   for (const occasion of occasions) {
