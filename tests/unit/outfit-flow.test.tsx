@@ -139,6 +139,22 @@ describe("outfit flow", () => {
     inputClick.mockRestore();
   });
 
+  it("clears the shared input so the same file can be selected again", async () => {
+    render(<HomePage />);
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    const input = document.querySelector("#outfit-photo") as HTMLInputElement;
+    const file = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+    Object.defineProperty(input, "value", {
+      configurable: true,
+      writable: true,
+      value: "C:\\fakepath\\outfit.jpg",
+    });
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(input).toHaveValue(""));
+  });
+
   it("shows replacement and consent controls only after preparation succeeds", async () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
@@ -234,15 +250,20 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
-    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
+    const input = document.querySelector("#outfit-photo") as HTMLInputElement;
+    fireEvent.change(input, {
       target: { files: [new File(["old"], "old.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
+    fireEvent.change(input, {
       target: { files: [new File(["new"], "new.jpg", { type: "image/jpeg" })] },
     });
 
-    await waitFor(() => expect(screen.queryByRole("checkbox")).not.toBeInTheDocument());
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "加入一張全身照" })).toBeVisible();
+      expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    });
     expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/analyze")).toBe(false);
 
     pendingReplacement.resolve(new File(["new"], "new.jpg", { type: "image/jpeg" }));
