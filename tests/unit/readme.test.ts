@@ -12,4 +12,13 @@ describe("README setup", () => {
     expect(browserInstall).toBeGreaterThan(dependencyInstall);
     expect(e2eRun).toBeGreaterThan(browserInstall);
   });
+
+  it("documents the automatic photo precheck and its isolated browser-test mock", () => {
+    const readme = readFileSync("README.md", "utf8");
+
+    expect(readme).toContain("OPENAI_PHOTO_CHECK_MODEL");
+    expect(readme).toContain("選取照片後會先自動上傳給 AI 供應商進行規格檢查");
+    expect(readme).toContain("攔截 `/api/photo-check`");
+    expect(readme).toContain("不會將測試照片上傳到外部服務");
+  });
 });

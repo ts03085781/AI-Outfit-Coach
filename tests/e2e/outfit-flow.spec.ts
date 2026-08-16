@@ -41,7 +41,17 @@ async function mockSuccessfulAnalysis(page: Page) {
   });
 }
 
-async function reachPhotoStep(page: Page, occasion = "日常外出") {
+async function mockSuccessfulPhotoCheck(page: Page) {
+  await page.route("**/api/photo-check", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ eligible: true, reason: null }),
+    });
+  });
+}
+
+async function selectPhoto(page: Page, occasion = "日常外出") {
   await page.goto("/analyze");
   await page.getByRole("button", { name: occasion }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
@@ -51,7 +61,13 @@ async function reachPhotoStep(page: Page, occasion = "日常外出") {
   await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
 }
 
+async function reachPhotoStep(page: Page, occasion = "日常外出") {
+  await selectPhoto(page, occasion);
+  await expect(page.getByRole("button", { name: "開始分析" })).toBeEnabled();
+}
+
 async function completeAnalysis(page: Page, occasion = "日常外出") {
+  await mockSuccessfulPhotoCheck(page);
   await reachPhotoStep(page, occasion);
   await page.getByRole("button", { name: "開始分析" }).click();
   await expect(page.getByText(analysis.summary)).toBeVisible();
@@ -103,11 +119,127 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByLabel("Select language")).toHaveCount(0);
   });
 
+  test("locks analysis while the automatic photo check is pending", async ({ page }) => {
+    const analysisRequests: string[] = [];
+    let releaseCheck: (() => void) | undefined;
+    const checkReleased = new Promise<void>((resolve) => {
+      releaseCheck = resolve;
+    });
+    page.on("request", (request) => {
+      if (request.url().includes("/api/analyze")) analysisRequests.push(request.url());
+    });
+    await page.route("**/api/photo-check", async (route) => {
+      await checkReleased;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ eligible: true, reason: null }),
+      });
+    });
+
+    await selectPhoto(page);
+
+    await expect(page.getByText("正在檢查照片是否適合分析…")).toBeVisible();
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    expect(analysisRequests).toHaveLength(0);
+
+    releaseCheck?.();
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeEnabled();
+  });
+
+  test("shows an actionable rejection and never starts full analysis", async ({ page }) => {
+    const analysisRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/analyze")) analysisRequests.push(request.url());
+    });
+    await page.route("**/api/photo-check", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ eligible: false, reason: "INCOMPLETE_OUTFIT" }),
+      });
+    });
+
+    await selectPhoto(page);
+
+    await expect(page.getByText("穿搭沒有完整入鏡，請讓上衣、下身與鞋子都清楚可見。"))
+      .toBeVisible();
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    expect(analysisRequests).toHaveLength(0);
+  });
+
+  test("retries a temporary photo check failure before unlocking analysis", async ({ page }) => {
+    let attempts = 0;
+    await page.route("**/api/photo-check", async (route) => {
+      attempts += 1;
+      if (attempts === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "PHOTO_CHECK_UNAVAILABLE" }),
+        });
+        return;
+      }
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ eligible: true, reason: null }),
+      });
+    });
+
+    await selectPhoto(page);
+
+    await expect(page.getByText("照片檢查暫時無法完成，請重新檢查。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    await page.getByRole("button", { name: "重新檢查" }).click();
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeEnabled();
+    expect(attempts).toBe(2);
+  });
+
+  test("relocks analysis immediately when a passed photo is replaced", async ({ page }) => {
+    let checks = 0;
+    let releaseReplacementCheck: (() => void) | undefined;
+    const replacementCheckReleased = new Promise<void>((resolve) => {
+      releaseReplacementCheck = resolve;
+    });
+    await page.route("**/api/photo-check", async (route) => {
+      checks += 1;
+      if (checks === 2) await replacementCheckReleased;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ eligible: true, reason: null }),
+      });
+    });
+
+    await reachPhotoStep(page);
+    const replace = page.getByRole("button", { name: "更換照片" });
+    const fileChooserPromise = page.waitForEvent("filechooser");
+    await replace.click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(fixture);
+
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    releaseReplacementCheck?.();
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeEnabled();
+    expect(checks).toBe(2);
+  });
+
+  test("does not start full analysis when a photo check passes", async ({ page }) => {
+    const analysisRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/analyze")) analysisRequests.push(request.url());
+    });
+
+    await mockSuccessfulPhotoCheck(page);
+    await reachPhotoStep(page);
+
+    await expect(page.getByRole("button", { name: "開始分析" })).toBeEnabled();
+    expect(analysisRequests).toHaveLength(0);
+  });
+
   test("replaces a prepared photo and restores the analysis action only when ready", async ({ page }) => {
     const analysisRequests: string[] = [];
     page.on("request", (request) => {
       if (request.url().includes("/api/analyze")) analysisRequests.push(request.url());
     });
+    await mockSuccessfulPhotoCheck(page);
     await reachPhotoStep(page);
 
     const replace = page.getByRole("button", { name: "更換照片" });
@@ -175,7 +307,7 @@ test.describe("mock-only outfit flow", () => {
 
       await completeAnalysis(page, occasion);
 
-      expect(requestUrls.every((url) => new URL(url).origin === "http://127.0.0.1:3000")).toBe(true);
+      expect(requestUrls.every((url) => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
     });
   }
 
@@ -193,6 +325,7 @@ test.describe("mock-only outfit flow", () => {
       });
     });
 
+    await mockSuccessfulPhotoCheck(page);
     await reachPhotoStep(page);
     await page.getByRole("button", { name: "開始分析" }).click();
     await expect(page.getByText("衣物被遮住，請重新拍照。")).toBeVisible();
@@ -224,25 +357,12 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
   });
 
-  test("sends one bound follow-up and anonymous feedback", async ({ page }) => {
+  test("sends anonymous feedback", async ({ page }) => {
     const metrics: unknown[] = [];
     await mockTelemetry(page, metrics);
     await mockSuccessfulAnalysis(page);
-    await page.route("**/api/follow-up", async (route) => {
-      expect(route.request().postDataJSON()).toMatchObject({
-        analysisToken: "mock-signed-analysis-token",
-        question: "不買新衣服還能怎麼調整？",
-      });
-      await route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({ alternative: "把袖口捲起，讓上衣比例更輕盈。" }),
-      });
-    });
 
     await completeAnalysis(page);
-    await page.getByLabel("想再問一個穿搭問題").fill("不買新衣服還能怎麼調整？");
-    await page.getByRole("button", { name: "取得替代方法" }).click();
-    await expect(page.getByText("把袖口捲起，讓上衣比例更輕盈。")).toBeVisible();
     await page.getByRole("button", { name: "有幫助" }).click();
 
     await expect(page.getByText("謝謝你的回饋。")).toBeVisible();
@@ -269,6 +389,7 @@ test.describe("mock-only outfit flow", () => {
       });
     });
 
+    await mockSuccessfulPhotoCheck(page);
     await reachPhotoStep(page);
     await page.getByRole("button", { name: "開始分析" }).click();
     await expect(page.getByText("分析服務暫時無法使用，請稍後再試一次。"))
@@ -313,8 +434,5 @@ for (const width of [320, 390, 430]) {
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
       expect((box?.x ?? width) + (box?.width ?? width)).toBeLessThanOrEqual(width);
     }
-
-    await page.getByLabel("想再問一個穿搭問題").fill("還有其他衣物調整嗎？");
-    await expect(page.getByRole("button", { name: "取得替代方法" })).toBeEnabled();
   });
 }
