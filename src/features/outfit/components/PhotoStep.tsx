@@ -4,11 +4,14 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
 
 import type { ImagePreparationErrorCode } from "../image";
+import type { PhotoCheckState } from "../photo-check";
 
 type PhotoStepProps = {
   image?: Blob;
   error?: ImagePreparationErrorCode;
+  photoCheckState: PhotoCheckState;
   onChoosePhoto: (file?: File) => void;
+  onRetryPhotoCheck: () => void;
   onConsentChange: (consented: boolean) => void;
   onAnalyze: () => void;
   onBack: () => void;
@@ -17,7 +20,9 @@ type PhotoStepProps = {
 export function PhotoStep({
   image,
   error,
+  photoCheckState,
   onChoosePhoto,
+  onRetryPhotoCheck,
   onConsentChange,
   onAnalyze,
   onBack,
@@ -46,6 +51,19 @@ export function PhotoStep({
     event.currentTarget.value = "";
     onChoosePhoto(file);
   };
+  const photoCheckMessage = (() => {
+    if (photoCheckState.status === "checking") return t("checking");
+    if (photoCheckState.status === "passed") return t("passed");
+    if (photoCheckState.status === "rejected") {
+      return t(`reason.${photoCheckState.reason}`);
+    }
+    if (photoCheckState.status === "error") {
+      if (photoCheckState.code === "PHOTO_CHECK_TIMEOUT") return t("checkTimeout");
+      if (photoCheckState.code === "RATE_LIMITED") return t("checkRateLimited");
+      return t("checkError");
+    }
+    return undefined;
+  })();
 
   return (
     <section aria-labelledby="photo-title">
@@ -85,16 +103,41 @@ export function PhotoStep({
         </button>
       )}
       {hasPreview ? (
-        <button
-          className="primary-action photo-analyze"
-          type="button"
-          onClick={() => {
-            onConsentChange(true);
-            onAnalyze();
-          }}
-        >
-          {t("startAnalysis")}
-        </button>
+        <>
+          {photoCheckMessage ? (
+            <p
+              className="photo-check-status"
+              role={photoCheckState.status === "checking" || photoCheckState.status === "passed"
+                ? "status"
+                : "alert"}
+              aria-live={photoCheckState.status === "checking" || photoCheckState.status === "passed"
+                ? "polite"
+                : undefined}
+            >
+              {photoCheckMessage}
+            </p>
+          ) : null}
+          {photoCheckState.status === "error" ? (
+            <button
+              className="photo-check-retry"
+              type="button"
+              onClick={onRetryPhotoCheck}
+            >
+              {t("retryCheck")}
+            </button>
+          ) : null}
+          <button
+            className="primary-action photo-analyze"
+            type="button"
+            disabled={photoCheckState.status !== "passed"}
+            onClick={() => {
+              onConsentChange(true);
+              onAnalyze();
+            }}
+          >
+            {t("startAnalysis")}
+          </button>
+        </>
       ) : null}
     </section>
   );

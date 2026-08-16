@@ -49,8 +49,25 @@
     "fileHint": "JPG, PNG, WebP, one photo",
     "replacePhoto": "Replace photo",
     "preview": "Local outfit photo preview",
-    "providerPrivacy": "Your photo is sent to the AI provider for this analysis. The provider may keep it briefly for abuse monitoring; confirm the exact retention period before launch.",
+    "providerPrivacy": "After you select a photo, it is sent to the AI provider to check whether it meets the requirements. Full outfit analysis starts only after you press “Start analysis.” The provider may keep it briefly for abuse monitoring; confirm the exact retention period before launch.",
     "localPrivacy": "This service does not keep photos or results. They cannot be restored after you leave or refresh.",
+    "checking": "Checking whether this photo is ready for analysis…",
+    "passed": "This photo is ready for analysis.",
+    "retryCheck": "Check again",
+    "checkError": "We couldn’t check this photo right now. Please try again.",
+    "checkTimeout": "The photo check timed out. Please try again.",
+    "checkRateLimited": "There have been too many photo checks. Please try again later.",
+    "reason": {
+      "NO_PERSON": "We couldn’t identify a person in this photo. Please choose another photo.",
+      "MULTIPLE_PEOPLE": "This photo includes more than one person. Please choose a photo with one person.",
+      "INCOMPLETE_OUTFIT": "The full outfit is not visible. Please include the top, bottom, and shoes.",
+      "OUTFIT_OBSTRUCTED": "The clothing is blocked from view. Please retake the full outfit.",
+      "TOO_DARK": "This photo is too dark. Please retake it in better lighting.",
+      "TOO_BLURRY": "This photo is too blurry. Hold the camera steady and retake it.",
+      "NOT_OUTFIT_PHOTO": "This is not an outfit photo we can analyze. Please choose another photo.",
+      "INAPPROPRIATE_CONTENT": "This photo does not meet the service guidelines. Please choose an outfit photo.",
+      "CLOTHING_UNRECOGNIZABLE": "We can’t reliably identify the clothing. Please retake a clear photo of the full outfit."
+    },
     "startAnalysis": "Start analysis"
   },
   "analyzing": {

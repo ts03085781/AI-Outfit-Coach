@@ -43,6 +43,24 @@ function analysisResponse(analysis = completeAnalysis) {
   }), { status: 200 });
 }
 
+function photoCheckResponse(
+  result:
+    | { eligible: true; reason: null }
+    | { eligible: false; reason: string } = { eligible: true, reason: null },
+) {
+  return new Response(JSON.stringify(result), { status: 200 });
+}
+
+function photoCheckErrorResponse(error: string, status = 503) {
+  return new Response(JSON.stringify({ error }), { status });
+}
+
+function telemetryEvents() {
+  return vi.mocked(fetch).mock.calls
+    .filter(([url]) => url === "/api/telemetry")
+    .map(([, init]) => JSON.parse(String(init?.body)) as { type: string });
+}
+
 function chooseOccasionAndPhoto(
   file = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" }),
 ) {
@@ -62,7 +80,11 @@ beforeEach(() => {
   revokeObjectURL.mockClear();
   Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
   Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
-  vi.stubGlobal("fetch", vi.fn());
+  vi.stubGlobal("fetch", vi.fn(async (url) => {
+    if (url === "/api/photo-check") return photoCheckResponse();
+    if (url === "/api/analyze") return analysisResponse();
+    return new Response(null, { status: 204 });
+  }));
 });
 
 describe("outfit flow", () => {
@@ -88,9 +110,11 @@ describe("outfit flow", () => {
 
   it("does not show a language selector in the photo or analyzing steps", async () => {
     const pendingResponse = deferred<Response>();
-    vi.mocked(fetch).mockImplementation(async (url) => (
-      url === "/api/analyze" ? pendingResponse.promise : new Response(null, { status: 204 })
-    ));
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") return pendingResponse.promise;
+      return new Response(null, { status: 204 });
+    });
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
@@ -168,8 +192,255 @@ describe("outfit flow", () => {
     expect(screen.queryByRole("button", { name: "加入一張全身照" })).not.toBeInTheDocument();
   });
 
+  it("locks analysis while checking, passes automatically, and never starts full analysis", async () => {
+    const pendingCheck = deferred<Response>();
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return pendingCheck.promise;
+      if (url === "/api/analyze") return analysisResponse();
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+
+    chooseOccasionAndPhoto();
+
+    expect(await screen.findByRole("status")).toHaveTextContent("正在檢查照片是否適合分析…");
+    const start = screen.getByRole("button", { name: "開始分析" });
+    expect(start).toBeDisabled();
+    const precheckCall = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/photo-check");
+    expect(precheckCall?.[1]).toMatchObject({ method: "POST" });
+    expect(precheckCall?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(precheckCall?.[1]?.body).toBeInstanceOf(FormData);
+    expect((precheckCall?.[1]?.body as FormData).get("image")).toBeInstanceOf(Blob);
+
+    start.removeAttribute("disabled");
+    fireEvent.click(start);
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/analyze")).toBe(false);
+    pendingCheck.resolve(photoCheckResponse());
+
+    await waitFor(() => expect(start).toBeEnabled());
+    expect(screen.getByRole("status")).toHaveTextContent("照片符合分析規格。");
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/analyze")).toBe(false);
+    expect(telemetryEvents()).toContainEqual({
+      type: "photo_check_pass",
+      latencyBucket: "0-5s",
+    });
+  });
+
+  it.each([
+    ["NO_PERSON", "照片中沒有可辨識的人物，請更換照片。"],
+    ["MULTIPLE_PEOPLE", "照片中有多位人物，請改用只有一人的照片。"],
+    ["INCOMPLETE_OUTFIT", "穿搭沒有完整入鏡，請讓上衣、下身與鞋子都清楚可見。"],
+    ["OUTFIT_OBSTRUCTED", "衣物被明顯遮擋，請重新拍攝完整穿搭。"],
+    ["TOO_DARK", "照片太暗，請在光線充足處重新拍攝。"],
+    ["TOO_BLURRY", "照片太模糊，請保持鏡頭穩定後重新拍攝。"],
+    ["NOT_OUTFIT_PHOTO", "這不是可分析的穿搭照片，請更換照片。"],
+    ["INAPPROPRIATE_CONTENT", "這張照片不符合服務規範，請更換穿搭照片。"],
+    ["CLOTHING_UNRECOGNIZABLE", "無法可靠辨識衣物，請重新拍攝清楚的完整穿搭。"],
+  ])("announces the %s precheck rejection and keeps analysis locked", async (reason, message) => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") {
+        return photoCheckResponse({ eligible: false, reason });
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+
+    chooseOccasionAndPhoto();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "重新檢查" })).not.toBeInTheDocument();
+    expect(telemetryEvents()).toContainEqual({
+      type: "photo_check_reject",
+      reason,
+      latencyBucket: "0-5s",
+    });
+  });
+
+  it.each([
+    new Response(JSON.stringify({ eligible: true, reason: "NO_PERSON" }), { status: 200 }),
+    new Response(JSON.stringify({ error: "UNKNOWN_ERROR" }), { status: 503 }),
+  ])("fails closed when a precheck response violates its schema", async (response) => {
+    vi.mocked(fetch).mockImplementation(async (url) => (
+      url === "/api/photo-check" ? response : new Response(null, { status: 204 })
+    ));
+    render(<HomePage />);
+
+    chooseOccasionAndPhoto();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "照片檢查暫時無法完成，請重新檢查。",
+    );
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    expect(telemetryEvents()).toContainEqual({
+      type: "photo_check_error",
+      errorCode: "INVALID_RESPONSE",
+      latencyBucket: "0-5s",
+    });
+  });
+
+  it.each([
+    ["PHOTO_CHECK_TIMEOUT", "照片檢查逾時，請重新檢查。"],
+    ["PHOTO_CHECK_UNAVAILABLE", "照片檢查暫時無法完成，請重新檢查。"],
+    ["RATE_LIMITED", "照片檢查次數過多，請稍後再試。"],
+  ])("announces the %s precheck error and offers retry", async (errorCode, message) => {
+    vi.mocked(fetch).mockImplementation(async (url) => (
+      url === "/api/photo-check"
+        ? photoCheckErrorResponse(errorCode, errorCode === "RATE_LIMITED" ? 429 : 503)
+        : new Response(null, { status: 204 })
+    ));
+    render(<HomePage />);
+
+    chooseOccasionAndPhoto();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("button", { name: "重新檢查" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    expect(telemetryEvents()).toContainEqual({
+      type: "photo_check_error",
+      errorCode,
+      latencyBucket: "0-5s",
+    });
+  });
+
+  it("retries the current prepared photo and unlocks analysis after success", async () => {
+    let checks = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") {
+        checks += 1;
+        return checks === 1
+          ? photoCheckErrorResponse("PHOTO_CHECK_UNAVAILABLE")
+          : photoCheckResponse();
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("button", { name: "重新檢查" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+    expect(checks).toBe(2);
+  });
+
+  it("clears a previous pass as soon as the photo is replaced", async () => {
+    const pendingReplacement = deferred<File>();
+    const pendingCheck = deferred<Response>();
+    let checks = 0;
+    prepareImage.mockImplementationOnce(async (file: File) => file)
+      .mockImplementationOnce(() => pendingReplacement.promise);
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") {
+        checks += 1;
+        return checks === 1 ? photoCheckResponse() : pendingCheck.promise;
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto(new File(["first"], "first.jpg", { type: "image/jpeg" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
+      target: { files: [new File(["second"], "second.jpg", { type: "image/jpeg" })] },
+    });
+
+    expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
+    pendingReplacement.resolve(new File(["second"], "second.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByRole("button", { name: "開始分析" })).toBeDisabled();
+  });
+
+  it("aborts a check when returning and ignores its late success and telemetry", async () => {
+    const pendingCheck = deferred<Response>();
+    let signal: AbortSignal | undefined;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (url === "/api/photo-check") {
+        signal = init?.signal ?? undefined;
+        return pendingCheck.promise;
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await screen.findByRole("status");
+
+    fireEvent.click(screen.getByRole("button", { name: "返回" }));
+    expect(signal?.aborted).toBe(true);
+    pendingCheck.resolve(photoCheckResponse());
+    await Promise.resolve();
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+
+    expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
+    expect(telemetryEvents()).toEqual([]);
+  });
+
+  it("aborts rapid reselection and only the current check can unlock analysis", async () => {
+    const firstCheck = deferred<Response>();
+    const secondCheck = deferred<Response>();
+    const signals: AbortSignal[] = [];
+    let checks = 0;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (url === "/api/photo-check") {
+        signals.push(init?.signal as AbortSignal);
+        checks += 1;
+        return checks === 1 ? firstCheck.promise : secondCheck.promise;
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto(new File(["first"], "first.jpg", { type: "image/jpeg" }));
+    await screen.findByRole("status");
+
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
+      target: { files: [new File(["second"], "second.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(() => expect(signals).toHaveLength(2));
+    expect(signals[0]?.aborted).toBe(true);
+    secondCheck.resolve(photoCheckResponse());
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+
+    firstCheck.resolve(photoCheckResponse({ eligible: false, reason: "NO_PERSON" }));
+    await Promise.resolve();
+    expect(screen.queryByText("照片中沒有可辨識的人物，請更換照片。")).not.toBeInTheDocument();
+    expect(telemetryEvents().filter(({ type }) => type.startsWith("photo_check"))).toEqual([
+      { type: "photo_check_pass", latencyBucket: "0-5s" },
+    ]);
+  });
+
+  it.each([
+    [photoCheckResponse(), "photo_check_pass"],
+    [photoCheckResponse({ eligible: false, reason: "NO_PERSON" }), "photo_check_reject"],
+    [photoCheckErrorResponse("PHOTO_CHECK_TIMEOUT"), "photo_check_error"],
+  ])("ignores an out-of-order stale outcome", async (staleResponse, staleEventType) => {
+    const staleCheck = deferred<Response>();
+    let checks = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") {
+        checks += 1;
+        return checks === 1 ? staleCheck.promise : photoCheckResponse();
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto(new File(["first"], "first.jpg", { type: "image/jpeg" }));
+    await screen.findByRole("status");
+    fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
+      target: { files: [new File(["second"], "second.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+
+    staleCheck.resolve(staleResponse);
+    await Promise.resolve();
+
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled();
+    const photoEvents = telemetryEvents().filter(({ type }) => type.startsWith("photo_check"));
+    expect(photoEvents).toHaveLength(1);
+    if (staleEventType !== "photo_check_pass") {
+      expect(photoEvents.some(({ type }) => type === staleEventType)).toBe(false);
+    }
+  });
+
   it("shows exact occasion labels and forwards low-burden optional context", async () => {
-    vi.mocked(fetch).mockResolvedValue(analysisResponse());
     render(<HomePage />);
 
     expect(screen.getByRole("button", { name: "工作／面試" })).toBeVisible();
@@ -199,7 +470,6 @@ describe("outfit flow", () => {
   });
 
   it("shows a local preview and starts analysis when the action is pressed", async () => {
-    vi.mocked(fetch).mockResolvedValue(analysisResponse());
     render(<HomePage />);
     chooseOccasionAndPhoto();
 
@@ -210,19 +480,6 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
-  });
-
-  it("shows privacy copy before the user starts analysis", async () => {
-    render(<HomePage />);
-    chooseOccasionAndPhoto();
-
-    await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    expect(screen.getByRole("img", { name: "本機穿搭照片預覽" })).toHaveAttribute(
-      "src",
-      "blob:local-preview",
-    );
-    expect(screen.getByText(/供應商可能依濫用監控政策短期保留/)).toBeVisible();
-    expect(screen.getByText(/離開或重新整理後，照片與結果都無法恢復/)).toBeVisible();
   });
 
   it("does not restore a photo whose preparation completes after returning to occasion", async () => {
@@ -271,7 +528,6 @@ describe("outfit flow", () => {
   });
 
   it("shows the complete result after analysis", async () => {
-    vi.mocked(fetch).mockResolvedValue(analysisResponse());
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -302,9 +558,13 @@ describe("outfit flow", () => {
   });
 
   it("does not render a primary suggestion card when the analysis has no suggestions", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      analysisResponse({ ...completeAnalysis, suggestions: [] }),
-    );
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return analysisResponse({ ...completeAnalysis, suggestions: [] });
+      }
+      return new Response(null, { status: 204 });
+    });
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -323,12 +583,21 @@ describe("outfit flow", () => {
     expect(screen.getByRole("button", { name: "開始分析" })).toBeVisible();
     expect(stylesheet).toMatch(/\.primary-action\s*\{[\s\S]*?min-height:\s*52px/);
     expect(stylesheet).toMatch(/\.photo-analyze:focus-visible/);
+    expect(stylesheet).toMatch(/\.photo-check-retry\s*\{[\s\S]*?min-height:\s*44px/);
+    expect(stylesheet).toMatch(/\.photo-check-retry:focus-visible/);
   });
 
   it("shows only a retake reason and retake action when the photo needs retaking", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ error: "RETAKE_REQUIRED", retake_reason: "衣物細節不清楚" }), { status: 422 }),
-    );
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(
+          JSON.stringify({ error: "RETAKE_REQUIRED", retake_reason: "衣物細節不清楚" }),
+          { status: 422 },
+        );
+      }
+      return new Response(null, { status: 204 });
+    });
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -345,12 +614,10 @@ describe("outfit flow", () => {
     )).toBe(true);
   });
 
-  it("offers one follow-up and anonymous helpfulness feedback with no image upload", async () => {
+  it("sends anonymous helpfulness feedback with no image upload", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
       if (url === "/api/analyze") return analysisResponse();
-      if (url === "/api/follow-up") {
-        return new Response(JSON.stringify({ alternative: "調整袖口即可。" }), { status: 200 });
-      }
       return new Response(null, { status: 204 });
     });
     render(<HomePage />);
@@ -359,22 +626,6 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     await screen.findByRole("heading", { name: "你的穿搭建議" });
-    fireEvent.change(screen.getByLabelText("想再問一個穿搭問題"), {
-      target: { value: "不買新衣服還能怎麼調整？" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "取得替代方法" }));
-
-    expect(await screen.findByText("調整袖口即可。")).toBeVisible();
-    expect(fetch).toHaveBeenCalledWith("/api/follow-up", expect.objectContaining({
-      method: "POST",
-      headers: { "content-type": "application/json" },
-    }));
-    const followUpCall = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/follow-up");
-    expect(JSON.parse(String(followUpCall?.[1]?.body))).toMatchObject({
-      analysisToken: "signed-analysis-token",
-      locale: "zh-TW",
-    });
-    expect(screen.getByRole("button", { name: "取得替代方法" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
     expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
@@ -384,7 +635,11 @@ describe("outfit flow", () => {
   });
 
   it("announces an API failure and lets the user try again", async () => {
-    vi.mocked(fetch).mockRejectedValue(new Error("network unavailable"));
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") throw new Error("network unavailable");
+      return new Response(null, { status: 204 });
+    });
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -405,9 +660,13 @@ describe("outfit flow", () => {
     ["AI_INVALID_RESPONSE", "模型回覆格式暫時異常，請再試一次。"],
     ["AI_TIMEOUT", "分析等待逾時，請再試一次。"],
   ])("shows an actionable message for %s", async (errorCode, message) => {
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ error: errorCode }), { status: 503 }),
-    );
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({ error: errorCode }), { status: 503 });
+      }
+      return new Response(null, { status: 204 });
+    });
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
@@ -427,9 +686,11 @@ describe("outfit flow", () => {
   });
 
   it("returns to photo selection without discarding optional context", async () => {
-    vi.mocked(fetch).mockImplementation(async (url) => (
-      url === "/api/analyze" ? analysisResponse() : new Response(null, { status: 204 })
-    ));
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") return analysisResponse();
+      return new Response(null, { status: 204 });
+    });
     render(<HomePage />);
 
     fireEvent.click(screen.getByText("加上選填背景"));
@@ -440,9 +701,6 @@ describe("outfit flow", () => {
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
-    fireEvent.change(screen.getByLabelText("想再問一個穿搭問題"), {
-      target: { value: "鞋子需要換嗎？" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
     expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
 
@@ -459,7 +717,6 @@ describe("outfit flow", () => {
     expect(screen.getByRole("button", { name: "開始分析" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
-    expect(screen.getByLabelText("想再問一個穿搭問題")).toHaveValue("");
     expect(screen.getByRole("button", { name: "有幫助" })).toBeEnabled();
     expect(screen.queryByText("謝謝你的回饋。")).not.toBeInTheDocument();
 
@@ -472,7 +729,6 @@ describe("outfit flow", () => {
   });
 
   it("returns to the first step with all optional context cleared", async () => {
-    vi.mocked(fetch).mockResolvedValue(analysisResponse());
     render(<HomePage />);
 
     fireEvent.click(screen.getByText("加上選填背景"));

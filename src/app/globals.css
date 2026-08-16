@@ -299,7 +299,11 @@ button { min-width: 44px; min-height: 44px; }
 
 .photo-upload-empty:focus-visible,
 .photo-replace:focus-visible,
-.photo-analyze:focus-visible { outline: 3px solid #f3a66b; outline-offset: 3px; }
+.photo-analyze:focus-visible,
+.photo-check-retry:focus-visible { outline: 3px solid #f3a66b; outline-offset: 3px; }
+
+.photo-check-status { margin: 12px 0 0; color: #493629; font-weight: 650; }
+.photo-check-retry { min-height: 44px; margin-top: 10px; padding: 10px 14px; color: #176b87; background: #fffdfa; border: 1px solid #176b87; border-radius: 10px; cursor: pointer; font-weight: 700; }
 
 .primary-action {
   width: 100%;

@@ -18,6 +18,12 @@ import {
   type Weather,
 } from "./domain";
 import { ImagePreparationError, prepareImage, type ImagePreparationErrorCode } from "./image";
+import {
+  PhotoCheckErrorResponseSchema,
+  PhotoCheckResponseSchema,
+  type PhotoCheckErrorCode,
+  type PhotoCheckState,
+} from "./photo-check";
 
 export type OutfitFlowState = "occasion" | "photo" | "analyzing" | "result" | "error";
 
@@ -61,7 +67,11 @@ export function useOutfitFlow(locale: AppLocale) {
   const [consented, setConsented] = useState(false);
   const consentedRef = useRef(false);
   const photoRequestRef = useRef(0);
+  const photoCheckRequestRef = useRef(0);
+  const photoCheckAbortRef = useRef<AbortController | undefined>(undefined);
+  const photoCheckPassedRef = useRef(false);
   const [photoError, setPhotoError] = useState<ImagePreparationErrorCode>();
+  const [photoCheckState, setPhotoCheckState] = useState<PhotoCheckState>({ status: "idle" });
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
   const [analysisErrorCode, setAnalysisErrorCode] = useState<TelemetryErrorCode>();
@@ -71,22 +81,117 @@ export function useOutfitFlow(locale: AppLocale) {
     setState("photo");
   };
 
+  const invalidatePhotoCheck = () => {
+    photoCheckRequestRef.current += 1;
+    photoCheckAbortRef.current?.abort();
+    photoCheckAbortRef.current = undefined;
+    photoCheckPassedRef.current = false;
+    setPhotoCheckState({ status: "idle" });
+  };
+
+  const checkPhoto = async (preparedImage: Blob, photoRequestId: number) => {
+    const checkRequestId = photoCheckRequestRef.current + 1;
+    photoCheckRequestRef.current = checkRequestId;
+    photoCheckAbortRef.current?.abort();
+    const controller = new AbortController();
+    photoCheckAbortRef.current = controller;
+    photoCheckPassedRef.current = false;
+    setPhotoCheckState({ status: "checking" });
+    const startedAt = performance.now();
+
+    const isCurrent = () => (
+      photoRequestRef.current === photoRequestId
+      && photoCheckRequestRef.current === checkRequestId
+      && photoCheckAbortRef.current === controller
+    );
+    const failCurrentCheck = (code: PhotoCheckErrorCode) => {
+      if (!isCurrent()) return;
+      photoCheckAbortRef.current = undefined;
+      photoCheckPassedRef.current = false;
+      setPhotoCheckState({ status: "error", code });
+      track({
+        type: "photo_check_error",
+        errorCode: code,
+        latencyBucket: coarseLatencyBucket(performance.now() - startedAt),
+      });
+    };
+
+    try {
+      const formData = new FormData();
+      formData.set("image", preparedImage, "outfit.webp");
+      const response = await fetch("/api/photo-check", {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch {
+        failCurrentCheck("INVALID_RESPONSE");
+        return;
+      }
+      if (!isCurrent()) return;
+
+      if (!response.ok) {
+        const parsedError = PhotoCheckErrorResponseSchema.safeParse(body);
+        failCurrentCheck(parsedError.success ? parsedError.data.error : "INVALID_RESPONSE");
+        return;
+      }
+
+      const parsed = PhotoCheckResponseSchema.safeParse(body);
+      if (!parsed.success) {
+        failCurrentCheck("INVALID_RESPONSE");
+        return;
+      }
+
+      photoCheckAbortRef.current = undefined;
+      if (parsed.data.eligible) {
+        photoCheckPassedRef.current = true;
+        setPhotoCheckState({ status: "passed" });
+        track({
+          type: "photo_check_pass",
+          latencyBucket: coarseLatencyBucket(performance.now() - startedAt),
+        });
+        return;
+      }
+
+      photoCheckPassedRef.current = false;
+      setPhotoCheckState({ status: "rejected", reason: parsed.data.reason });
+      track({
+        type: "photo_check_reject",
+        reason: parsed.data.reason,
+        latencyBucket: coarseLatencyBucket(performance.now() - startedAt),
+      });
+    } catch {
+      failCurrentCheck("PHOTO_CHECK_UNAVAILABLE");
+    }
+  };
+
   const choosePhoto = async (file?: File) => {
     if (!file) return;
     const requestId = photoRequestRef.current + 1;
     photoRequestRef.current = requestId;
+    invalidatePhotoCheck();
     setImage(undefined);
     consentedRef.current = false;
     setConsented(false);
     setPhotoError(undefined);
     try {
       const preparedImage = await prepareImage(file);
-      if (photoRequestRef.current === requestId) setImage(preparedImage);
+      if (photoRequestRef.current !== requestId) return;
+      setImage(preparedImage);
+      void checkPhoto(preparedImage, requestId);
     } catch (error) {
       if (photoRequestRef.current !== requestId) return;
       setImage(undefined);
       setPhotoError(error instanceof ImagePreparationError ? error.code : "PROCESSING_FAILED");
     }
+  };
+
+  const retryPhotoCheck = () => {
+    if (!image) return;
+    void checkPhoto(image, photoRequestRef.current);
   };
 
   const setConsent = (nextConsented: boolean) => {
@@ -95,7 +200,7 @@ export function useOutfitFlow(locale: AppLocale) {
   };
 
   const analyze = async () => {
-    if (!occasion || !image || !consentedRef.current) return;
+    if (!occasion || !image || !consentedRef.current || !photoCheckPassedRef.current) return;
     const startedAt = performance.now();
     setAnalysisErrorCode(undefined);
     setState("analyzing");
@@ -152,6 +257,7 @@ export function useOutfitFlow(locale: AppLocale) {
 
   const clearAnalysisState = () => {
     photoRequestRef.current += 1;
+    invalidatePhotoCheck();
     setImage(undefined);
     setConsent(false);
     setPhotoError(undefined);
@@ -176,6 +282,7 @@ export function useOutfitFlow(locale: AppLocale) {
 
   const backToOccasion = () => {
     photoRequestRef.current += 1;
+    invalidatePhotoCheck();
     setImage(undefined);
     setConsent(false);
     setPhotoError(undefined);
@@ -193,6 +300,7 @@ export function useOutfitFlow(locale: AppLocale) {
     image,
     consented,
     photoError,
+    photoCheckState,
     result,
     analysisToken,
     analysisErrorMessage: messages[locale].error[analysisErrorCode ?? "AI_UNAVAILABLE"],
@@ -203,6 +311,7 @@ export function useOutfitFlow(locale: AppLocale) {
     setDesiredFeel,
     setConsented: setConsent,
     analyze,
+    retryPhotoCheck,
     retake,
     reselectPhoto,
     restart,
