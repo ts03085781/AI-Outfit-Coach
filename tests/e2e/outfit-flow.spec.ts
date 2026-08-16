@@ -357,12 +357,25 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
   });
 
-  test("sends anonymous feedback", async ({ page }) => {
+  test("sends one bound follow-up and anonymous feedback", async ({ page }) => {
     const metrics: unknown[] = [];
     await mockTelemetry(page, metrics);
     await mockSuccessfulAnalysis(page);
+    await page.route("**/api/follow-up", async (route) => {
+      expect(route.request().postDataJSON()).toMatchObject({
+        analysisToken: "mock-signed-analysis-token",
+        question: "不買新衣服還能怎麼調整？",
+      });
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ alternative: "把袖口捲起，讓上衣比例更輕盈。" }),
+      });
+    });
 
     await completeAnalysis(page);
+    await page.getByLabel("想再問一個穿搭問題").fill("不買新衣服還能怎麼調整？");
+    await page.getByRole("button", { name: "取得替代方法" }).click();
+    await expect(page.getByText("把袖口捲起，讓上衣比例更輕盈。")).toBeVisible();
     await page.getByRole("button", { name: "有幫助" }).click();
 
     await expect(page.getByText("謝謝你的回饋。")).toBeVisible();
