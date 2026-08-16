@@ -7,7 +7,6 @@ import type { ImagePreparationErrorCode } from "../image";
 
 type PhotoStepProps = {
   image?: Blob;
-  consented: boolean;
   error?: ImagePreparationErrorCode;
   onChoosePhoto: (file?: File) => void;
   onConsentChange: (consented: boolean) => void;
@@ -17,7 +16,6 @@ type PhotoStepProps = {
 
 export function PhotoStep({
   image,
-  consented,
   error,
   onChoosePhoto,
   onConsentChange,
@@ -87,18 +85,16 @@ export function PhotoStep({
         </button>
       )}
       {hasPreview ? (
-        <label className="consent-label">
-          <input
-            type="checkbox"
-            checked={consented}
-            onChange={(event) => {
-              const nextConsented = event.target.checked;
-              onConsentChange(nextConsented);
-              if (nextConsented) onAnalyze();
-            }}
-          />
-          {t("consent")}
-        </label>
+        <button
+          className="primary-action photo-analyze"
+          type="button"
+          onClick={() => {
+            onConsentChange(true);
+            onAnalyze();
+          }}
+        >
+          {t("startAnalysis")}
+        </button>
       ) : null}
     </section>
   );

@@ -53,7 +53,7 @@ async function reachPhotoStep(page: Page, occasion = "日常外出") {
 
 async function completeAnalysis(page: Page, occasion = "日常外出") {
   await reachPhotoStep(page, occasion);
-  await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).click();
+  await page.getByRole("button", { name: "開始分析" }).click();
   await expect(page.getByText(analysis.summary)).toBeVisible();
 }
 
@@ -75,7 +75,7 @@ test.describe("mock-only outfit flow", () => {
     const upload = page.getByRole("button", { name: "加入一張全身照" });
     await expect(upload).toBeVisible();
     await expect(page.getByText("JPG、PNG、WebP，單張照片")).toBeVisible();
-    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "開始分析" })).toHaveCount(0);
     await expect(page.locator("#outfit-photo")).toHaveAttribute(
       "accept",
       "image/jpeg,image/png,image/webp",
@@ -103,15 +103,17 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByLabel("Select language")).toHaveCount(0);
   });
 
-  test("replaces a prepared photo and restores consent only when ready", async ({ page }) => {
+  test("replaces a prepared photo and restores the analysis action only when ready", async ({ page }) => {
+    const analysisRequests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/analyze")) analysisRequests.push(request.url());
+    });
     await reachPhotoStep(page);
 
     const replace = page.getByRole("button", { name: "更換照片" });
     await expect(replace).toBeVisible();
-    const consent = page.getByRole("checkbox", {
-      name: /勾選後會立即上傳並開始分析/,
-    });
-    await expect(consent).not.toBeChecked();
+    const startAnalysis = page.getByRole("button", { name: "開始分析" });
+    await expect(startAnalysis).toBeVisible();
     const fileChooserPromise = page.waitForEvent("filechooser");
     await replace.click();
     const fileChooser = await fileChooserPromise;
@@ -119,7 +121,8 @@ test.describe("mock-only outfit flow", () => {
     const preview = page.getByRole("img", { name: "本機穿搭照片預覽" });
     const previewShell = page.locator(".photo-preview-shell");
     await expect(preview).toBeVisible();
-    await expect(consent).not.toBeChecked();
+    await expect(startAnalysis).toBeVisible();
+    expect(analysisRequests).toHaveLength(0);
 
     const previewBox = await preview.boundingBox();
     const previewShellBox = await previewShell.boundingBox();
@@ -153,10 +156,9 @@ test.describe("mock-only outfit flow", () => {
       return channels?.length === 4 ? channels[3] : channels?.length === 3 ? 1 : 0;
     })).toBeGreaterThanOrEqual(0.9);
 
-    const consentTarget = page.locator("label", { has: consent });
-    const consentTargetBox = await consentTarget.boundingBox();
-    expect(consentTargetBox?.width).toBeGreaterThanOrEqual(44);
-    expect(consentTargetBox?.height).toBeGreaterThanOrEqual(44);
+    const startAnalysisBox = await startAnalysis.boundingBox();
+    expect(startAnalysisBox?.width).toBeGreaterThanOrEqual(44);
+    expect(startAnalysisBox?.height).toBeGreaterThanOrEqual(44);
     await page.keyboard.press("Tab");
     await replace.focus();
     await expect(replace).toBeFocused();
@@ -192,12 +194,12 @@ test.describe("mock-only outfit flow", () => {
     });
 
     await reachPhotoStep(page);
-    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).click();
+    await page.getByRole("button", { name: "開始分析" }).click();
     await expect(page.getByText("衣物被遮住，請重新拍照。")).toBeVisible();
     await page.getByRole("button", { name: "重新拍照" }).click();
 
     await expect(page.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
-    await expect(page.getByRole("checkbox")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "開始分析" })).toHaveCount(0);
     expect(metrics).toContainEqual(expect.objectContaining({ type: "analysis_retake" }));
   });
 
@@ -268,7 +270,7 @@ test.describe("mock-only outfit flow", () => {
     });
 
     await reachPhotoStep(page);
-    await page.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }).click();
+    await page.getByRole("button", { name: "開始分析" }).click();
     await expect(page.getByText("分析服務暫時無法使用，請稍後再試一次。"))
       .toBeVisible();
     await page.getByRole("button", { name: "再試一次" }).click();

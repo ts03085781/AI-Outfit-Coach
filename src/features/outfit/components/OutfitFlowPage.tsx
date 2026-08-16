@@ -115,7 +115,6 @@ export function OutfitFlowPage() {
           {flow.state === "photo" ? (
             <PhotoStep
               image={flow.image}
-              consented={flow.consented}
               error={flow.photoError}
               onChoosePhoto={flow.choosePhoto}
               onConsentChange={flow.setConsented}

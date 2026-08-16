@@ -99,7 +99,7 @@ describe("outfit flow", () => {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     const status = screen.getByRole("status");
     const spinner = status.querySelector("svg[aria-hidden='true']");
@@ -111,14 +111,14 @@ describe("outfit flow", () => {
     await screen.findByRole("heading", { name: "你的穿搭建議" });
   });
 
-  it("shows one upload surface and hides consent before a photo is prepared", () => {
+  it("shows one upload surface and hides the analysis action before a photo is prepared", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
     expect(screen.getByRole("button", { name: "加入一張全身照" })).toBeVisible();
     expect(screen.getByText("JPG、PNG、WebP，單張照片")).toBeVisible();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "拍照" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "選擇照片" })).not.toBeInTheDocument();
 
@@ -155,7 +155,7 @@ describe("outfit flow", () => {
     await waitFor(() => expect(input).toHaveValue(""));
   });
 
-  it("shows replacement and consent controls only after preparation succeeds", async () => {
+  it("shows replacement and analysis controls only after preparation succeeds", async () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
 
@@ -164,7 +164,7 @@ describe("outfit flow", () => {
       "blob:local-preview",
     );
     expect(screen.getByRole("button", { name: "更換照片" })).toBeVisible();
-    expect(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ })).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "加入一張全身照" })).not.toBeInTheDocument();
   });
 
@@ -185,7 +185,7 @@ describe("outfit flow", () => {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
 
     const analyzeCall = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/analyze");
@@ -198,7 +198,7 @@ describe("outfit flow", () => {
     expect((body as FormData).get("locale")).toBe("zh-TW");
   });
 
-  it("shows a local preview and starts analysis when consent is selected", async () => {
+  it("shows a local preview and starts analysis when the action is pressed", async () => {
     vi.mocked(fetch).mockResolvedValue(analysisResponse());
     render(<HomePage />);
     chooseOccasionAndPhoto();
@@ -207,12 +207,12 @@ describe("outfit flow", () => {
       "src",
       "blob:local-preview",
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
   });
 
-  it("shows privacy copy before the user consents", async () => {
+  it("shows privacy copy before the user starts analysis", async () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
 
@@ -240,7 +240,7 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
     expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
   });
 
   it("clears the old photo while a replacement is still being prepared", async () => {
@@ -262,12 +262,12 @@ describe("outfit flow", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "加入一張全身照" })).toBeVisible();
       expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
     });
     expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/analyze")).toBe(false);
 
     pendingReplacement.resolve(new File(["new"], "new.jpg", { type: "image/jpeg" }));
-    expect(await screen.findByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "開始分析" })).toBeVisible();
   });
 
   it("shows the complete result after analysis", async () => {
@@ -275,7 +275,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
@@ -308,20 +308,21 @@ describe("outfit flow", () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     await screen.findByRole("heading", { name: "你的穿搭建議" });
     expect(document.querySelector(".primary-suggestion")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "可以試試" })).not.toBeInTheDocument();
   });
 
-  it("keeps the immediate-consent label as a 44px minimum tap target associated with its checkbox", async () => {
+  it("keeps the start-analysis button as an accessible primary tap target", async () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
 
-    expect(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ })).toBeVisible();
-    expect(stylesheet).toMatch(/\.consent-label\s*\{[\s\S]*?min-height:\s*44px/);
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeVisible();
+    expect(stylesheet).toMatch(/\.primary-action\s*\{[\s\S]*?min-height:\s*52px/);
+    expect(stylesheet).toMatch(/\.photo-analyze:focus-visible/);
   });
 
   it("shows only a retake reason and retake action when the photo needs retaking", async () => {
@@ -331,7 +332,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(await screen.findByText("衣物細節不清楚")).toBeVisible();
     expect(screen.getByRole("button", { name: "重新拍照" })).toBeVisible();
@@ -355,7 +356,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     await screen.findByRole("heading", { name: "你的穿搭建議" });
     fireEvent.change(screen.getByLabelText("想再問一個穿搭問題"), {
@@ -387,7 +388,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("分析服務暫時無法使用，請稍後再試一次。");
     expect(screen.getByRole("button", { name: "再試一次" })).toBeVisible();
@@ -410,7 +411,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
@@ -437,7 +438,7 @@ describe("outfit flow", () => {
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
     fireEvent.change(screen.getByLabelText("想再問一個穿搭問題"), {
       target: { value: "鞋子需要換嗎？" },
@@ -449,14 +450,14 @@ describe("outfit flow", () => {
 
     expect(screen.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "你的穿搭建議" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
 
     fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit-two"], "outfit-two.jpg", { type: "image/jpeg" })] },
     });
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    expect(screen.getByRole("checkbox")).not.toBeChecked();
-    fireEvent.click(screen.getByRole("checkbox"));
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
     expect(screen.getByLabelText("想再問一個穿搭問題")).toHaveValue("");
     expect(screen.getByRole("button", { name: "有幫助" })).toBeEnabled();
@@ -480,7 +481,7 @@ describe("outfit flow", () => {
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
     chooseOccasionAndPhoto();
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("checkbox", { name: /勾選後會立即上傳並開始分析/ }));
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
 
     fireEvent.click(screen.getByRole("button", { name: "返回第一步驟" }));
@@ -511,7 +512,7 @@ describe("outfit flow", () => {
     expect(screen.getByLabelText("想呈現的感覺")).toHaveValue("專業但親切");
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
     expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
   });
 
   it("styles result navigation buttons as accessible secondary actions", () => {
