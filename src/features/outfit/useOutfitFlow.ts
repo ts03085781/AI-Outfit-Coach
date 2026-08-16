@@ -228,6 +228,7 @@ export function useOutfitFlow(locale: AppLocale) {
       if (response.status === 422 && typeof body === "object" && body !== null && "retake_reason" in body) {
         const retakeReason = (body as { retake_reason?: unknown }).retake_reason;
         if (typeof retakeReason === "string") {
+          invalidatePhotoCheck();
           setImage(undefined);
           setAnalysisToken(undefined);
           setAnalysisErrorCode(undefined);
@@ -244,6 +245,7 @@ export function useOutfitFlow(locale: AppLocale) {
         throw new AnalysisRequestError("INVALID_RESPONSE");
       }
 
+      invalidatePhotoCheck();
       setImage(undefined);
       setResult(parsed.data.analysis);
       setAnalysisToken(parsed.data.analysisToken);

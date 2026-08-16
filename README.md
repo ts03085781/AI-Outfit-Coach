@@ -27,7 +27,7 @@ pnpm build
 rg -n "console\.(log|debug)|writeFile|createWriteStream|base64|data:image" src
 ```
 
-Playwright 會啟動本機伺服器，攔截 `/api/photo-check`、分析、追問與遙測 API 並回傳固定假資料；它使用 `tests/fixtures/outfit-safe.png`（64×64、無真人的色塊服裝圖），不需金鑰，也不會將測試照片上傳到外部服務。測試涵蓋自動照片檢查、重拍、一次追問、回饋、錯誤重試、reload 清除狀態，以及 320／390／430px 版面。
+Playwright 會啟動本機伺服器，攔截 `/api/photo-check`、分析與遙測 API 並回傳固定假資料；它使用 `tests/fixtures/outfit-safe.png`（64×64、無真人的色塊服裝圖），不需金鑰，也不會將測試照片上傳到外部服務。測試涵蓋自動照片檢查、重拍、回饋、錯誤重試、reload 清除狀態，以及 320／390／430px 版面。
 
 若本機的預設 port 3000 已被其他開發伺服器使用，可改用 `PLAYWRIGHT_PORT=3100 pnpm test:e2e`。明確指定 `PLAYWRIGHT_PORT` 時，Playwright 會啟動對應 port 的新伺服器而不重用既有程序，確保驗證的是目前 worktree。
 

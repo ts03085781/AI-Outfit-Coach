@@ -130,7 +130,7 @@ export function ResultStep({
           ) : null}
         </>
       ) : null}
-      <section aria-labelledby="follow-up-title">
+      {/* <section aria-labelledby="follow-up-title">
         <h2 id="follow-up-title">{t("followUpTitle")}</h2>
         <label>
           {t("followUpLabel")}
@@ -150,7 +150,7 @@ export function ResultStep({
         </button>
         {alternative ? <p>{alternative}</p> : null}
         {followUpError ? <p role="alert">{t("followUpError")}</p> : null}
-      </section>
+      </section> */}
       <section aria-labelledby="feedback-title">
         <h2 id="feedback-title">{t("feedbackTitle")}</h2>
         <button

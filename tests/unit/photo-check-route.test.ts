@@ -9,8 +9,10 @@ import { createPhotoCheckHandler } from "@/features/outfit/photo-check-handler";
 import type { PhotoCheckResult } from "@/features/outfit/photo-check";
 import type { PhotoChecker } from "@/features/outfit/photo-checker";
 import {
+  OpenAIPhotoChecker,
   PhotoCheckerProviderError,
   PhotoCheckerTimeoutError,
+  type OpenAIPhotoCheckClient,
 } from "@/features/outfit/openai-photo-checker";
 import { createInMemoryAbuseGuard, type AbuseGuard } from "@/lib/abuse-guard";
 
@@ -360,6 +362,57 @@ describe("POST /api/photo-check", () => {
 
     expect(response?.status).toBe(504);
     if (response) await expect(response.json()).resolves.toEqual({ error: "PHOTO_CHECK_TIMEOUT" });
+  });
+
+  it("keeps an invalid-output retry inside the same 10-second route deadline", async () => {
+    vi.useFakeTimers();
+    process.env.OPENAI_PHOTO_CHECK_MODEL = "photo-check-test-model";
+    const signals: Array<AbortSignal | undefined> = [];
+    let firstCallStarted: (() => void) | undefined;
+    let secondCallStarted: (() => void) | undefined;
+    const firstStarted = new Promise<void>((resolve) => { firstCallStarted = resolve; });
+    const secondStarted = new Promise<void>((resolve) => { secondCallStarted = resolve; });
+    const client: OpenAIPhotoCheckClient = {
+      responses: {
+        create: (_request, options) => {
+          const signal = options?.signal;
+          signals.push(signal);
+          if (signals.length === 1) {
+            firstCallStarted?.();
+            return new Promise((resolve) => {
+              setTimeout(() => resolve({ output_text: "not-json" }), 9_000);
+            });
+          }
+
+          secondCallStarted?.();
+          return new Promise((_, reject) => {
+            const rejectAborted = () => reject(new DOMException("aborted", "AbortError"));
+            if (signal?.aborted) rejectAborted();
+            else signal?.addEventListener("abort", rejectAborted, { once: true });
+          });
+        },
+      },
+    };
+    const checker = new OpenAIPhotoChecker(client);
+    const responsePromise = handleRequest(makeMultipartRequest(), checker);
+
+    await firstStarted;
+    await vi.advanceTimersByTimeAsync(9_000);
+    await secondStarted;
+    expect(signals).toHaveLength(2);
+    expect(signals[0]).toBeDefined();
+    expect(signals[1]).toBe(signals[0]);
+
+    let settled = false;
+    void responsePromise.then(() => { settled = true; });
+    await vi.advanceTimersByTimeAsync(999);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    const response = await responsePromise;
+    expect(response.status).toBe(504);
+    await expect(response.json()).resolves.toEqual({ error: "PHOTO_CHECK_TIMEOUT" });
+    expect(signals).toHaveLength(2);
   });
 
   it("aborts the checker after 10 seconds and maps it to PHOTO_CHECK_TIMEOUT", async () => {

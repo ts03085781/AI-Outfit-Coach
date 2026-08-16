@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AnalyzePage from "@/app/analyze/page";
+import { useOutfitFlow } from "@/features/outfit/useOutfitFlow";
 
 const HomePage = AnalyzePage;
 
@@ -639,6 +640,79 @@ describe("outfit flow", () => {
     )).toBe(true);
   });
 
+  it("invalidates the passed photo check after terminal analysis success", async () => {
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    await act(() => flow.current.analyze());
+
+    expect(flow.current.state).toBe("result");
+    expect(flow.current.image).toBeUndefined();
+    expect(flow.current.photoCheckState).toEqual({ status: "idle" });
+  });
+
+  it("invalidates the passed photo check after a terminal 422 retake", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(
+          JSON.stringify({ error: "RETAKE_REQUIRED", retake_reason: "衣物細節不清楚" }),
+          { status: 422 },
+        );
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    await act(() => flow.current.analyze());
+
+    expect(flow.current.state).toBe("result");
+    expect(flow.current.image).toBeUndefined();
+    expect(flow.current.photoCheckState).toEqual({ status: "idle" });
+  });
+
+  it("preserves the passed photo after a transient analysis error so retry can succeed", async () => {
+    let analyzeAttempts = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        analyzeAttempts += 1;
+        if (analyzeAttempts === 1) {
+          return new Response(JSON.stringify({ error: "AI_UNAVAILABLE" }), { status: 503 });
+        }
+        return analysisResponse();
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    await act(() => flow.current.analyze());
+
+    expect(flow.current.state).toBe("error");
+    expect(flow.current.image).toBe(image);
+    expect(flow.current.photoCheckState).toEqual({ status: "passed" });
+
+    await act(() => flow.current.analyze());
+
+    expect(flow.current.state).toBe("result");
+    expect(analyzeAttempts).toBe(2);
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/photo-check")).toHaveLength(1);
+  });
+
   it("sends anonymous helpfulness feedback with no image upload", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
@@ -657,6 +731,17 @@ describe("outfit flow", () => {
       url === "/api/telemetry"
       && JSON.parse(String(init?.body)).type === "feedback"
     )).toBe(true);
+  });
+
+  it("keeps follow-up controls hidden from the result UI", async () => {
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await screen.findByRole("img", { name: "本機穿搭照片預覽" });
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    await screen.findByRole("heading", { name: "你的穿搭建議" });
+    expect(screen.queryByLabelText("想再問一個穿搭問題")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "取得替代方法" })).not.toBeInTheDocument();
   });
 
   it("announces an API failure and lets the user try again", async () => {
