@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 import { createInMemoryAbuseGuard } from "@/lib/abuse-guard";
 
 const testConfig = {
+  photoCheck: {
+    burst: { limit: 1, windowMs: 1_000 },
+    sustained: { limit: 2, windowMs: 10_000 },
+  },
   analyze: {
     burst: { limit: 2, windowMs: 1_000 },
     sustained: { limit: 3, windowMs: 10_000 },
@@ -120,10 +124,14 @@ describe("in-memory abuse guard", () => {
     expect(guard.enter(request(), "followUp").allowed).toBe(true);
   });
 
-  it("keeps analysis and follow-up rate counters in separate endpoint budgets", () => {
+  it("keeps photo-check, analysis, and follow-up rate counters in separate endpoint budgets", () => {
     const guard = createInMemoryAbuseGuard({
       secret: "test-rate-secret",
       config: {
+        photoCheck: {
+          burst: { limit: 1, windowMs: 1_000 },
+          sustained: { limit: 1, windowMs: 10_000 },
+        },
         analyze: {
           burst: { limit: 2, windowMs: 1_000 },
           sustained: { limit: 2, windowMs: 10_000 },
@@ -135,6 +143,10 @@ describe("in-memory abuse guard", () => {
       },
       globalConcurrency: 4,
     });
+
+    const firstPhotoCheck = guard.enter(request(), "photoCheck");
+    if (firstPhotoCheck.allowed) firstPhotoCheck.release();
+    expect(guard.enter(request(), "photoCheck").allowed).toBe(false);
 
     const firstFollowUp = guard.enter(request(), "followUp");
     if (firstFollowUp.allowed) firstFollowUp.release();

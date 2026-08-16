@@ -49,6 +49,10 @@ function allowingGuard(): AbuseGuard {
     secret: "unit-test-secret",
     globalConcurrency: 20,
     config: {
+      photoCheck: {
+        burst: { limit: 100, windowMs: 1_000 },
+        sustained: { limit: 100, windowMs: 10_000 },
+      },
       analyze: {
         burst: { limit: 100, windowMs: 1_000 },
         sustained: { limit: 100, windowMs: 10_000 },
@@ -245,6 +249,10 @@ describe("POST /api/analyze", () => {
       secret: "unit-test-secret",
       globalConcurrency: 2,
       config: {
+        photoCheck: {
+          burst: { limit: 1, windowMs: 1_000 },
+          sustained: { limit: 2, windowMs: 10_000 },
+        },
         analyze: {
           burst: { limit: 1, windowMs: 1_000 },
           sustained: { limit: 2, windowMs: 10_000 },

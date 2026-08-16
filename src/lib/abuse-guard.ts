@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 
-export type AbuseGuardEndpoint = "analyze" | "followUp";
+export type AbuseGuardEndpoint = "photoCheck" | "analyze" | "followUp";
 
 type WindowBudget = {
   limit: number;
@@ -39,6 +39,10 @@ type ClientBudget = {
 };
 
 const DEFAULT_CONFIG: AbuseGuardConfig = {
+  photoCheck: {
+    burst: { limit: 5, windowMs: 10_000 },
+    sustained: { limit: 30, windowMs: 10 * 60_000 },
+  },
   analyze: {
     burst: { limit: 3, windowMs: 10_000 },
     sustained: { limit: 20, windowMs: 10 * 60_000 },
@@ -102,6 +106,7 @@ export function createInMemoryAbuseGuard(options: {
   const globalConcurrency = options.globalConcurrency ?? 6;
   const now = options.now ?? Date.now;
   const clients = new Map<AbuseGuardEndpoint, Map<string, ClientBudget>>([
+    ["photoCheck", new Map()],
     ["analyze", new Map()],
     ["followUp", new Map()],
   ]);

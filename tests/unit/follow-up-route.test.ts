@@ -47,6 +47,10 @@ function handleRequest(request: Request, client: FollowUpResponsesClient) {
       secret: "unit-test-rate-secret",
       globalConcurrency: 20,
       config: {
+        photoCheck: {
+          burst: { limit: 100, windowMs: 1_000 },
+          sustained: { limit: 100, windowMs: 10_000 },
+        },
         analyze: {
           burst: { limit: 100, windowMs: 1_000 },
           sustained: { limit: 100, windowMs: 10_000 },
