@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   coarseLatencyBucket,
@@ -75,6 +75,14 @@ export function useOutfitFlow(locale: AppLocale) {
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
   const [analysisErrorCode, setAnalysisErrorCode] = useState<TelemetryErrorCode>();
+
+  useEffect(() => () => {
+    photoRequestRef.current += 1;
+    photoCheckRequestRef.current += 1;
+    photoCheckAbortRef.current?.abort();
+    photoCheckAbortRef.current = undefined;
+    photoCheckPassedRef.current = false;
+  }, []);
 
   const chooseOccasion = (nextOccasion: Occasion) => {
     setOccasion(nextOccasion);

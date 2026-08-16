@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AnalyzePage from "@/app/analyze/page";
 
@@ -371,6 +371,31 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
     expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
+    expect(telemetryEvents()).toEqual([]);
+  });
+
+  it("aborts and invalidates a pending check when the flow unmounts", async () => {
+    const pendingCheck = deferred<Response>();
+    let signal: AbortSignal | undefined;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (url === "/api/photo-check") {
+        signal = init?.signal ?? undefined;
+        return pendingCheck.promise;
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { unmount } = render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await screen.findByRole("status");
+
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      pendingCheck.resolve(photoCheckResponse());
+      await Promise.resolve();
+    });
+    expect(document.querySelector(".photo-check-status")).not.toBeInTheDocument();
     expect(telemetryEvents()).toEqual([]);
   });
 
