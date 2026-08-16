@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OccasionSchema } from "@/features/outfit/domain";
+import { PhotoCheckReasonSchema } from "@/features/outfit/photo-check";
 
 const LatencyBucketSchema = z.enum(["0-5s", "5-10s", "10-30s", "30s+"]);
 const ErrorCodeSchema = z.enum([
@@ -14,6 +15,14 @@ const ErrorCodeSchema = z.enum([
   "AI_SAFETY_REJECTED",
   "RATE_LIMITED",
   "RATE_LIMIT_UNAVAILABLE",
+  "INVALID_RESPONSE",
+]);
+const PhotoCheckTelemetryErrorCodeSchema = z.enum([
+  "INVALID_IMAGE",
+  "RATE_LIMITED",
+  "RATE_LIMIT_UNAVAILABLE",
+  "PHOTO_CHECK_UNAVAILABLE",
+  "PHOTO_CHECK_TIMEOUT",
   "INVALID_RESPONSE",
 ]);
 
@@ -41,15 +50,36 @@ const FeedbackEventSchema = z.object({
   helpful: z.boolean(),
 }).strict();
 
+const PhotoCheckPassEventSchema = z.object({
+  type: z.literal("photo_check_pass"),
+  latencyBucket: LatencyBucketSchema,
+}).strict();
+
+const PhotoCheckRejectEventSchema = z.object({
+  type: z.literal("photo_check_reject"),
+  reason: PhotoCheckReasonSchema,
+  latencyBucket: LatencyBucketSchema,
+}).strict();
+
+const PhotoCheckErrorEventSchema = z.object({
+  type: z.literal("photo_check_error"),
+  errorCode: PhotoCheckTelemetryErrorCodeSchema,
+  latencyBucket: LatencyBucketSchema,
+}).strict();
+
 export const TelemetryEventSchema = z.discriminatedUnion("type", [
   AnalysisSuccessEventSchema,
   AnalysisRetakeEventSchema,
   AnalysisErrorEventSchema,
   FeedbackEventSchema,
+  PhotoCheckPassEventSchema,
+  PhotoCheckRejectEventSchema,
+  PhotoCheckErrorEventSchema,
 ]);
 
 export type SafeEvent = z.infer<typeof TelemetryEventSchema>;
 export type TelemetryErrorCode = z.infer<typeof ErrorCodeSchema>;
+export type PhotoCheckTelemetryErrorCode = z.infer<typeof PhotoCheckTelemetryErrorCodeSchema>;
 export type LatencyBucket = z.infer<typeof LatencyBucketSchema>;
 
 export function coarseLatencyBucket(milliseconds: number): LatencyBucket {

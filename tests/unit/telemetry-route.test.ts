@@ -38,10 +38,38 @@ describe("POST /api/telemetry", () => {
   });
 
   it.each([
+    { type: "photo_check_pass", latencyBucket: "0-5s" },
+    {
+      type: "photo_check_reject",
+      reason: "INCOMPLETE_OUTFIT",
+      latencyBucket: "0-5s",
+    },
+    {
+      type: "photo_check_error",
+      errorCode: "PHOTO_CHECK_TIMEOUT",
+      latencyBucket: "10-30s",
+    },
+  ])("accepts an anonymous photo precheck event", async (body) => {
+    const writeMetric = vi.fn();
+    const response = await createTelemetryHandler({ writeMetric })(request(body));
+
+    expect(response.status).toBe(204);
+    expect(writeMetric).toHaveBeenCalledWith(body);
+  });
+
+  it.each([
     { type: "feedback", helpful: true, question: "私人內容" },
     { type: "feedback", helpful: true, occasion: "casual" },
     { type: "analysis_error", occasion: "casual", latencyBucket: "0-5s" },
     { type: "analysis_success", occasion: "casual", latencyBucket: "0-5s", errorCode: "AI_TIMEOUT" },
+    { type: "photo_check_pass", latencyBucket: "0-5s", photo: "base64" },
+    { type: "photo_check_pass", latencyBucket: "0-5s", filename: "look.jpg" },
+    { type: "photo_check_pass", latencyBucket: "0-5s", provider: "openai" },
+    { type: "photo_check_reject", reason: "UNKNOWN_REASON", latencyBucket: "0-5s" },
+    { type: "photo_check_error", errorCode: "UNKNOWN_ERROR", latencyBucket: "0-5s" },
+    { type: "photo_check_pass", latencyBucket: "0-5s", occasion: "casual" },
+    { type: "photo_check_reject", reason: "NO_PERSON", latencyBucket: "0-5s", errorCode: "PHOTO_CHECK_TIMEOUT" },
+    { type: "photo_check_error", errorCode: "PHOTO_CHECK_TIMEOUT", latencyBucket: "0-5s", reason: "NO_PERSON" },
   ])("rejects unsafe or incompatible metric fields", async (body) => {
     const writeMetric = vi.fn();
     const response = await createTelemetryHandler({ writeMetric })(request(body));
