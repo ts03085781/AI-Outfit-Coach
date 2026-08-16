@@ -90,6 +90,46 @@ function makeOversizedMultipartRequest(contentLength?: string) {
   };
 }
 
+function makeStalledMultipartRequest() {
+  let cancelled = false;
+  const body = new ReadableStream<Uint8Array>({
+    cancel() {
+      cancelled = true;
+    },
+  });
+
+  return {
+    request: new Request("http://localhost/api/photo-check", {
+      method: "POST",
+      body,
+      headers: { "content-type": "multipart/form-data; boundary=stalled" },
+      duplex: "half",
+    } as RequestInit & { duplex: "half" }),
+    wasCancelled: () => cancelled,
+  };
+}
+
+async function makeDelayedMultipartRequest(delayMs: number) {
+  const multipart = makeMultipartRequest();
+  const bytes = new Uint8Array(await multipart.arrayBuffer());
+  const contentType = multipart.headers.get("content-type");
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      setTimeout(() => {
+        controller.enqueue(bytes);
+        controller.close();
+      }, delayMs);
+    },
+  });
+
+  return new Request("http://localhost/api/photo-check", {
+    method: "POST",
+    body,
+    headers: { "content-type": contentType ?? "multipart/form-data" },
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+}
+
 describe("POST /api/photo-check", () => {
   afterEach(() => {
     delete process.env.OPENAI_API_KEY;
@@ -274,6 +314,52 @@ describe("POST /api/photo-check", () => {
   it("maps a checker timeout to PHOTO_CHECK_TIMEOUT", async () => {
     expect(await responseJson(checkerThrowing(new PhotoCheckerTimeoutError())))
       .toEqual({ status: 504, body: { error: "PHOTO_CHECK_TIMEOUT" } });
+  });
+
+  it("times out a stalled multipart body at 10 seconds and releases global concurrency", async () => {
+    vi.useFakeTimers();
+    const guard = createInMemoryAbuseGuard({ secret: "stalled-body-secret", globalConcurrency: 1 });
+    const stalled = makeStalledMultipartRequest();
+    const responsePromise = handleRequest(
+      stalled.request,
+      checkerReturning({ eligible: true, reason: null }),
+      guard,
+    );
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    const response = await Promise.race([responsePromise, Promise.resolve(undefined)]);
+
+    expect(response?.status).toBe(504);
+    if (response) await expect(response.json()).resolves.toEqual({ error: "PHOTO_CHECK_TIMEOUT" });
+    expect(stalled.wasCancelled()).toBe(true);
+    const next = guard.enter(makeMultipartRequest(), "analyze");
+    expect(next.allowed).toBe(true);
+    if (next.allowed) next.release();
+  });
+
+  it("gives the checker only the remaining time in the 10-second request deadline", async () => {
+    vi.useFakeTimers();
+    let checkStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => { checkStarted = resolve; });
+    const checker: PhotoChecker = {
+      check: ({ signal }) => {
+        checkStarted?.();
+        return new Promise((_, reject) => {
+          signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      },
+    };
+    const responsePromise = handleRequest(await makeDelayedMultipartRequest(5_000), checker);
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    await started;
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(await Promise.race([responsePromise, Promise.resolve(undefined)])).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+    const response = await Promise.race([responsePromise, Promise.resolve(undefined)]);
+
+    expect(response?.status).toBe(504);
+    if (response) await expect(response.json()).resolves.toEqual({ error: "PHOTO_CHECK_TIMEOUT" });
   });
 
   it("aborts the checker after 10 seconds and maps it to PHOTO_CHECK_TIMEOUT", async () => {

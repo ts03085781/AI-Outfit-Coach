@@ -26,6 +26,34 @@ function isAbortError(error: unknown): boolean {
     : error instanceof Error && error.name === "AbortError";
 }
 
+function abortError(): DOMException {
+  return new DOMException("aborted", "AbortError");
+}
+
+function awaitWithinDeadline<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(abortError());
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+
+    signal.addEventListener("abort", onAbort, { once: true });
+    void operation.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error: unknown) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
 function isValidImage(value: FormDataEntryValue | null): value is File {
   return value instanceof Blob
     && SUPPORTED_IMAGE_TYPES.has(value.type)
@@ -39,12 +67,17 @@ function isMultipartContentType(value: string | null): boolean {
 
 async function readBodyWithinLimit(
   body: ReadableStream<Uint8Array> | null,
+  signal: AbortSignal,
 ): Promise<Uint8Array<ArrayBuffer> | undefined> {
   if (!body) return new Uint8Array();
 
   const reader = body.getReader();
   const chunks: Uint8Array[] = [];
   let totalBytes = 0;
+  const cancelReader = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  signal.addEventListener("abort", cancelReader, { once: true });
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -65,6 +98,7 @@ async function readBodyWithinLimit(
     }
     return undefined;
   } finally {
+    signal.removeEventListener("abort", cancelReader);
     reader.releaseLock();
   }
 
@@ -77,18 +111,21 @@ async function readBodyWithinLimit(
   return bytes;
 }
 
-async function parseMultipartFormData(request: Request): Promise<FormData | undefined> {
-  const multipartBody = await readBodyWithinLimit(request.body);
+async function parseMultipartFormData(
+  request: Request,
+  signal: AbortSignal,
+): Promise<FormData | undefined> {
+  const multipartBody = await awaitWithinDeadline(readBodyWithinLimit(request.body, signal), signal);
   if (!multipartBody) return undefined;
 
   try {
     const headers = new Headers(request.headers);
     headers.delete("content-length");
-    return await new Request(request.url, {
+    return await awaitWithinDeadline(new Request(request.url, {
       method: request.method,
       headers,
       body: new Blob([multipartBody]),
-    }).formData();
+    }).formData(), signal);
   } catch {
     return undefined;
   }
@@ -99,6 +136,9 @@ export function createPhotoCheckHandler(dependencies: PhotoCheckHandlerDependenc
     const guard = dependencies.abuseGuard.enter(request, "photoCheck");
     if (!guard.allowed) return guard.response;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), PHOTO_CHECK_TIMEOUT_MS);
+    let image: Blob | undefined;
     try {
       const contentLength = Number(request.headers.get("content-length"));
       if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
@@ -109,36 +149,33 @@ export function createPhotoCheckHandler(dependencies: PhotoCheckHandlerDependenc
         return json({ error: "INVALID_IMAGE" }, 400);
       }
 
-      const formData = await parseMultipartFormData(request);
+      const formData = await parseMultipartFormData(request, controller.signal);
+      if (controller.signal.aborted) return json({ error: "PHOTO_CHECK_TIMEOUT" }, 504);
       if (!formData) return json({ error: "INVALID_IMAGE" }, 400);
 
-      let image: Blob | undefined;
-      let timeout: ReturnType<typeof setTimeout> | undefined;
-      try {
-        const imageValue = formData.get("image");
-        if (!isValidImage(imageValue)) return json({ error: "INVALID_IMAGE" }, 400);
-        image = imageValue;
-        if (!await isDecodableSupportedImage(image)) {
-          return json({ error: "INVALID_IMAGE" }, 400);
-        }
-
-        const controller = new AbortController();
-        timeout = setTimeout(() => controller.abort(), PHOTO_CHECK_TIMEOUT_MS);
-        const result = await dependencies.createChecker().check({ image, signal: controller.signal });
-        return json(result, 200);
-      } catch (error) {
-        if (error instanceof PhotoCheckerTimeoutError || isAbortError(error)) {
-          return json({ error: "PHOTO_CHECK_TIMEOUT" }, 504);
-        }
-        if (error instanceof PhotoCheckerProviderError) {
-          return json({ error: "PHOTO_CHECK_UNAVAILABLE" }, 503);
-        }
-        return json({ error: "PHOTO_CHECK_UNAVAILABLE" }, 503);
-      } finally {
-        if (timeout) clearTimeout(timeout);
-        image = undefined;
+      const imageValue = formData.get("image");
+      if (!isValidImage(imageValue)) return json({ error: "INVALID_IMAGE" }, 400);
+      image = imageValue;
+      if (!await awaitWithinDeadline(isDecodableSupportedImage(image), controller.signal)) {
+        return json({ error: "INVALID_IMAGE" }, 400);
       }
+
+      const result = await awaitWithinDeadline(
+        dependencies.createChecker().check({ image, signal: controller.signal }),
+        controller.signal,
+      );
+      return json(result, 200);
+    } catch (error) {
+      if (error instanceof PhotoCheckerTimeoutError || isAbortError(error)) {
+        return json({ error: "PHOTO_CHECK_TIMEOUT" }, 504);
+      }
+      if (error instanceof PhotoCheckerProviderError) {
+        return json({ error: "PHOTO_CHECK_UNAVAILABLE" }, 503);
+      }
+      return json({ error: "PHOTO_CHECK_UNAVAILABLE" }, 503);
     } finally {
+      clearTimeout(timeout);
+      image = undefined;
       guard.release();
     }
   };
