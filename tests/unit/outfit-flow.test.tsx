@@ -561,9 +561,12 @@ describe("outfit flow", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
-    const resultPhoto = screen.getByRole("img", { name: "本次分析的穿搭照片" });
+    const resultPhoto = await screen.findByRole("img", { name: "本次分析的穿搭照片" });
     expect(resultPhoto).toBeVisible();
     expect(resultPhoto).toHaveClass("result-photo");
+    expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?width:\s*100%/);
+    expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?height:\s*18rem/);
+    expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?object-fit:\s*contain/);
     expect(screen.getByRole("navigation", { name: "重新開始" })).toBeVisible();
     expect(screen.getByRole("button", { name: "重新選擇照片" })).toBeVisible();
     expect(screen.getByRole("button", { name: "返回第一步驟" })).toBeVisible();
@@ -584,6 +587,9 @@ describe("outfit flow", () => {
       url === "/api/telemetry"
       && JSON.parse(String(init?.body)).type === "analysis_success"
     )).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "重新選擇照片" }));
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:local-preview");
   });
 
   it("does not render a primary suggestion card when the analysis has no suggestions", async () => {

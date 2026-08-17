@@ -311,6 +311,15 @@ test.describe("mock-only outfit flow", () => {
     });
   }
 
+  test("shows the result photo after a successful analysis", async ({ page }) => {
+    await mockTelemetry(page);
+    await mockSuccessfulAnalysis(page);
+
+    await completeAnalysis(page);
+
+    await expect(page.getByRole("img", { name: "本次分析的穿搭照片" })).toBeVisible();
+  });
+
   test("shows a retake result and returns to an empty photo step", async ({ page }) => {
     const metrics: unknown[] = [];
     await mockTelemetry(page, metrics);
@@ -423,6 +432,7 @@ for (const width of [320, 390, 430]) {
     await mockSuccessfulAnalysis(page);
     await completeAnalysis(page);
 
+    await expect(page.getByRole("img", { name: "本次分析的穿搭照片" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     const controls = page.locator(".result-step button, .result-step textarea");
     const count = await controls.count();
