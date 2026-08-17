@@ -72,6 +72,7 @@
   },
   "result": {
     "title": "你的穿搭建議",
+    "photoAlt": "本次分析的穿搭照片",
     "strengths": "做得很好的地方",
     "fit": "場合適合度：{fit}",
     "fitGood": "適合",

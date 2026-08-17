@@ -69,6 +69,7 @@
   },
   "result": {
     "title": "코디 제안",
+    "photoAlt": "이번 제안을 위해 분석한 코디 사진",
     "strengths": "잘 어울리는 점",
     "fit": "상황 적합도: {fit}",
     "fitGood": "적합함",

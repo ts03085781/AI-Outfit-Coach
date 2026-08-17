@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { track } from "@/lib/telemetry";
@@ -10,6 +10,7 @@ import type { AppLocale } from "@/lib/i18n/config";
 
 type ResultStepProps = {
   result: OutfitAnalysis;
+  image?: Blob;
   analysisToken?: string;
   locale: AppLocale;
   onRetake: () => void;
@@ -25,6 +26,7 @@ function fitMessageKey(fit: string) {
 
 export function ResultStep({
   result,
+  image,
   analysisToken,
   locale,
   onRetake,
@@ -37,6 +39,17 @@ export function ResultStep({
   const [followUpUsed, setFollowUpUsed] = useState(false);
   const [followUpError, setFollowUpError] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>();
+
+  useEffect(() => {
+    if (!image) {
+      setImageUrl(undefined);
+      return;
+    }
+    const url = URL.createObjectURL(image);
+    setImageUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [image]);
 
   if (result.retake_required) {
     return (
@@ -95,6 +108,10 @@ export function ResultStep({
   return (
     <section className="result-step" aria-labelledby="result-title">
       <h1 id="result-title">{t("title")}</h1>
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="result-photo" src={imageUrl} alt={t("photoAlt")} />
+      ) : null}
       <article className="summary-card">
         <p>{result.summary}</p>
       </article>

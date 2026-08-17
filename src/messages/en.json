@@ -76,6 +76,7 @@
   },
   "result": {
     "title": "Your outfit suggestions",
+    "photoAlt": "Outfit photo analyzed for these suggestions",
     "strengths": "What’s working well",
     "fit": "Occasion fit: {fit}",
     "fitGood": "Good fit",

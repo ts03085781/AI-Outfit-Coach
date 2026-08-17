@@ -246,7 +246,6 @@ export function useOutfitFlow(locale: AppLocale) {
       }
 
       invalidatePhotoCheck();
-      setImage(undefined);
       setResult(parsed.data.analysis);
       setAnalysisToken(parsed.data.analysisToken);
       setAnalysisErrorCode(undefined);

@@ -69,6 +69,7 @@
   },
   "result": {
     "title": "コーデの提案",
+    "photoAlt": "今回の提案で分析したコーデ写真",
     "strengths": "良いところ",
     "fit": "場面との相性：{fit}",
     "fitGood": "適しています",

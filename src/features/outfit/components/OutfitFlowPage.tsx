@@ -134,6 +134,7 @@ export function OutfitFlowPage() {
           {flow.state === "result" && flow.result ? (
             <ResultStep
               result={flow.result}
+              image={flow.image}
               analysisToken={flow.analysisToken}
               locale={locale}
               onRetake={flow.retake}

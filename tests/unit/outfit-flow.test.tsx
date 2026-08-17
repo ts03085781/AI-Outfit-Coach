@@ -561,6 +561,9 @@ describe("outfit flow", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
+    const resultPhoto = screen.getByRole("img", { name: "本次分析的穿搭照片" });
+    expect(resultPhoto).toBeVisible();
+    expect(resultPhoto).toHaveClass("result-photo");
     expect(screen.getByRole("navigation", { name: "重新開始" })).toBeVisible();
     expect(screen.getByRole("button", { name: "重新選擇照片" })).toBeVisible();
     expect(screen.getByRole("button", { name: "返回第一步驟" })).toBeVisible();
@@ -640,7 +643,7 @@ describe("outfit flow", () => {
     )).toBe(true);
   });
 
-  it("invalidates the passed photo check after terminal analysis success", async () => {
+  it("preserves the analyzed photo while invalidating its passed check", async () => {
     const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
     const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
 
@@ -651,7 +654,7 @@ describe("outfit flow", () => {
     await act(() => flow.current.analyze());
 
     expect(flow.current.state).toBe("result");
-    expect(flow.current.image).toBeUndefined();
+    expect(flow.current.image).toBe(image);
     expect(flow.current.photoCheckState).toEqual({ status: "idle" });
   });
 
