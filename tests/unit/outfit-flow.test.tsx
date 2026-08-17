@@ -588,7 +588,9 @@ describe("outfit flow", () => {
       && JSON.parse(String(init?.body)).type === "analysis_success"
     )).toBe(true);
 
+    revokeObjectURL.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "重新選擇照片" }));
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:local-preview");
   });
 
@@ -639,6 +641,7 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(await screen.findByText("衣物細節不清楚")).toBeVisible();
+    expect(screen.queryByRole("img", { name: "本次分析的穿搭照片" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重新拍照" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "重新選擇照片" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "返回第一步驟" })).not.toBeInTheDocument();
