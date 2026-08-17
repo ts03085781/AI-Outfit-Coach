@@ -10,7 +10,8 @@ describe("buildPhotoCheckSystemPrompt", () => {
     const prompt = buildPhotoCheckSystemPrompt();
 
     expect(prompt).toContain("exactly one person");
-    expect(prompt).toContain("upper clothing, lower clothing, and shoes");
+    expect(prompt).toContain("upper clothing and lower clothing, or a one-piece garment that covers both");
+    expect(prompt).toContain("Footwear and the head do not need to be visible");
     expect(prompt).toContain("sufficiently unobstructed");
     expect(prompt).toContain("bright and sharp enough");
     expect(prompt).toContain("outfit photo");

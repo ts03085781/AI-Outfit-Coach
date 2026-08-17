@@ -43,9 +43,9 @@
   },
   "photo": {
     "back": "Back",
-    "title": "Capture your full outfit",
-    "description": "Stand back so your top, bottom, and shoes are all visible.",
-    "addPhoto": "Add a full-body photo",
+    "title": "Capture your outfit",
+    "description": "Please show your top and bottom, or a one-piece outfit, clearly. If you can include footwear and your head too, the analysis will be more accurate ❤️.",
+    "addPhoto": "Add an outfit photo",
     "fileHint": "JPG, PNG, WebP, one photo",
     "replacePhoto": "Replace photo",
     "preview": "Local outfit photo preview",
@@ -60,13 +60,13 @@
     "reason": {
       "NO_PERSON": "We couldn’t identify a person in this photo. Please choose another photo.",
       "MULTIPLE_PEOPLE": "This photo includes more than one person. Please choose a photo with one person.",
-      "INCOMPLETE_OUTFIT": "The full outfit is not visible. Please include the top, bottom, and shoes.",
-      "OUTFIT_OBSTRUCTED": "The clothing is blocked from view. Please retake the full outfit.",
+      "INCOMPLETE_OUTFIT": "Show your top and bottom, or a recognizable one-piece outfit, clearly. Footwear and your head do not need to be visible.",
+      "OUTFIT_OBSTRUCTED": "The clothing is blocked from view. Retake the photo with your top and bottom clearly visible.",
       "TOO_DARK": "This photo is too dark. Please retake it in better lighting.",
       "TOO_BLURRY": "This photo is too blurry. Hold the camera steady and retake it.",
       "NOT_OUTFIT_PHOTO": "This is not an outfit photo we can analyze. Please choose another photo.",
       "INAPPROPRIATE_CONTENT": "This photo does not meet the service guidelines. Please choose an outfit photo.",
-      "CLOTHING_UNRECOGNIZABLE": "We can’t reliably identify the clothing. Please retake a clear photo of the full outfit."
+      "CLOTHING_UNRECOGNIZABLE": "We can’t reliably identify the clothing. Please retake a clear outfit photo."
     },
     "startAnalysis": "Start analysis"
   },

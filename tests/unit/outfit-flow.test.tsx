@@ -141,7 +141,7 @@ describe("outfit flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
-    expect(screen.getByRole("button", { name: "加入一張全身照" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "加入一張穿搭照" })).toBeVisible();
     expect(screen.getByText("JPG、PNG、WebP，單張照片")).toBeVisible();
     expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "拍照" })).not.toBeInTheDocument();
@@ -158,7 +158,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "加入一張全身照" }));
+    fireEvent.click(screen.getByRole("button", { name: "加入一張穿搭照" }));
 
     expect(inputClick).toHaveBeenCalledTimes(1);
     inputClick.mockRestore();
@@ -190,7 +190,7 @@ describe("outfit flow", () => {
     );
     expect(screen.getByRole("button", { name: "更換照片" })).toBeVisible();
     expect(screen.getByRole("button", { name: "開始分析" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "加入一張全身照" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "加入一張穿搭照" })).not.toBeInTheDocument();
   });
 
   it("locks analysis while checking, passes automatically, and never starts full analysis", async () => {
@@ -230,13 +230,13 @@ describe("outfit flow", () => {
   it.each([
     ["NO_PERSON", "照片中沒有可辨識的人物，請更換照片。"],
     ["MULTIPLE_PEOPLE", "照片中有多位人物，請改用只有一人的照片。"],
-    ["INCOMPLETE_OUTFIT", "穿搭沒有完整入鏡，請讓上衣、下身與鞋子都清楚可見。"],
-    ["OUTFIT_OBSTRUCTED", "衣物被明顯遮擋，請重新拍攝完整穿搭。"],
+    ["INCOMPLETE_OUTFIT", "請讓上衣與下身，或可辨識的連身服裝清楚可見；鞋子與頭部不必入鏡。"],
+    ["OUTFIT_OBSTRUCTED", "衣物被明顯遮擋，請重新拍攝上衣與下身清楚可見的照片。"],
     ["TOO_DARK", "照片太暗，請在光線充足處重新拍攝。"],
     ["TOO_BLURRY", "照片太模糊，請保持鏡頭穩定後重新拍攝。"],
     ["NOT_OUTFIT_PHOTO", "這不是可分析的穿搭照片，請更換照片。"],
     ["INAPPROPRIATE_CONTENT", "這張照片不符合服務規範，請更換穿搭照片。"],
-    ["CLOTHING_UNRECOGNIZABLE", "無法可靠辨識衣物，請重新拍攝清楚的完整穿搭。"],
+    ["CLOTHING_UNRECOGNIZABLE", "無法可靠辨識衣物，請重新拍攝清楚的穿搭照。"],
   ])("announces the %s precheck rejection and keeps analysis locked", async (reason, message) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") {
@@ -543,7 +543,7 @@ describe("outfit flow", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "加入一張全身照" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "加入一張穿搭照" })).toBeVisible();
       expect(screen.queryByRole("img", { name: "本機穿搭照片預覽" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
     });
@@ -816,7 +816,7 @@ describe("outfit flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "重新選擇照片" }));
 
-    expect(screen.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "拍下你的穿搭" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "你的穿搭建議" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "開始分析" })).not.toBeInTheDocument();
 

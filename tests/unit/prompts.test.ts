@@ -25,6 +25,8 @@ describe("buildAnalysisPrompt", () => {
     expect(prompt).toContain("不得評價身體或外貌");
     expect(prompt).toContain("不得推斷敏感個人資訊");
     expect(prompt).toContain("照片不足時，要求重拍");
+    expect(prompt).toContain("鞋子或頭部配件未入鏡時，不得評價它們目前的搭配");
+    expect(prompt).toContain("只有確實能改善可見穿搭時，才可用「可考慮」提出條件式搭配建議");
     expect(prompt).toContain("<UNTRUSTED_ANALYSIS_CONTEXT>");
     expect(userContext).toContain('"weather":"rainy"');
     expect(userContext).toContain('"setting":"indoor"');

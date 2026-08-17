@@ -55,7 +55,7 @@ async function selectPhoto(page: Page, occasion = "日常外出") {
   await page.goto("/analyze");
   await page.getByRole("button", { name: occasion }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "加入一張全身照" }).click();
+  await page.getByRole("button", { name: "加入一張穿搭照" }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles(fixture);
   await expect(page.getByRole("img", { name: "本機穿搭照片預覽" })).toBeVisible();
@@ -88,7 +88,7 @@ test.describe("mock-only outfit flow", () => {
     await page.goto("/analyze");
     await page.getByRole("button", { name: "日常外出" }).click();
 
-    const upload = page.getByRole("button", { name: "加入一張全身照" });
+    const upload = page.getByRole("button", { name: "加入一張穿搭照" });
     await expect(upload).toBeVisible();
     await expect(page.getByText("JPG、PNG、WebP，單張照片")).toBeVisible();
     await expect(page.getByRole("button", { name: "開始分析" })).toHaveCount(0);
@@ -160,7 +160,7 @@ test.describe("mock-only outfit flow", () => {
 
     await selectPhoto(page);
 
-    await expect(page.getByText("穿搭沒有完整入鏡，請讓上衣、下身與鞋子都清楚可見。"))
+    await expect(page.getByText("請讓上衣與下身，或可辨識的連身服裝清楚可見；鞋子與頭部不必入鏡。"))
       .toBeVisible();
     await expect(page.getByRole("button", { name: "開始分析" })).toBeDisabled();
     expect(analysisRequests).toHaveLength(0);
@@ -331,7 +331,7 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByText("衣物被遮住，請重新拍照。")).toBeVisible();
     await page.getByRole("button", { name: "重新拍照" }).click();
 
-    await expect(page.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "拍下你的穿搭" })).toBeVisible();
     await expect(page.getByRole("button", { name: "開始分析" })).toHaveCount(0);
     expect(metrics).toContainEqual(expect.objectContaining({ type: "analysis_retake" }));
   });
@@ -343,7 +343,7 @@ test.describe("mock-only outfit flow", () => {
 
     await page.getByRole("button", { name: "重新選擇照片" }).click();
 
-    await expect(page.getByRole("heading", { name: "拍下完整穿搭" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "拍下你的穿搭" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "你的穿搭建議" })).toHaveCount(0);
   });
 
