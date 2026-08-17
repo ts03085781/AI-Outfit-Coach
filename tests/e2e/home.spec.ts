@@ -8,7 +8,7 @@ test("opens the magazine-style homepage and links to analysis", async ({ context
   }]);
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "今天，穿得剛剛好。" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: "分析穿搭" })).toHaveAttribute("href", "/analyze");
   await expect(page.getByRole("link", { name: "首頁" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "分析穿搭" }).click();

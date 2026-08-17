@@ -1,7 +1,5 @@
 "use client";
 
-import { useRef, useState } from "react";
-import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { ImSpinner8 } from "react-icons/im";
 

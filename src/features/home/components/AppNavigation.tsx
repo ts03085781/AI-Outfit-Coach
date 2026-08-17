@@ -22,6 +22,9 @@ export function AppNavigation() {
         const Icon = destination.Icon;
         return (
           <Link
+            aria-label={t(
+              destination.key === "analyze" ? "analyzeOutfit" : destination.key,
+            )}
             aria-current={isCurrent ? "page" : undefined}
             className={isCurrent ? "is-current" : undefined}
             href={destination.href}
@@ -30,9 +33,6 @@ export function AppNavigation() {
             <span aria-hidden="true">
               <Icon data-testid={`navigation-icon-${destination.key}`} />
             </span>
-            {/* {t(
-              destination.key === "analyze" ? "analyzeOutfit" : destination.key,
-            )} */}
           </Link>
         );
       })}
