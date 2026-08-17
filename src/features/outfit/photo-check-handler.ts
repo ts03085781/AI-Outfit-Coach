@@ -8,7 +8,7 @@ import type { AbuseGuard } from "@/lib/abuse-guard";
 
 const MAX_REQUEST_BYTES = 6 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const PHOTO_CHECK_TIMEOUT_MS = 10_000;
+const PHOTO_CHECK_TIMEOUT_MS = 20_000;
 const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export type PhotoCheckHandlerDependencies = {

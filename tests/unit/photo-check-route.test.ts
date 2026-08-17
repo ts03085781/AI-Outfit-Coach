@@ -318,7 +318,7 @@ describe("POST /api/photo-check", () => {
       .toEqual({ status: 504, body: { error: "PHOTO_CHECK_TIMEOUT" } });
   });
 
-  it("times out a stalled multipart body at 10 seconds and releases global concurrency", async () => {
+  it("times out a stalled multipart body at 20 seconds and releases global concurrency", async () => {
     vi.useFakeTimers();
     const guard = createInMemoryAbuseGuard({ secret: "stalled-body-secret", globalConcurrency: 1 });
     const stalled = makeStalledMultipartRequest();
@@ -328,7 +328,7 @@ describe("POST /api/photo-check", () => {
       guard,
     );
 
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(20_000);
     const response = await Promise.race([responsePromise, Promise.resolve(undefined)]);
 
     expect(response?.status).toBe(504);
@@ -339,7 +339,7 @@ describe("POST /api/photo-check", () => {
     if (next.allowed) next.release();
   });
 
-  it("gives the checker only the remaining time in the 10-second request deadline", async () => {
+  it("gives the checker only the remaining time in the 20-second request deadline", async () => {
     vi.useFakeTimers();
     let checkStarted: (() => void) | undefined;
     const started = new Promise<void>((resolve) => { checkStarted = resolve; });
@@ -355,7 +355,7 @@ describe("POST /api/photo-check", () => {
 
     await vi.advanceTimersByTimeAsync(5_000);
     await started;
-    await vi.advanceTimersByTimeAsync(4_999);
+    await vi.advanceTimersByTimeAsync(14_999);
     expect(await Promise.race([responsePromise, Promise.resolve(undefined)])).toBeUndefined();
     await vi.advanceTimersByTimeAsync(1);
     const response = await Promise.race([responsePromise, Promise.resolve(undefined)]);
@@ -364,7 +364,7 @@ describe("POST /api/photo-check", () => {
     if (response) await expect(response.json()).resolves.toEqual({ error: "PHOTO_CHECK_TIMEOUT" });
   });
 
-  it("keeps an invalid-output retry inside the same 10-second route deadline", async () => {
+  it("keeps an invalid-output retry inside the same 20-second route deadline", async () => {
     vi.useFakeTimers();
     process.env.OPENAI_PHOTO_CHECK_MODEL = "photo-check-test-model";
     const signals: Array<AbortSignal | undefined> = [];
@@ -380,7 +380,7 @@ describe("POST /api/photo-check", () => {
           if (signals.length === 1) {
             firstCallStarted?.();
             return new Promise((resolve) => {
-              setTimeout(() => resolve({ output_text: "not-json" }), 9_000);
+              setTimeout(() => resolve({ output_text: "not-json" }), 19_000);
             });
           }
 
@@ -397,7 +397,7 @@ describe("POST /api/photo-check", () => {
     const responsePromise = handleRequest(makeMultipartRequest(), checker);
 
     await firstStarted;
-    await vi.advanceTimersByTimeAsync(9_000);
+    await vi.advanceTimersByTimeAsync(19_000);
     await secondStarted;
     expect(signals).toHaveLength(2);
     expect(signals[0]).toBeDefined();
@@ -415,7 +415,7 @@ describe("POST /api/photo-check", () => {
     expect(signals).toHaveLength(2);
   });
 
-  it("aborts the checker after 10 seconds and maps it to PHOTO_CHECK_TIMEOUT", async () => {
+  it("aborts the checker after 20 seconds and maps it to PHOTO_CHECK_TIMEOUT", async () => {
     vi.useFakeTimers();
     let checkStarted: (() => void) | undefined;
     const started = new Promise<void>((resolve) => { checkStarted = resolve; });
@@ -430,7 +430,7 @@ describe("POST /api/photo-check", () => {
     const responsePromise = handleRequest(makeMultipartRequest(), checker);
 
     await started;
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(20_000);
     const response = await responsePromise;
     expect(response.status).toBe(504);
     await expect(response.json()).resolves.toEqual({ error: "PHOTO_CHECK_TIMEOUT" });
