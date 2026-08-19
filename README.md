@@ -1,6 +1,6 @@
 # AI Outfit Coach
 
-免登入的手機 PWA：使用者選擇情境、提供一張穿搭照並同意後，取得固定格式的溫和穿搭建議。
+需要 Google 登入的手機 PWA：使用者選擇情境、提供一張穿搭照並同意後，取得固定格式的溫和穿搭建議。
 
 ## 安裝與啟動
 
@@ -14,7 +14,18 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-在 `.env.local` 設定僅供伺服器使用的 `OPENAI_API_KEY`、`OPENAI_PHOTO_CHECK_MODEL`、`OPENAI_VISION_MODEL`、`RATE_LIMIT_SECRET` 與 `ANALYSIS_TOKEN_SECRET`。`OPENAI_PHOTO_CHECK_MODEL` 預設為 `gpt-5-nano`，供選取照片後的快速規格檢查使用；`OPENAI_VISION_MODEL` 則用於完整穿搭分析。兩個 secret 應各自使用至少 32 bytes 的隨機值。不要提交 `.env.local`，也不要把任何金鑰放在前端程式碼。
+在 `.env.local` 設定僅供伺服器使用的 `OPENAI_API_KEY`、`OPENAI_PHOTO_CHECK_MODEL`、`OPENAI_VISION_MODEL`、`RATE_LIMIT_SECRET` 與 `ANALYSIS_TOKEN_SECRET`，以及公開的 `NEXT_PUBLIC_SUPABASE_URL` 與 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`。`OPENAI_PHOTO_CHECK_MODEL` 預設為 `gpt-5-nano`，供選取照片後的快速規格檢查使用；`OPENAI_VISION_MODEL` 則用於完整穿搭分析。兩個 secret 應各自使用至少 32 bytes 的隨機值。不要提交 `.env.local`，也不要把任何金鑰放在前端程式碼。
+
+## Supabase 與 Google OAuth 部署設定
+
+請在 Supabase 與 Google Cloud Dashboard 完成以下手動設定：
+
+1. 在 Supabase Auth 啟用 Google provider。
+2. 將 Google Web OAuth redirect URI 設為 `https://<project-ref>.supabase.co/auth/v1/callback`。
+3. 將 Supabase Site URL 設為正式 Vercel origin 的完整網址。
+4. 在 Supabase Redirect URLs 加入 `http://localhost:3000/auth/callback` 與正式環境完整的 `/auth/callback` 網址。
+5. Google client ID 與 client secret 僅設定在 Supabase，絕不可將 secret 加入 Vercel。
+6. 在本機 `.env.local` 與 Vercel Production 設定公開的 Supabase URL 與 publishable key。
 
 ## 驗證
 
@@ -27,7 +38,7 @@ pnpm build
 rg -n "console\.(log|debug)|writeFile|createWriteStream|base64|data:image" src
 ```
 
-Playwright 會啟動本機伺服器，攔截 `/api/photo-check`、分析與遙測 API 並回傳固定假資料；它使用 `tests/fixtures/outfit-safe.png`（64×64、無真人的色塊服裝圖），不需金鑰，也不會將測試照片上傳到外部服務。測試涵蓋自動照片檢查、重拍、回饋、錯誤重試、reload 清除狀態，以及 320／390／430px 版面。
+Playwright 會啟動本機伺服器，攔截 `/api/photo-check`、`/api/auth/session`、分析與遙測 API 並回傳固定假資料；它使用 `tests/fixtures/outfit-safe.png`（64×64、無真人的色塊服裝圖），不需金鑰，也不會將測試照片上傳到外部服務。測試涵蓋登入／匿名登入閘門、自動照片檢查、重拍、回饋、錯誤重試、reload 清除狀態，以及 320／390／430px 版面。
 
 若本機的預設 port 3000 已被其他開發伺服器使用，可改用 `PLAYWRIGHT_PORT=3100 pnpm test:e2e`。明確指定 `PLAYWRIGHT_PORT` 時，Playwright 會啟動對應 port 的新伺服器而不重用既有程序，確保驗證的是目前 worktree。
 
