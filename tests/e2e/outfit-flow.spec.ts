@@ -73,12 +73,25 @@ async function completeAnalysis(page: Page, occasion = "日常外出") {
   await expect(page.getByText(analysis.summary)).toBeVisible();
 }
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ context, page }) => {
   await context.addCookies([{
     name: "NEXT_LOCALE",
     value: "zh-TW",
     url: "http://127.0.0.1:3000",
   }]);
+  await page.route("**/api/auth/session", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        user: {
+          id: "e2e-user",
+          name: "E2E User",
+          email: "e2e@example.com",
+          avatarUrl: null,
+        },
+      }),
+    });
+  });
 });
 
 test.describe("mock-only outfit flow", () => {

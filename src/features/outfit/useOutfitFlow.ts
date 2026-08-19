@@ -207,8 +207,10 @@ export function useOutfitFlow(locale: AppLocale) {
     setConsented(nextConsented);
   };
 
-  const analyze = async () => {
-    if (!occasion || !image || !consentedRef.current || !photoCheckPassedRef.current) return;
+  const analyze = async (): Promise<"completed" | "unauthorized"> => {
+    if (!occasion || !image || !consentedRef.current || !photoCheckPassedRef.current) {
+      return "completed";
+    }
     const startedAt = performance.now();
     setAnalysisErrorCode(undefined);
     setState("analyzing");
@@ -222,6 +224,10 @@ export function useOutfitFlow(locale: AppLocale) {
       if (trimmedDesiredFeel) formData.set("desiredFeel", trimmedDesiredFeel);
       formData.set("image", image, "outfit.webp");
       const response = await fetch("/api/analyze", { method: "POST", body: formData });
+      if (response.status === 401) {
+        setState("photo");
+        return "unauthorized";
+      }
       const body: unknown = await response.json();
       const latencyBucket = coarseLatencyBucket(performance.now() - startedAt);
 
@@ -235,7 +241,7 @@ export function useOutfitFlow(locale: AppLocale) {
           setResult({ retake_required: true, retake_reason: retakeReason });
           setState("result");
           track({ type: "analysis_retake", occasion, latencyBucket });
-          return;
+          return "completed";
         }
       }
 
@@ -251,6 +257,7 @@ export function useOutfitFlow(locale: AppLocale) {
       setAnalysisErrorCode(undefined);
       setState("result");
       track({ type: "analysis_success", occasion, latencyBucket });
+      return "completed";
     } catch (error) {
       const errorCode = error instanceof AnalysisRequestError ? error.code : "AI_UNAVAILABLE";
       setAnalysisErrorCode(errorCode);
@@ -261,6 +268,7 @@ export function useOutfitFlow(locale: AppLocale) {
         latencyBucket: coarseLatencyBucket(performance.now() - startedAt),
         errorCode,
       });
+      return "completed";
     }
   };
 

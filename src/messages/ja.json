@@ -8,6 +8,18 @@
     "ja": "日本語",
     "ko": "한국어"
   },
+  "auth": {
+    "loginTitle": "AI StyleCue にログイン",
+    "loginDescription": "ログインするとコーデ分析を始められます。",
+    "googleButton": "Google でログイン",
+    "privacy": "取得するのは氏名、メールアドレス、Google のプロフィール写真のみです。",
+    "loading": "Google に移動しています…",
+    "oauthError": "ログインを完了できませんでした。もう一度お試しください。",
+    "requiredTitle": "ログインして分析を開始",
+    "requiredDescription": "AI StyleCue にログインしていません。コーデ分析を開始するにはログインしてください。",
+    "goToLogin": "ログインへ進む",
+    "loginSuccess": "ログインしました。写真を選び直してコーデ分析を開始してください。"
+  },
   "occasion": {
     "title": "今日はどこへ行きますか？",
     "description": "最も近いものを選ぶと、提案を合わせます。",
@@ -151,7 +163,17 @@
     "eyebrow": "コーデガイド",
     "title": "設定",
     "description": "表示言語を選択してください。",
-    "language": "表示言語"
+    "language": "表示言語",
+    "accountTitle": "アカウント",
+    "accountLoading": "アカウント情報を読み込んでいます…",
+    "signedOut": "ログインしていません",
+    "signIn": "ログインする",
+    "name": "名前",
+    "email": "メールアドレス",
+    "avatarAlt": "{name} のプロフィール写真",
+    "signOut": "ログアウト",
+    "signingOut": "ログアウトしています…",
+    "signOutError": "現在ログアウトできません。もう一度お試しください。"
   },
   "error": {
     "title": "分析が一時停止しました",

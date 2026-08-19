@@ -12,6 +12,11 @@ export default defineConfig({
   testDir: "./tests/e2e",
   webServer: {
     command: `pnpm exec next dev --port ${port}`,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://e2e-test.supabase.co",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "e2e-test-public-key",
+    },
     url: baseURL,
     reuseExistingServer: !process.env.CI && !process.env.PLAYWRIGHT_PORT,
   },

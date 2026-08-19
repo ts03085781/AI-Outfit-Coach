@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { createAuthenticatedFollowUpRoute } from "@/features/outfit/authenticated-follow-up-route";
 import {
   createFollowUpHandler,
   type FollowUpResponsesClient,
@@ -97,6 +98,15 @@ describe("POST /api/follow-up", () => {
     delete process.env.OPENAI_VISION_MODEL;
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("returns AUTH_REQUIRED before processing an unauthenticated request", async () => {
+    const response = await createAuthenticatedFollowUpRoute(async () => null)(
+      request({ analysis: completeAnalysis, locale: "zh-TW", question: "還有其他方法嗎？" }),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "AUTH_REQUIRED" });
   });
 
   it("returns one alternative for the current analysis and short question", async () => {

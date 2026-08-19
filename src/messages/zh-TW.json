@@ -15,6 +15,18 @@
     "ja": "日本語",
     "ko": "한국어"
   },
+  "auth": {
+    "loginTitle": "登入 AI StyleCue",
+    "loginDescription": "登入後即可開始穿搭分析。",
+    "googleButton": "使用 Google 登入",
+    "privacy": "我們只會取得你的姓名、Email 與 Google 個人頭像。",
+    "loading": "正在前往 Google…",
+    "oauthError": "登入未完成，請再試一次。",
+    "requiredTitle": "登入後開始分析",
+    "requiredDescription": "你尚未登入 AI StyleCue，請先登入才能開始穿搭分析。",
+    "goToLogin": "前往登入",
+    "loginSuccess": "登入成功，請重新選擇照片開始分析。"
+  },
   "occasion": {
     "title": "今天要去哪裡？",
     "description": "選最接近的一種，我會依此調整建議。",
@@ -154,7 +166,17 @@
     "eyebrow": "衣櫥指南",
     "title": "設定",
     "description": "選擇你偏好的介面語言。",
-    "language": "介面語言"
+    "language": "介面語言",
+    "accountTitle": "帳號",
+    "accountLoading": "正在載入帳號資料…",
+    "signedOut": "尚未登入",
+    "signIn": "前往登入",
+    "name": "名稱",
+    "email": "電子郵件",
+    "avatarAlt": "{name} 的個人頭像",
+    "signOut": "登出",
+    "signingOut": "正在登出…",
+    "signOutError": "登出暫時無法完成，請再試一次。"
   },
   "error": {
     "title": "分析暫時停住了",

@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import { readFileSync } from "node:fs";
+import type { User } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -11,9 +12,7 @@ import {
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
 } from "@/features/outfit/openai-analyzer";
-import {
-  POST as defaultPost,
-} from "@/app/api/analyze/route";
+import { createAuthenticatedAnalyzeRoute } from "@/features/outfit/authenticated-analyze-route";
 import { createAnalyzeHandler } from "@/features/outfit/analyze-handler";
 import { createInMemoryAbuseGuard, type AbuseGuard } from "@/lib/abuse-guard";
 
@@ -101,6 +100,15 @@ describe("POST /api/analyze", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("returns AUTH_REQUIRED before processing an unauthenticated request", async () => {
+    const response = await createAuthenticatedAnalyzeRoute(async () => null)(
+      makeMultipartRequest(validImage()),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "AUTH_REQUIRED" });
   });
 
   it("returns a complete analysis for a valid multipart image", async () => {
@@ -452,7 +460,9 @@ describe("POST /api/analyze", () => {
     process.env.ANALYSIS_TOKEN_SECRET = "unit-test-analysis-secret";
 
     try {
-      const response = await defaultPost(
+      const response = await createAuthenticatedAnalyzeRoute(
+        async () => ({ id: "user-1" } as User),
+      )(
         makeMultipartRequest(validImage()),
       );
       expect(response.status).toBe(503);

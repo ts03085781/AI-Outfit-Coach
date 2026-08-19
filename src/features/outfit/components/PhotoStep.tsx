@@ -10,10 +10,10 @@ type PhotoStepProps = {
   image?: Blob;
   error?: ImagePreparationErrorCode;
   photoCheckState: PhotoCheckState;
+  analysisDisabled: boolean;
   onChoosePhoto: (file?: File) => void;
   onRetryPhotoCheck: () => void;
-  onConsentChange: (consented: boolean) => void;
-  onAnalyze: () => void;
+  onAnalyze: () => void | Promise<void>;
   onBack: () => void;
 };
 
@@ -21,9 +21,9 @@ export function PhotoStep({
   image,
   error,
   photoCheckState,
+  analysisDisabled,
   onChoosePhoto,
   onRetryPhotoCheck,
-  onConsentChange,
   onAnalyze,
   onBack,
 }: PhotoStepProps) {
@@ -129,11 +129,9 @@ export function PhotoStep({
           <button
             className="primary-action photo-analyze"
             type="button"
-            disabled={photoCheckState.status !== "passed"}
-            onClick={() => {
-              onConsentChange(true);
-              onAnalyze();
-            }}
+            disabled={analysisDisabled || photoCheckState.status !== "passed"}
+            aria-busy={analysisDisabled}
+            onClick={onAnalyze}
           >
             {t("startAnalysis")}
           </button>

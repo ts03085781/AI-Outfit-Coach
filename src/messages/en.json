@@ -15,6 +15,18 @@
     "ja": "日本語",
     "ko": "한국어"
   },
+  "auth": {
+    "loginTitle": "Sign in to AI StyleCue",
+    "loginDescription": "Sign in to start your outfit analysis.",
+    "googleButton": "Continue with Google",
+    "privacy": "We only access your name, email address, and Google profile picture.",
+    "loading": "Taking you to Google…",
+    "oauthError": "Sign-in was not completed. Please try again.",
+    "requiredTitle": "Sign in to start analysis",
+    "requiredDescription": "You are not signed in to AI StyleCue. Please sign in before starting an outfit analysis.",
+    "goToLogin": "Go to sign in",
+    "loginSuccess": "Signed in successfully. Please choose a photo again to start analysis."
+  },
   "occasion": {
     "title": "Where are you going today?",
     "description": "Choose the closest option and I’ll tailor the suggestion.",
@@ -158,7 +170,17 @@
     "eyebrow": "Outfit Guide",
     "title": "Settings",
     "description": "Choose your preferred interface language.",
-    "language": "Interface language"
+    "language": "Interface language",
+    "accountTitle": "Account",
+    "accountLoading": "Loading account details…",
+    "signedOut": "You are not signed in",
+    "signIn": "Sign in",
+    "name": "Name",
+    "email": "Email",
+    "avatarAlt": "{name}'s profile picture",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "signOutError": "We couldn’t sign you out right now. Please try again."
   },
   "error": {
     "title": "Analysis paused",
