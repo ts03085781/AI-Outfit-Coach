@@ -93,6 +93,16 @@ textarea:focus-visible {
 .settings-language-field { display: grid; gap: 8px; margin-top: 24px; color: #493629; font-weight: 700; text-align: left; }
 .settings-language-field select { min-height: 44px; padding: 8px 10px; border: 1px solid #b9c9cf; border-radius: 8px; background: #fff; color: #17202a; font: inherit; }
 
+.login-shell { display: grid; width: min(100%, 32rem); min-height: 100dvh; margin: 0 auto; padding: 24px; place-items: center; }
+.login-card { width: 100%; padding: clamp(24px, 8vw, 38px); background: #fffdfa; border: 1px solid #eadfd4; border-radius: 18px; box-shadow: 0 12px 30px rgb(23 32 42 / 7%); text-align: center; }
+.login-card h1 { color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 9vw, 2.7rem); font-weight: 500; letter-spacing: -.05em; }
+.login-card > p { color: #77695e; }
+.login-google-button { width: 100%; min-height: 52px; margin-top: 18px; padding: 12px 16px; color: #fff; background: #176b87; border: 1px solid #176b87; border-radius: 13px; cursor: pointer; font-weight: 750; }
+.login-google-button:focus-visible { outline: 3px solid #f3a66b; outline-offset: 3px; }
+.login-google-button:disabled { cursor: progress; opacity: .65; }
+.login-error { margin-top: 18px; padding: 10px 12px; color: #8d3b28 !important; background: #fbe9df; border: 1px solid #e8b69f; border-radius: 8px; font-weight: 700; }
+.login-privacy { margin: 20px 0 0; font-size: .82rem; }
+
 .app-header {
   display: grid;
   grid-template-columns: 44px 1fr 44px;

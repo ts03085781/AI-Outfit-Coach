@@ -8,6 +8,14 @@
     "ja": "日本語",
     "ko": "한국어"
   },
+  "auth": {
+    "loginTitle": "AI StyleCue にログイン",
+    "loginDescription": "ログインするとコーデ分析を始められます。",
+    "googleButton": "Google でログイン",
+    "privacy": "取得するのは氏名、メールアドレス、Google のプロフィール写真のみです。",
+    "loading": "Google に移動しています…",
+    "oauthError": "ログインを完了できませんでした。もう一度お試しください。"
+  },
   "occasion": {
     "title": "今日はどこへ行きますか？",
     "description": "最も近いものを選ぶと、提案を合わせます。",

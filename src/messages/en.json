@@ -15,6 +15,14 @@
     "ja": "日本語",
     "ko": "한국어"
   },
+  "auth": {
+    "loginTitle": "Sign in to AI StyleCue",
+    "loginDescription": "Sign in to start your outfit analysis.",
+    "googleButton": "Continue with Google",
+    "privacy": "We only access your name, email address, and Google profile picture.",
+    "loading": "Taking you to Google…",
+    "oauthError": "Sign-in was not completed. Please try again."
+  },
   "occasion": {
     "title": "Where are you going today?",
     "description": "Choose the closest option and I’ll tailor the suggestion.",

@@ -13,6 +13,14 @@ describe("locale resolution", () => {
   });
 });
 
+describe("login messages", () => {
+  const keys = ["loginTitle", "loginDescription", "googleButton", "privacy", "loading", "oauthError"] as const;
+
+  it.each(["zh-TW", "en", "ja", "ko"] as const)("provides the complete auth message shape for %s", (locale) => {
+    expect(Object.keys(messages[locale].auth).sort()).toEqual([...keys].sort());
+  });
+});
+
 describe("photo precheck messages", () => {
   it.each([
     ["zh-TW", {
