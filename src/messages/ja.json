@@ -163,7 +163,17 @@
     "eyebrow": "コーデガイド",
     "title": "設定",
     "description": "表示言語を選択してください。",
-    "language": "表示言語"
+    "language": "表示言語",
+    "accountTitle": "アカウント",
+    "accountLoading": "アカウント情報を読み込んでいます…",
+    "signedOut": "ログインしていません",
+    "signIn": "ログインする",
+    "name": "名前",
+    "email": "メールアドレス",
+    "avatarAlt": "{name} のプロフィール写真",
+    "signOut": "ログアウト",
+    "signingOut": "ログアウトしています…",
+    "signOutError": "現在ログアウトできません。もう一度お試しください。"
   },
   "error": {
     "title": "分析が一時停止しました",

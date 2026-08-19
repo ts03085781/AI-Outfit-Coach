@@ -41,6 +41,44 @@ describe("login messages", () => {
   });
 });
 
+describe("settings account messages", () => {
+  const keys = [
+    "eyebrow",
+    "title",
+    "description",
+    "language",
+    "accountTitle",
+    "accountLoading",
+    "signedOut",
+    "signIn",
+    "name",
+    "email",
+    "avatarAlt",
+    "signOut",
+    "signingOut",
+    "signOutError",
+  ] as const;
+
+  it.each(["zh-TW", "en", "ja", "ko"] as const)("provides the complete settings account message shape for %s", (locale) => {
+    expect(Object.keys(messages[locale].settings).sort()).toEqual([...keys].sort());
+  });
+
+  it("provides the required Traditional Chinese account copy", () => {
+    expect(messages["zh-TW"].settings).toMatchObject({
+      accountTitle: "帳號",
+      accountLoading: "正在載入帳號資料…",
+      signedOut: "尚未登入",
+      signIn: "前往登入",
+      name: "名稱",
+      email: "電子郵件",
+      avatarAlt: "{name} 的個人頭像",
+      signOut: "登出",
+      signingOut: "正在登出…",
+      signOutError: "登出暫時無法完成，請再試一次。",
+    });
+  });
+});
+
 describe("photo precheck messages", () => {
   it.each([
     ["zh-TW", {

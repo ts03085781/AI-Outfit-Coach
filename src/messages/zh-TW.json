@@ -166,7 +166,17 @@
     "eyebrow": "衣櫥指南",
     "title": "設定",
     "description": "選擇你偏好的介面語言。",
-    "language": "介面語言"
+    "language": "介面語言",
+    "accountTitle": "帳號",
+    "accountLoading": "正在載入帳號資料…",
+    "signedOut": "尚未登入",
+    "signIn": "前往登入",
+    "name": "名稱",
+    "email": "電子郵件",
+    "avatarAlt": "{name} 的個人頭像",
+    "signOut": "登出",
+    "signingOut": "正在登出…",
+    "signOutError": "登出暫時無法完成，請再試一次。"
   },
   "error": {
     "title": "分析暫時停住了",

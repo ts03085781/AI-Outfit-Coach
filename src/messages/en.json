@@ -170,7 +170,17 @@
     "eyebrow": "Outfit Guide",
     "title": "Settings",
     "description": "Choose your preferred interface language.",
-    "language": "Interface language"
+    "language": "Interface language",
+    "accountTitle": "Account",
+    "accountLoading": "Loading account details…",
+    "signedOut": "You are not signed in",
+    "signIn": "Sign in",
+    "name": "Name",
+    "email": "Email",
+    "avatarAlt": "{name}'s profile picture",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "signOutError": "We couldn’t sign you out right now. Please try again."
   },
   "error": {
     "title": "Analysis paused",
