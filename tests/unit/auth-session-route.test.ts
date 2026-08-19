@@ -3,7 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
-import { createSessionHandler } from "@/app/api/auth/session/route";
+import { createSessionHandler } from "@/lib/auth/session-handler";
 import { toBasicUser } from "@/lib/auth/user";
 
 describe("toBasicUser", () => {

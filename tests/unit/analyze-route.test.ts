@@ -12,9 +12,7 @@ import {
   AnalyzerTimeoutError,
   AnalyzerUnavailableError,
 } from "@/features/outfit/openai-analyzer";
-import {
-  createAuthenticatedAnalyzeRoute,
-} from "@/app/api/analyze/route";
+import { createAuthenticatedAnalyzeRoute } from "@/features/outfit/authenticated-analyze-route";
 import { createAnalyzeHandler } from "@/features/outfit/analyze-handler";
 import { createInMemoryAbuseGuard, type AbuseGuard } from "@/lib/abuse-guard";
 

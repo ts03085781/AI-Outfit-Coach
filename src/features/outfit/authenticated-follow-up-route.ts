@@ -1,0 +1,22 @@
+import type { User } from "@supabase/supabase-js";
+
+import { configuredAnalysisTokenService } from "@/features/outfit/analysis-token";
+import {
+  createFollowUpHandler,
+  createOpenAIFollowUpClient,
+} from "@/features/outfit/follow-up-handler";
+import { configuredAbuseGuard } from "@/lib/abuse-guard";
+import { withAuthenticatedUser } from "@/lib/auth/guard";
+import { getCurrentUser } from "@/lib/auth/user";
+
+const defaultDependencies = {
+  createClient: createOpenAIFollowUpClient,
+  abuseGuard: configuredAbuseGuard,
+  verifyAnalysisToken: configuredAnalysisTokenService.verify,
+};
+
+export function createAuthenticatedFollowUpRoute(
+  getUser: () => Promise<User | null> = getCurrentUser,
+) {
+  return withAuthenticatedUser(createFollowUpHandler(defaultDependencies), getUser);
+}

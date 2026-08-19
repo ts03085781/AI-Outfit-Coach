@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createAuthenticatedFollowUpRoute } from "@/app/api/follow-up/route";
+import { createAuthenticatedFollowUpRoute } from "@/features/outfit/authenticated-follow-up-route";
 import {
   createFollowUpHandler,
   type FollowUpResponsesClient,
