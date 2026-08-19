@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ImSpinner8 } from "react-icons/im";
 
+import { RequiredLoginDialog } from "@/features/auth/components/RequiredLoginDialog";
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
 import { ResultStep } from "@/features/outfit/components/ResultStep";
 import type { Occasion, Setting, Weather } from "@/features/outfit/domain";
@@ -14,15 +16,54 @@ const occasions: Occasion[] = ["casual", "date", "work", "formal"];
 const weatherOptions: Weather[] = ["sunny", "rainy", "cold", "hot", "mild"];
 const settingOptions: Setting[] = ["indoor", "outdoor", "mixed"];
 
-export function OutfitFlowPage() {
+type OutfitFlowPageProps = {
+  loginSucceeded?: boolean;
+};
+
+function isAuthenticatedSessionSummary(value: unknown): value is { user: { id: string } } {
+  return typeof value === "object"
+    && value !== null
+    && "user" in value
+    && typeof value.user === "object"
+    && value.user !== null
+    && "id" in value.user
+    && typeof value.user.id === "string"
+    && value.user.id.length > 0;
+}
+
+export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) {
   const locale = useLocale() as AppLocale;
   const t = useTranslations();
   const flow = useOutfitFlow(locale);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [requiresLogin, setRequiresLogin] = useState(false);
   const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
+
+  const handleAnalyze = async () => {
+    if (isCheckingAuth) return;
+    setIsCheckingAuth(true);
+    try {
+      const response = await fetch("/api/auth/session", { cache: "no-store" });
+      const summary: unknown = await response.json();
+      if (!response.ok || !isAuthenticatedSessionSummary(summary)) {
+        setRequiresLogin(true);
+        return;
+      }
+
+      flow.setConsented(true);
+      const outcome = await flow.analyze();
+      if (outcome === "unauthorized") setRequiresLogin(true);
+    } catch {
+      setRequiresLogin(true);
+    } finally {
+      setIsCheckingAuth(false);
+    }
+  };
 
   return (
     <main className="flow-shell app-page-with-nav">
       <div className="flow-content">
+        {loginSucceeded ? <p className="login-success" role="status">{t("auth.loginSuccess")}</p> : null}
         <div className="flow-header" aria-label={t("step", { step })}>
           <span>{t("appName")}</span>
           <span>{step}/3</span>
@@ -115,10 +156,10 @@ export function OutfitFlowPage() {
               image={flow.image}
               error={flow.photoError}
               photoCheckState={flow.photoCheckState}
+              analysisDisabled={isCheckingAuth}
               onChoosePhoto={flow.choosePhoto}
               onRetryPhotoCheck={flow.retryPhotoCheck}
-              onConsentChange={flow.setConsented}
-              onAnalyze={flow.analyze}
+              onAnalyze={handleAnalyze}
               onBack={flow.backToOccasion}
             />
           ) : null}
@@ -149,7 +190,7 @@ export function OutfitFlowPage() {
               <button
                 className="primary-action"
                 type="button"
-                onClick={flow.analyze}
+                onClick={handleAnalyze}
               >
                 {t("error.retry")}
               </button>
@@ -158,6 +199,7 @@ export function OutfitFlowPage() {
         </div>
       </div>
       <AppNavigation />
+      {requiresLogin ? <RequiredLoginDialog /> : null}
     </main>
   );
 }

@@ -14,7 +14,11 @@
     "googleButton": "Google でログイン",
     "privacy": "取得するのは氏名、メールアドレス、Google のプロフィール写真のみです。",
     "loading": "Google に移動しています…",
-    "oauthError": "ログインを完了できませんでした。もう一度お試しください。"
+    "oauthError": "ログインを完了できませんでした。もう一度お試しください。",
+    "requiredTitle": "ログインして分析を開始",
+    "requiredDescription": "AI StyleCue にログインしていません。コーデ分析を開始するにはログインしてください。",
+    "goToLogin": "ログインへ進む",
+    "loginSuccess": "ログインしました。写真を選び直してコーデ分析を開始してください。"
   },
   "occasion": {
     "title": "今日はどこへ行きますか？",

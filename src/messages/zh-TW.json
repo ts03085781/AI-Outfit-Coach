@@ -21,7 +21,11 @@
     "googleButton": "使用 Google 登入",
     "privacy": "我們只會取得你的姓名、Email 與 Google 個人頭像。",
     "loading": "正在前往 Google…",
-    "oauthError": "登入未完成，請再試一次。"
+    "oauthError": "登入未完成，請再試一次。",
+    "requiredTitle": "登入後開始分析",
+    "requiredDescription": "你尚未登入 AI StyleCue，請先登入才能開始穿搭分析。",
+    "goToLogin": "前往登入",
+    "loginSuccess": "登入成功，請重新選擇照片開始分析。"
   },
   "occasion": {
     "title": "今天要去哪裡？",

@@ -329,6 +329,15 @@ button { min-width: 44px; min-height: 44px; }
 }
 
 .primary-action:disabled { cursor: not-allowed; opacity: .45; }
+.login-success { margin: 0 0 16px; padding: 10px 12px; color: #175b47; background: #e7f4ee; border: 1px solid #9bcbb7; border-radius: 10px; font-weight: 700; }
+
+.required-login-layer { position: fixed; z-index: 20; inset: 0; display: grid; padding: 24px; place-items: center; }
+.required-login-backdrop { position: absolute; inset: 0; background: rgb(23 32 42 / 55%); }
+.required-login-dialog { position: relative; width: min(100%, 28rem); padding: clamp(24px, 7vw, 34px); background: #fffdfa; border: 1px solid #eadfd4; border-radius: 18px; box-shadow: 0 16px 42px rgb(23 32 42 / 25%); }
+.required-login-dialog h1 { color: #3d2d1c; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.75rem, 8vw, 2.25rem); font-weight: 500; letter-spacing: -.04em; }
+.required-login-dialog p { margin-bottom: 22px; }
+.required-login-action { display: grid; width: 100%; min-height: 52px; padding: 13px 16px; color: #fff; background: #176b87; border-radius: 13px; font-weight: 750; place-items: center; text-decoration: none; }
+.required-login-action:focus-visible { outline: 3px solid #f3a66b; outline-offset: 3px; }
 .photo-back { min-height: 44px; margin: -8px 0 14px -8px; padding: 8px; color: #176b87; background: transparent; border: 0; cursor: pointer; font-weight: 700; }
 .result-photo {
   display: block;

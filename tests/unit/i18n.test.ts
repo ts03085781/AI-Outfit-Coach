@@ -14,10 +14,30 @@ describe("locale resolution", () => {
 });
 
 describe("login messages", () => {
-  const keys = ["loginTitle", "loginDescription", "googleButton", "privacy", "loading", "oauthError"] as const;
+  const keys = [
+    "loginTitle",
+    "loginDescription",
+    "googleButton",
+    "privacy",
+    "loading",
+    "oauthError",
+    "requiredTitle",
+    "requiredDescription",
+    "goToLogin",
+    "loginSuccess",
+  ] as const;
 
   it.each(["zh-TW", "en", "ja", "ko"] as const)("provides the complete auth message shape for %s", (locale) => {
     expect(Object.keys(messages[locale].auth).sort()).toEqual([...keys].sort());
+  });
+
+  it("provides the required Traditional Chinese login-gate copy", () => {
+    expect(messages["zh-TW"].auth).toMatchObject({
+      requiredTitle: "登入後開始分析",
+      requiredDescription: "你尚未登入 AI StyleCue，請先登入才能開始穿搭分析。",
+      goToLogin: "前往登入",
+      loginSuccess: "登入成功，請重新選擇照片開始分析。",
+    });
   });
 });
 

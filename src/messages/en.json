@@ -21,7 +21,11 @@
     "googleButton": "Continue with Google",
     "privacy": "We only access your name, email address, and Google profile picture.",
     "loading": "Taking you to Google…",
-    "oauthError": "Sign-in was not completed. Please try again."
+    "oauthError": "Sign-in was not completed. Please try again.",
+    "requiredTitle": "Sign in to start analysis",
+    "requiredDescription": "You are not signed in to AI StyleCue. Please sign in before starting an outfit analysis.",
+    "goToLogin": "Go to sign in",
+    "loginSuccess": "Signed in successfully. Please choose a photo again to start analysis."
   },
   "occasion": {
     "title": "Where are you going today?",

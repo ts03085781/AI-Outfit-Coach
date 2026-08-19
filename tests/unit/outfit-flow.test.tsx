@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import AnalyzePage from "@/app/analyze/page";
+import { OutfitFlowPage } from "@/features/outfit/components/OutfitFlowPage";
 import { useOutfitFlow } from "@/features/outfit/useOutfitFlow";
+import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
-const HomePage = AnalyzePage;
+const HomePage = () => <LocaleProvider><OutfitFlowPage /></LocaleProvider>;
 
 const { prepareImage } = vi.hoisted(() => ({ prepareImage: vi.fn(async (file: File) => file) }));
 
@@ -56,6 +57,10 @@ function photoCheckErrorResponse(error: string, status = 503) {
   return new Response(JSON.stringify({ error }), { status });
 }
 
+function sessionResponse(user: { id: string } | null = { id: "user-1" }) {
+  return new Response(JSON.stringify({ user }), { status: 200 });
+}
+
 function telemetryEvents() {
   return vi.mocked(fetch).mock.calls
     .filter(([url]) => url === "/api/telemetry")
@@ -83,6 +88,7 @@ beforeEach(() => {
   Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
   vi.stubGlobal("fetch", vi.fn(async (url) => {
     if (url === "/api/photo-check") return photoCheckResponse();
+    if (url === "/api/auth/session") return sessionResponse();
     if (url === "/api/analyze") return analysisResponse();
     return new Response(null, { status: 204 });
   }));
@@ -90,7 +96,7 @@ beforeEach(() => {
 
 describe("outfit flow", () => {
   it("keeps selected optional context in the first card", () => {
-    render(<AnalyzePage />);
+    render(<HomePage />);
 
     fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
@@ -113,6 +119,7 @@ describe("outfit flow", () => {
     const pendingResponse = deferred<Response>();
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/analyze") return pendingResponse.promise;
       return new Response(null, { status: 204 });
     });
@@ -126,6 +133,7 @@ describe("outfit flow", () => {
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
+    await screen.findByText("正在分析你的穿搭");
     const status = screen.getByRole("status");
     const spinner = status.querySelector("svg[aria-hidden='true']");
     expect(status).toHaveTextContent("正在分析你的穿搭");
@@ -504,8 +512,89 @@ describe("outfit flow", () => {
       "blob:local-preview",
     );
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
-    expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
+  });
+
+  it("shows the required-login dialog instead of analysis for a signed-out user", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse(null);
+      if (url === "/api/analyze") return analysisResponse();
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    expect(await screen.findByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
+    expect(screen.getAllByRole("link")).toEqual([
+      screen.getByRole("link", { name: "前往登入" }),
+    ]);
+    const loginLink = screen.getByRole("link", { name: "前往登入" });
+    expect(loginLink).toHaveAttribute("href", "/login?next=/analyze&reason=analysis");
+    expect(document.activeElement).toBe(loginLink);
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Tab" });
+    expect(document.activeElement).toBe(loginLink);
+    fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
+    expect(screen.getByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /取消|關閉|稍後/ })).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith("/api/analyze", expect.anything());
+  });
+
+  it("treats an invalid session summary as signed out", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse({ id: "" });
+      if (url === "/api/analyze") return analysisResponse();
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    expect(await screen.findByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
+    expect(fetch).not.toHaveBeenCalledWith("/api/analyze", expect.anything());
+  });
+
+  it("disables analysis while the login check is pending", async () => {
+    const pendingSession = deferred<Response>();
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return pendingSession.promise;
+      if (url === "/api/analyze") return analysisResponse();
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    expect(screen.getByRole("button", { name: "開始分析" })).toBeDisabled();
+    pendingSession.resolve(sessionResponse());
+    expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
+  });
+
+  it("shows the required-login dialog when analysis returns 401 after a valid session", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analyze") return new Response(null, { status: 401 });
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    expect(await screen.findByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "分析暫時中斷" })).not.toBeInTheDocument();
+    expect(screen.queryByText("分析服務暫時無法使用，請稍後再試一次。")).not.toBeInTheDocument();
   });
 
   it("does not restore a photo whose preparation completes after returning to occasion", async () => {
@@ -559,7 +648,6 @@ describe("outfit flow", () => {
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("正在分析你的穿搭");
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
     const resultPhoto = await screen.findByRole("img", { name: "本次分析的穿搭照片" });
     expect(resultPhoto).toBeVisible();
@@ -597,6 +685,7 @@ describe("outfit flow", () => {
   it("does not render a primary suggestion card when the analysis has no suggestions", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/analyze") {
         return analysisResponse({ ...completeAnalysis, suggestions: [] });
       }
@@ -627,6 +716,7 @@ describe("outfit flow", () => {
   it("shows only a retake reason and retake action when the photo needs retaking", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/analyze") {
         return new Response(
           JSON.stringify({ error: "RETAKE_REQUIRED", retake_reason: "衣物細節不清楚" }),
@@ -728,6 +818,7 @@ describe("outfit flow", () => {
   it("sends anonymous helpfulness feedback with no image upload", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
     });
@@ -759,6 +850,7 @@ describe("outfit flow", () => {
   it("announces an API failure and lets the user try again", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/analyze") throw new Error("network unavailable");
       return new Response(null, { status: 204 });
     });
@@ -784,6 +876,7 @@ describe("outfit flow", () => {
   ])("shows an actionable message for %s", async (errorCode, message) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/analyze") {
         return new Response(JSON.stringify({ error: errorCode }), { status: 503 });
       }
@@ -810,6 +903,7 @@ describe("outfit flow", () => {
   it("returns to photo selection without discarding optional context", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
     });
