@@ -160,7 +160,7 @@ test.describe("mock-only outfit flow", () => {
 
     await selectPhoto(page);
 
-    await expect(page.getByText("請讓上衣與下身，或可辨識的連身服裝清楚可見；鞋子與頭部不必入鏡。"))
+    await expect(page.getByText("請讓上衣與下身，或可辨識的連身服裝清楚可見。"))
       .toBeVisible();
     await expect(page.getByRole("button", { name: "開始分析" })).toBeDisabled();
     expect(analysisRequests).toHaveLength(0);

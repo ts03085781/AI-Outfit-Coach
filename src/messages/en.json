@@ -60,7 +60,7 @@
     "reason": {
       "NO_PERSON": "We couldn’t identify a person in this photo. Please choose another photo.",
       "MULTIPLE_PEOPLE": "This photo includes more than one person. Please choose a photo with one person.",
-      "INCOMPLETE_OUTFIT": "Show your top and bottom, or a recognizable one-piece outfit, clearly. Footwear and your head do not need to be visible.",
+      "INCOMPLETE_OUTFIT": "Show your top and bottom, or a recognizable one-piece outfit, clearly.",
       "OUTFIT_OBSTRUCTED": "The clothing is blocked from view. Retake the photo with your top and bottom clearly visible.",
       "TOO_DARK": "This photo is too dark. Please retake it in better lighting.",
       "TOO_BLURRY": "This photo is too blurry. Hold the camera steady and retake it.",

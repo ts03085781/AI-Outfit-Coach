@@ -30,7 +30,7 @@ describe("photo precheck messages", () => {
       reason: {
         NO_PERSON: "照片中沒有可辨識的人物，請更換照片。",
         MULTIPLE_PEOPLE: "照片中有多位人物，請改用只有一人的照片。",
-        INCOMPLETE_OUTFIT: "請讓上衣與下身，或可辨識的連身服裝清楚可見；鞋子與頭部不必入鏡。",
+        INCOMPLETE_OUTFIT: "請讓上衣與下身，或可辨識的連身服裝清楚可見。",
         OUTFIT_OBSTRUCTED: "衣物被明顯遮擋，請重新拍攝上衣與下身清楚可見的照片。",
         TOO_DARK: "照片太暗，請在光線充足處重新拍攝。",
         TOO_BLURRY: "照片太模糊，請保持鏡頭穩定後重新拍攝。",
@@ -54,7 +54,7 @@ describe("photo precheck messages", () => {
       reason: {
         NO_PERSON: "We couldn’t identify a person in this photo. Please choose another photo.",
         MULTIPLE_PEOPLE: "This photo includes more than one person. Please choose a photo with one person.",
-        INCOMPLETE_OUTFIT: "Show your top and bottom, or a recognizable one-piece outfit, clearly. Footwear and your head do not need to be visible.",
+        INCOMPLETE_OUTFIT: "Show your top and bottom, or a recognizable one-piece outfit, clearly.",
         OUTFIT_OBSTRUCTED: "The clothing is blocked from view. Retake the photo with your top and bottom clearly visible.",
         TOO_DARK: "This photo is too dark. Please retake it in better lighting.",
         TOO_BLURRY: "This photo is too blurry. Hold the camera steady and retake it.",
@@ -78,7 +78,7 @@ describe("photo precheck messages", () => {
       reason: {
         NO_PERSON: "写真から人物を確認できません。別の写真を選んでください。",
         MULTIPLE_PEOPLE: "複数の人物が写っています。1人だけの写真を選んでください。",
-        INCOMPLETE_OUTFIT: "トップスとボトムス、または上下を覆う服装がはっきり写るようにしてください。靴や頭部は不要です。",
+        INCOMPLETE_OUTFIT: "トップスとボトムス、または上下を覆う服装がはっきり写るようにしてください。",
         OUTFIT_OBSTRUCTED: "衣服が隠れています。トップスとボトムスがはっきり写るよう撮り直してください。",
         TOO_DARK: "写真が暗すぎます。明るい場所で撮り直してください。",
         TOO_BLURRY: "写真がぼやけています。カメラを安定させて撮り直してください。",
@@ -102,7 +102,7 @@ describe("photo precheck messages", () => {
       reason: {
         NO_PERSON: "사진에서 인물을 확인할 수 없습니다. 다른 사진을 선택해 주세요.",
         MULTIPLE_PEOPLE: "사진에 여러 사람이 있습니다. 한 사람만 나온 사진을 선택해 주세요.",
-        INCOMPLETE_OUTFIT: "상의와 하의 또는 상하의를 덮는 원피스가 선명하게 보이게 해주세요. 신발과 머리는 나오지 않아도 됩니다.",
+        INCOMPLETE_OUTFIT: "상의와 하의 또는 상하의를 덮는 원피스가 선명하게 보이게 해주세요.",
         OUTFIT_OBSTRUCTED: "옷이 가려져 있습니다. 상의와 하의가 선명하게 보이도록 다시 촬영해 주세요.",
         TOO_DARK: "사진이 너무 어둡습니다. 밝은 곳에서 다시 촬영해 주세요.",
         TOO_BLURRY: "사진이 너무 흐립니다. 카메라를 고정하고 다시 촬영해 주세요.",
