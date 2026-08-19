@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { createAuthCallbackHandler } from "@/app/auth/callback/route";
+import { createAuthCallbackHandler } from "@/lib/auth/callback";
 
 describe("GET /auth/callback", () => {
   it("exchanges a valid code and redirects to the safe next path", async () => {
