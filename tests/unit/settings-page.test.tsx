@@ -47,6 +47,21 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("link", { name: "前往登入" })).toHaveAttribute("href", "/login?next=/settings");
   });
 
+  it("treats an empty session user ID as signed out", async () => {
+    fetchMock.mockResolvedValue(sessionResponse({
+      id: "",
+      name: "王小明",
+      email: "ming@example.com",
+      avatarUrl: "https://example.com/avatar.png",
+    }));
+
+    render(<LocaleProvider initialLocale="zh-TW"><SettingsPage /></LocaleProvider>);
+
+    expect(await screen.findByText("尚未登入")).toBeVisible();
+    expect(screen.queryByText("王小明")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "登出" })).not.toBeInTheDocument();
+  });
+
   it("shows the signed-in identity with a safe avatar description", async () => {
     fetchMock.mockResolvedValue(sessionResponse({
       id: "user-1",

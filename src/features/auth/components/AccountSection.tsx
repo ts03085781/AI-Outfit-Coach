@@ -4,14 +4,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import type { BasicUser } from "@/lib/auth/user";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-
-type BasicUser = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  avatarUrl: string | null;
-};
 
 function textOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -31,10 +25,11 @@ function basicUserOrNull(value: unknown): BasicUser | null {
   if (!value || typeof value !== "object") return null;
 
   const candidate = value as Record<string, unknown>;
-  if (typeof candidate.id !== "string") return null;
+  const id = textOrNull(candidate.id);
+  if (!id) return null;
 
   return {
-    id: candidate.id,
+    id,
     name: textOrNull(candidate.name),
     email: textOrNull(candidate.email),
     avatarUrl: httpsUrlOrNull(candidate.avatarUrl),
