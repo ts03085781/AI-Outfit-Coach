@@ -130,6 +130,7 @@ export function PhotoStep({
             className="primary-action photo-analyze"
             type="button"
             disabled={analysisDisabled || photoCheckState.status !== "passed"}
+            aria-busy={analysisDisabled}
             onClick={onAnalyze}
           >
             {t("startAnalysis")}

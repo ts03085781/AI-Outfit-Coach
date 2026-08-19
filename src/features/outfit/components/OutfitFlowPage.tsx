@@ -190,6 +190,8 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               <button
                 className="primary-action"
                 type="button"
+                disabled={isCheckingAuth}
+                aria-busy={isCheckingAuth}
                 onClick={handleAnalyze}
               >
                 {t("error.retry")}

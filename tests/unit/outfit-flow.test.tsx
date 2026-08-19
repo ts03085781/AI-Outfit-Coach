@@ -867,6 +867,39 @@ describe("outfit flow", () => {
     )).toBe(true);
   });
 
+  it("disables the error retry and marks it busy while it checks authentication", async () => {
+    const pendingRetrySession = deferred<Response>();
+    let sessionChecks = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/auth/session") {
+        sessionChecks += 1;
+        return sessionChecks === 1 ? sessionResponse() : pendingRetrySession.promise;
+      }
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({ error: "AI_UNAVAILABLE" }), { status: 503 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    chooseOccasionAndPhoto();
+    await screen.findByRole("img", { name: "本機穿搭照片預覽" });
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("button", { name: "再試一次" }));
+
+    const retry = screen.getByRole("button", { name: "再試一次" });
+    expect(retry).toBeDisabled();
+    expect(retry).toHaveAttribute("aria-busy", "true");
+    retry.removeAttribute("disabled");
+    fireEvent.click(retry);
+    expect(sessionChecks).toBe(2);
+
+    pendingRetrySession.resolve(sessionResponse());
+    await screen.findByRole("alert");
+  });
+
   it.each([
     ["AI_REFUSED", "這張照片目前無法由模型分析，請改用清楚、完整的單人穿搭照。"],
     ["AI_AUTHORIZATION", "OpenAI 專案的額度或權限目前無法使用，請檢查 Platform 設定。"],
