@@ -15,6 +15,8 @@
   --radius-card: 16px;
   --space-page: 20px;
   --content-max: 1200px;
+  --font-size-label-caps: 12px;
+  --letter-spacing-label-caps: .15em;
 }
 
 * { box-sizing: border-box; }
@@ -63,9 +65,9 @@ p { color: var(--color-muted); line-height: 1.6; }
 
 .editorial-label {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-label-caps);
   font-weight: 700;
-  letter-spacing: .15em;
+  letter-spacing: var(--letter-spacing-label-caps);
   line-height: 1;
   text-transform: uppercase;
 }
@@ -130,7 +132,7 @@ p { color: var(--color-muted); line-height: 1.6; }
 
 .app-navigation a { display: grid; min-height: 76px; place-content: center; gap: 6px; color: var(--color-muted); font-size: .72rem; font-weight: 700; text-align: center; text-decoration: none; }
 .app-navigation-icon { font-size: 1.35rem; line-height: 1; }
-.app-navigation-label { display: block; margin: 0; font-size: .56rem; font-weight: 700; letter-spacing: .1em; line-height: 1.2; text-transform: uppercase; }
+.app-navigation-label { display: block; margin: 0; font-size: var(--font-size-label-caps); font-weight: 700; letter-spacing: var(--letter-spacing-label-caps); line-height: 1; text-transform: uppercase; white-space: nowrap; }
 .app-navigation a.is-current { color: var(--color-ink); }
 .app-navigation a.is-current::after { width: 20px; height: 2px; margin: 1px auto 0; content: ""; background: var(--color-ink); }
 

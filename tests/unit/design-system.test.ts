@@ -27,4 +27,10 @@ describe("Stitch design system", () => {
       ".flow-shell { padding: 12px 10px calc(100px + env(safe-area-inset-bottom)); }",
     );
   });
+
+  it("uses the shared label-caps type scale for bottom-navigation labels", () => {
+    expect(css).toMatch(/\.app-navigation-label\s*\{[^}]*font-size:\s*var\(--font-size-label-caps\)[^}]*letter-spacing:\s*var\(--letter-spacing-label-caps\)/);
+    expect(css).toContain("--font-size-label-caps: 12px");
+    expect(css).toContain("--letter-spacing-label-caps: .15em");
+  });
 });
