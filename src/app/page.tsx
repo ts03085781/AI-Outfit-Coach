@@ -12,7 +12,7 @@ export default function HomePage() {
   const t = useTranslations("home");
 
   return (
-    <main className="home-shell app-page-with-nav">
+    <main className="editorial-page home-shell app-page-with-nav">
       <section aria-labelledby="home-title" className="home-hero">
         <p className="home-kicker">{t("eyebrow")}</p>
         <h1 id="home-title">{t("title")}</h1>

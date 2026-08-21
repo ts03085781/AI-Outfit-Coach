@@ -15,8 +15,10 @@ beforeEach(() => {
 it("shows retryable weather, analysis navigation, and searchable trend cards", async () => {
   render(<LocaleProvider initialLocale="zh-TW"><HomePage /></LocaleProvider>);
 
+  expect(screen.getByRole("main")).toHaveClass("editorial-page", "home-shell");
   expect(await screen.findByRole("button", { name: "點擊取得所在地天氣" })).toBeVisible();
   expect(screen.getByRole("navigation", { name: "主要導覽" })).toBeVisible();
+  expect(screen.getByRole("navigation")).toHaveAttribute("data-testid", "app-navigation");
   expect(screen.getByTestId("navigation-icon-home")).toBeVisible();
   expect(screen.getByTestId("navigation-icon-analyze")).toBeVisible();
   expect(screen.getByTestId("navigation-icon-settings")).toBeVisible();

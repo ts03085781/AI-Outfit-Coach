@@ -16,7 +16,7 @@ export function AppNavigation() {
   const t = useTranslations("navigation");
 
   return (
-    <nav aria-label={t("label")} className="app-navigation">
+    <nav aria-label={t("label")} className="app-navigation" data-testid="app-navigation">
       {destinations.map((destination) => {
         const isCurrent = pathname === destination.href;
         const Icon = destination.Icon;

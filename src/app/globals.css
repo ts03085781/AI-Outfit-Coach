@@ -123,9 +123,8 @@ p { color: var(--color-muted); line-height: 1.6; }
   min-height: calc(76px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   transform: translateX(-50%);
-  background: rgb(255 255 255 / 96%);
+  background: var(--color-surface);
   border-top: 1px solid var(--color-ink);
-  backdrop-filter: blur(10px);
 }
 
 .app-navigation a { display: grid; min-height: 76px; place-content: center; gap: 6px; color: var(--color-muted); font-size: .72rem; font-weight: 700; text-align: center; text-decoration: none; }
@@ -134,7 +133,6 @@ p { color: var(--color-muted); line-height: 1.6; }
 .app-navigation a.is-current { color: var(--color-ink); }
 .app-navigation a.is-current::after { width: 20px; height: 2px; margin: 1px auto 0; content: ""; background: var(--color-ink); }
 
-.home-shell,
 .settings-shell { width: min(100%, 48rem); min-height: 100dvh; margin: 0 auto; padding: 24px var(--space-page) calc(116px + env(safe-area-inset-bottom)); }
 .home-shell { color: var(--color-ink); background: var(--color-canvas); }
 .home-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
@@ -165,7 +163,7 @@ p { color: var(--color-muted); line-height: 1.6; }
 .trend-section > h2,
 .section-heading h2 { margin: 0 0 20px; color: var(--color-ink); font-size: clamp(1.5rem, 8vw, 2.25rem); font-weight: 700; letter-spacing: -.04em; line-height: 1; }
 
-.weather-card { min-height: 0; padding: 24px; color: var(--color-ink); background: var(--color-surface); border: .5px solid var(--color-outline); border-radius: var(--radius-card); }
+.weather-card { min-height: 0; padding: 24px; color: var(--color-ink); background: var(--color-surface); border: 1px solid var(--color-ink); border-radius: var(--radius-card); }
 .weather-card-empty { display: grid; min-height: 144px; place-content: center; gap: 12px; text-align: center; }
 .weather-status-mark { font-size: 1.5rem; line-height: 1; }
 .weather-card-empty p { margin: 0; color: var(--color-muted); font-size: .95rem; }
@@ -175,18 +173,18 @@ p { color: var(--color-muted); line-height: 1.6; }
 .weather-temperature { margin: 14px 0 4px; font-size: clamp(4.5rem, 22vw, 6.5rem); font-weight: 900; letter-spacing: -.1em; line-height: .78; }
 .weather-condition { margin: 8px 0 0; color: var(--color-muted); font-size: 1rem; }
 .weather-icon { font-size: 2.5rem; }
-.weather-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 32px 0 0; border-top: .5px solid var(--color-outline); }
+.weather-details { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 32px 0 0; border-top: 1px solid var(--color-outline); }
 .weather-details div { padding: 16px 0 0; background: transparent; border-radius: 0; }
-.weather-details div + div { padding-left: 16px; border-left: .5px solid var(--color-outline); }
+.weather-details div + div { padding-left: 16px; border-left: 1px solid var(--color-outline); }
 .weather-details dt { color: var(--color-muted); font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .weather-details dd { margin: 4px 0 0; font-size: 1.2rem; font-weight: 700; }
 .weather-details dd small { display: block; margin-top: 5px; color: var(--color-muted); font-size: .72rem; font-weight: 400; line-height: 1.4; }
 
-.trend-list { display: grid; gap: 0; border-top: .5px solid var(--color-outline); }
+.trend-list { display: grid; gap: 0; border-top: 1px solid var(--color-outline); }
 .trend-list > a { color: var(--color-ink); text-decoration: none; }
-.trend-list article { display: grid; grid-template-columns: 30px 60px 1fr; align-items: center; gap: 12px; min-height: 92px; padding: 16px 0; background: transparent; border: 0; border-bottom: .5px solid var(--color-outline); border-radius: 0; }
+.trend-list article { display: grid; grid-template-columns: 30px 60px 1fr; align-items: center; gap: 12px; min-height: 92px; padding: 16px 0; background: transparent; border: 0; border-bottom: 1px solid var(--color-outline); border-radius: 0; }
 .trend-index { padding-top: 4px; color: var(--color-muted); font-size: .68rem; letter-spacing: .08em; }
-.trend-swatch { width: 60px; height: 60px; flex: none; background: var(--color-surface-high); border: .5px solid var(--color-outline); border-radius: var(--radius-control); }
+.trend-swatch { width: 60px; height: 60px; flex: none; background: var(--color-surface-high); border: 1px solid var(--color-outline); border-radius: var(--radius-control); }
 .trend-swatch.linen { background: var(--color-surface-high); }
 .trend-swatch.shirt { background: var(--color-surface-low); }
 .trend-swatch.sneakers { background: var(--color-outline-strong); }
