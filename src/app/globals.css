@@ -105,7 +105,7 @@ p { color: var(--color-muted); line-height: 1.6; }
   border-radius: var(--radius-control);
 }
 
-.field-control:focus { border: 2px solid var(--color-ink); box-shadow: none; }
+.field-control:focus { border: 2px solid var(--color-ink); }
 .editorial-card { background: var(--color-surface); border: .5px solid var(--color-outline); border-radius: var(--radius-card); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 

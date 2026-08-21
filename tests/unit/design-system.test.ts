@@ -16,8 +16,8 @@ describe("Stitch design system", () => {
     expect(layout).toContain("chivo.variable");
   });
 
-  it("does not retain legacy brand colors or Georgia", () => {
-    for (const legacy of ["#176b87", "#f4dfbf", "#3d2d1c", "Georgia"]) {
+  it("does not retain legacy brand colors, fonts, or shadows", () => {
+    for (const legacy of ["#176b87", "#f4dfbf", "#3d2d1c", "Georgia", "box-shadow"]) {
       expect(css.toLowerCase()).not.toContain(legacy.toLowerCase());
     }
   });
