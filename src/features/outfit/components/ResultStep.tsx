@@ -112,15 +112,17 @@ export function ResultStep({
         // eslint-disable-next-line @next/next/no-img-element
         <img className="result-photo" src={imageUrl} alt={t("photoAlt")} />
       ) : null}
-      <article className="summary-card">
+      <article className="editorial-card result-summary">
         <p>{result.summary}</p>
       </article>
-      <h2>{t("strengths")}</h2>
-      <ul>
-        {result.strengths.map((strength) => (
-          <li key={strength}>{strength}</li>
-        ))}
-      </ul>
+      <section className="result-strengths">
+        <h2>{t("strengths")}</h2>
+        <ul>
+          {result.strengths.map((strength) => (
+            <li key={strength}>{strength}</li>
+          ))}
+        </ul>
+      </section>
       <p className="fit-label">
         {t("fit", { fit: t(fitMessageKey(result.occasion_fit)) })}
       </p>
@@ -168,29 +170,33 @@ export function ResultStep({
         {alternative ? <p>{alternative}</p> : null}
         {followUpError ? <p role="alert">{t("followUpError")}</p> : null}
       </section> */}
-      <section aria-labelledby="feedback-title">
+      <section className="result-feedback" aria-labelledby="feedback-title">
         <h2 id="feedback-title">{t("feedbackTitle")}</h2>
-        <button
-          type="button"
-          disabled={feedbackSent}
-          onClick={() => submitFeedback(true)}
-        >
-          {t("helpful")}
-        </button>
-        <button
-          type="button"
-          disabled={feedbackSent}
-          onClick={() => submitFeedback(false)}
-        >
-          {t("notHelpful")}
-        </button>
+        <div className="feedback-actions">
+          <button
+            className="button-secondary"
+            type="button"
+            disabled={feedbackSent}
+            onClick={() => submitFeedback(true)}
+          >
+            {t("helpful")}
+          </button>
+          <button
+            className="button-secondary"
+            type="button"
+            disabled={feedbackSent}
+            onClick={() => submitFeedback(false)}
+          >
+            {t("notHelpful")}
+          </button>
+        </div>
         {feedbackSent ? <p>{t("thanks")}</p> : null}
       </section>
       <nav className="result-navigation" aria-label={t("navigation")}>
-        <button type="button" onClick={onReselectPhoto}>
+        <button className="button-secondary" type="button" onClick={onReselectPhoto}>
           {t("reselect")}
         </button>
-        <button type="button" onClick={onRestart}>
+        <button className="button-primary" type="button" onClick={onRestart}>
           {t("restart")}
         </button>
       </nav>

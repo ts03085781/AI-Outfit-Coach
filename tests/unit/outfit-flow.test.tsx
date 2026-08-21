@@ -672,12 +672,20 @@ describe("outfit flow", () => {
     expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?width:\s*100%/);
     expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?height:\s*18rem/);
     expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?object-fit:\s*contain/);
-    expect(screen.getByRole("navigation", { name: "重新開始" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "重新選擇照片" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "返回第一步驟" })).toBeVisible();
+    const resultSummary = document.querySelector(".result-summary");
+    expect(resultSummary).toBeInTheDocument();
+    expect(resultSummary).toHaveClass("editorial-card", "result-summary");
+    const resultNavigation = screen.getByRole("navigation", { name: "重新開始" });
+    expect(resultNavigation).toBeVisible();
+    expect(resultNavigation).toHaveClass("result-navigation");
+    expect(screen.getByRole("button", { name: "重新選擇照片" }))
+      .toHaveClass("button-secondary");
+    expect(screen.getByRole("button", { name: "返回第一步驟" }))
+      .toHaveClass("button-primary");
     expect(screen.getByText(completeAnalysis.summary)).toBeVisible();
-    expect(screen.getByText(completeAnalysis.strengths[0])).toBeVisible();
-    expect(screen.getByText(completeAnalysis.strengths[1])).toBeVisible();
+    const resultStrengths = document.querySelector(".result-strengths");
+    expect(resultStrengths).toContainElement(screen.getByText(completeAnalysis.strengths[0]));
+    expect(resultStrengths).toContainElement(screen.getByText(completeAnalysis.strengths[1]));
     expect(screen.getByText("場合適合度：適合")).toBeVisible();
     expect(screen.getByText(completeAnalysis.suggestions[0].action)).toBeVisible();
     const primarySuggestion = document.querySelector(".primary-suggestion");
@@ -687,6 +695,12 @@ describe("outfit flow", () => {
     expect(document.querySelectorAll(".suggestion-list li")).toHaveLength(2);
     expect(screen.getByText(`預期效果：${completeAnalysis.suggestions[1].expected_effect}`)).toBeVisible();
     expect(screen.getByText(`預期效果：${completeAnalysis.suggestions[2].expected_effect}`)).toBeVisible();
+    const feedbackActions = document.querySelector(".feedback-actions");
+    expect(feedbackActions).toContainElement(screen.getByRole("button", { name: "有幫助" }));
+    expect(feedbackActions).toContainElement(screen.getByRole("button", { name: "沒幫助" }));
+    expect(screen.getByRole("button", { name: "有幫助" })).toHaveClass("button-secondary");
+    expect(screen.getByRole("button", { name: "沒幫助" })).toHaveClass("button-secondary");
+    expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?filter:\s*none/);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:local-preview");
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
       url === "/api/telemetry"
@@ -847,6 +861,8 @@ describe("outfit flow", () => {
     await screen.findByRole("heading", { name: "你的穿搭建議" });
     fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
     expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
+    expect(screen.getByRole("button", { name: "有幫助" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "沒幫助" })).toBeDisabled();
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
       url === "/api/telemetry"
       && JSON.parse(String(init?.body)).type === "feedback"

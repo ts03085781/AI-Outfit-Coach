@@ -342,13 +342,74 @@ test.describe("mock-only outfit flow", () => {
     });
   }
 
-  test("shows the result photo after a successful analysis", async ({ page }) => {
+  test("shows the result in an editorial hierarchy with prioritized actions", async ({ page }) => {
     await mockTelemetry(page);
     await mockSuccessfulAnalysis(page);
 
     await completeAnalysis(page);
 
-    await expect(page.getByRole("img", { name: "本次分析的穿搭照片" })).toBeVisible();
+    const resultPhoto = page.getByRole("img", { name: "本次分析的穿搭照片" });
+    await expect(resultPhoto).toBeVisible();
+    await expect(resultPhoto).toHaveCSS("filter", "none");
+    await expect(resultPhoto).toHaveCSS("border-radius", "16px");
+    await expect(page.locator("article.result-summary")).toHaveClass(/editorial-card/);
+    await expect(page.locator(".result-strengths")).toContainText(analysis.strengths[0]);
+    await expect(page.locator(".result-strengths")).toContainText(analysis.strengths[1]);
+    await expect(page.locator(".fit-label")).toHaveCSS("background-color", "rgb(0, 0, 0)");
+    await expect(page.locator(".fit-label")).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(page.locator(".primary-suggestion"))
+      .toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(page.locator(".feedback-actions")).toHaveCSS("gap", "12px");
+    await expect(page.getByRole("button", { name: "有幫助" })).toHaveClass(/button-secondary/);
+    await expect(page.getByRole("button", { name: "沒幫助" })).toHaveClass(/button-secondary/);
+    await expect(page.getByRole("button", { name: "重新選擇照片" }))
+      .toHaveClass(/button-secondary/);
+    await expect(page.getByRole("button", { name: "返回第一步驟" }))
+      .toHaveClass(/button-primary/);
+    await expect(page.getByRole("button", { name: "返回第一步驟" }))
+      .toHaveCSS("background-color", "rgb(0, 0, 0)");
+  });
+
+  test("balances result photography and analysis on desktop without changing reading order", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await mockTelemetry(page);
+    await mockSuccessfulAnalysis(page);
+
+    await completeAnalysis(page);
+
+    const resultPhoto = page.locator(".result-photo");
+    const resultSummary = page.locator(".result-summary");
+    const photoBox = await resultPhoto.boundingBox();
+    const summaryBox = await resultSummary.boundingBox();
+    expect(photoBox).not.toBeNull();
+    expect(summaryBox).not.toBeNull();
+    if (!photoBox || !summaryBox) {
+      throw new Error("Expected the desktop result columns to have bounding boxes");
+    }
+    expect(summaryBox.x).toBeGreaterThan(photoBox.x + photoBox.width);
+    expect(Math.abs(summaryBox.width - photoBox.width)).toBeLessThanOrEqual(2);
+    expect(await page.locator(".result-step").evaluate((result) => {
+      const orderedSelectors = [
+        "#result-title",
+        ".result-photo",
+        ".result-summary",
+        ".result-strengths",
+        ".fit-label",
+        ".primary-suggestion",
+        ".suggestion-list",
+        ".result-feedback",
+        ".result-navigation",
+      ];
+      const orderedElements = orderedSelectors.map((selector) => result.querySelector(selector));
+      return orderedElements.every((element, index) => {
+        const previousElement = orderedElements[index - 1];
+        return element !== null
+          && (index === 0 || (previousElement !== null && previousElement !== undefined && Boolean(
+            previousElement.compareDocumentPosition(element)
+            & Node.DOCUMENT_POSITION_FOLLOWING,
+          )));
+      });
+    })).toBe(true);
   });
 
   test("shows a retake result and returns to an empty photo step", async ({ page }) => {
@@ -406,6 +467,8 @@ test.describe("mock-only outfit flow", () => {
     await page.getByRole("button", { name: "有幫助" }).click();
 
     await expect(page.getByText("謝謝你的回饋。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "有幫助" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "沒幫助" })).toBeDisabled();
     await expect.poll(() => metrics).toContainEqual({ type: "feedback", helpful: true });
   });
 
