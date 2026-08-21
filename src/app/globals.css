@@ -329,7 +329,7 @@ p { color: var(--color-muted); line-height: 1.6; }
 }
 
 @media (max-width: 340px) {
-  .flow-shell { padding: 12px 10px 22px; }
+  .flow-shell { padding: 12px 10px calc(100px + env(safe-area-inset-bottom)); }
   .flow-card { padding: 18px; border-radius: var(--radius-card); }
 }
 

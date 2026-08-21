@@ -21,4 +21,10 @@ describe("Stitch design system", () => {
       expect(css.toLowerCase()).not.toContain(legacy.toLowerCase());
     }
   });
+
+  it("keeps narrow analyze pages clear of the safe-area navigation", () => {
+    expect(css).toContain(
+      ".flow-shell { padding: 12px 10px calc(100px + env(safe-area-inset-bottom)); }",
+    );
+  });
 });
