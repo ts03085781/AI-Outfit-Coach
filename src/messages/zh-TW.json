@@ -117,6 +117,7 @@
     "iconAlt": "衣櫥指南圖示",
     "title": "穿出今天的風格。",
     "cta": "拍下我的穿搭",
+    "currentConditions": "目前天氣條件",
     "weather": {
       "label": "當地天氣",
       "location": "目前位置",

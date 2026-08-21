@@ -54,7 +54,8 @@ textarea:focus-visible {
 }
 
 .app-navigation a { display: grid; min-height: 68px; place-content: center; gap: 3px; color: #77695e; font-size: .72rem; font-weight: 700; text-align: center; text-decoration: none; }
-.app-navigation a span { font-size: 1.7rem; line-height: 1; }
+.app-navigation-icon { font-size: 1.7rem; line-height: 1; }
+.app-navigation-label { display: none; }
 .app-navigation a.is-current { color: #b75036; }
 
 .home-shell,
@@ -380,3 +381,45 @@ button { min-width: 44px; min-height: 44px; }
   .flow-shell { padding: 12px 10px 22px; }
   .flow-card { padding: 18px; border-radius: 16px; }
 }
+
+/* Editorial homepage — scoped so analysis, auth, and settings behavior remain unchanged. */
+.home-shell { --home-canvas: #f9f9f9; --home-surface: #fff; --home-ink: #000; --home-muted: #4c4546; --home-outline: #e0e0e0; width: min(100%, 48rem); padding: 24px 20px 116px; color: var(--home-ink); background: var(--home-canvas); font-family: Chivo, "Arial Narrow", Arial, sans-serif; }
+.home-shell h1, .home-shell h2, .home-shell h3, .home-shell p { color: inherit; font-family: inherit; }
+.home-hero { display: grid; gap: 20px; padding: 16px 0 0; }
+.home-kicker, .home-section-label p, .home-section-label span, .app-navigation-label { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .15em; line-height: 1.2; text-transform: uppercase; }
+.home-hero h1 { max-width: 9ch; margin: 0; font-size: clamp(3rem, 15vw, 4.5rem); font-weight: 900; letter-spacing: -.06em; line-height: .98; }
+.home-intro { max-width: 28rem; margin: 0; color: var(--home-muted) !important; font-size: 1rem; font-weight: 400; line-height: 1.6; }
+.home-analysis-cta { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 56px; padding: 14px 16px; color: var(--home-surface); background: var(--home-ink); border: 2px solid var(--home-ink); border-radius: 8px; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
+.home-analysis-cta span:last-child { font-size: 1.4rem; line-height: 1; }
+.home-analysis-cta:hover { color: var(--home-ink); background: var(--home-surface); }
+.home-analysis-cta:focus-visible { outline: 3px solid var(--home-ink); outline-offset: 3px; }
+.home-weather-section, .trend-section { margin-top: 64px; }
+.home-section-label { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.home-section-label span { color: var(--home-muted); font-weight: 400; letter-spacing: .08em; text-align: right; }
+.home-weather-section > h2, .trend-section > h2 { margin: 0 0 20px; font-size: clamp(1.7rem, 8vw, 2.25rem); font-weight: 700; letter-spacing: -.04em; line-height: 1; }
+.home-shell .weather-card { min-height: 0; padding: 24px; color: var(--home-ink); background: var(--home-surface); border: .5px solid var(--home-outline); border-radius: 16px; }
+.home-shell .weather-card-empty { gap: 12px; min-height: 144px; place-content: center; }
+.weather-status-mark { font-size: 1.5rem; line-height: 1; }
+.home-shell .weather-card-empty p { color: #4c4546; font-size: .95rem; }
+.home-shell .weather-card-empty button { min-height: 44px; padding: 10px 0; color: #000; border: 0; border-bottom: 2px solid #000; border-radius: 0; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
+.home-shell .weather-main { align-items: flex-start; }
+.home-shell .weather-location { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.home-shell .weather-temperature { margin: 14px 0 4px; font-size: clamp(4.5rem, 22vw, 6.5rem); font-weight: 900; letter-spacing: -.1em; line-height: .78; }
+.home-shell .weather-condition { color: #4c4546; font-size: 1rem; font-weight: 400; }
+.home-shell .weather-icon { font-size: 2.5rem; }
+.home-shell .weather-details { gap: 0; margin-top: 32px; border-top: .5px solid #e0e0e0; }
+.home-shell .weather-details div { padding: 16px 0 0; background: transparent; border-radius: 0; }
+.home-shell .weather-details div + div { padding-left: 16px; border-left: .5px solid #e0e0e0; }
+.home-shell .weather-details dt { color: #4c4546; font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.home-shell .weather-details dd { font-size: 1.2rem; font-weight: 700; }
+.home-shell .weather-details dd small { color: #4c4546; font-size: .72rem; font-weight: 400; }
+.home-shell .trend-list { gap: 0; border-top: .5px solid #e0e0e0; }
+.home-shell .trend-list > a { color: #000; }
+.home-shell .trend-list article { display: grid; grid-template-columns: 30px 60px 1fr; gap: 12px; min-height: 92px; padding: 16px 0; background: transparent; border: 0; border-bottom: .5px solid #e0e0e0; border-radius: 0; }
+.trend-index { padding-top: 4px; color: #4c4546; font-size: .68rem; letter-spacing: .08em; }
+.home-shell .trend-swatch { width: 60px; height: 60px; border: .5px solid #e0e0e0; border-radius: 8px; }
+.home-shell .trend-swatch.linen { background: #d7d4cc; }.home-shell .trend-swatch.shirt { background: #f0f0ed; }.home-shell .trend-swatch.sneakers { background: #b6b6b4; }
+.home-shell .trend-list h3 { font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }.home-shell .trend-list p { color: #4c4546; font-size: .83rem; font-weight: 400; line-height: 1.45; }
+.home-shell .app-navigation { width: min(100%, 48rem); min-height: 76px; background: rgb(255 255 255 / 96%); border-top: 1px solid #000; }
+.home-shell .app-navigation a { min-height: 76px; gap: 6px; color: #4c4546; }.home-shell .app-navigation-icon { font-size: 1.35rem; }.home-shell .app-navigation-label { display: block; font-size: .56rem; letter-spacing: .1em; }.home-shell .app-navigation a.is-current { color: #000; }.home-shell .app-navigation a.is-current::after { width: 20px; height: 2px; margin: 1px auto 0; content: ""; background: #000; }
+@media (min-width: 640px) { .home-shell { padding-inline: 40px; } }

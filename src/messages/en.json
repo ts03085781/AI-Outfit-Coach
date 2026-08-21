@@ -121,6 +121,7 @@
     "iconAlt": "Outfit Guide icon",
     "title": "Dress for today.",
     "cta": "Photograph my outfit",
+    "currentConditions": "Current conditions",
     "weather": {
       "label": "Local weather",
       "location": "Current location",
