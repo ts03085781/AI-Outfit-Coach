@@ -672,18 +672,22 @@ describe("outfit flow", () => {
     expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?width:\s*100%/);
     expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?height:\s*18rem/);
     expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?object-fit:\s*contain/);
-    const resultSummary = document.querySelector(".result-summary");
+    const resultSummary = document.querySelector<HTMLElement>(".result-summary");
     expect(resultSummary).toBeInTheDocument();
     expect(resultSummary).toHaveClass("editorial-card", "result-summary");
+    const resultAnalysis = document.querySelector<HTMLElement>(".result-analysis");
+    expect(resultAnalysis).toContainElement(resultSummary);
     const resultNavigation = screen.getByRole("navigation", { name: "重新開始" });
     expect(resultNavigation).toBeVisible();
     expect(resultNavigation).toHaveClass("result-navigation");
+    expect(resultAnalysis).toContainElement(resultNavigation);
     expect(screen.getByRole("button", { name: "重新選擇照片" }))
       .toHaveClass("button-secondary");
     expect(screen.getByRole("button", { name: "返回第一步驟" }))
       .toHaveClass("button-primary");
     expect(screen.getByText(completeAnalysis.summary)).toBeVisible();
-    const resultStrengths = document.querySelector(".result-strengths");
+    const resultStrengths = document.querySelector<HTMLElement>(".result-strengths");
+    expect(resultAnalysis).toContainElement(resultStrengths);
     expect(resultStrengths).toContainElement(screen.getByText(completeAnalysis.strengths[0]));
     expect(resultStrengths).toContainElement(screen.getByText(completeAnalysis.strengths[1]));
     expect(screen.getByText("場合適合度：適合")).toBeVisible();

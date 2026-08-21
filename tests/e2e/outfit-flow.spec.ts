@@ -379,15 +379,20 @@ test.describe("mock-only outfit flow", () => {
 
     const resultPhoto = page.locator(".result-photo");
     const resultSummary = page.locator(".result-summary");
+    const resultStrengths = page.locator(".result-strengths");
     const photoBox = await resultPhoto.boundingBox();
     const summaryBox = await resultSummary.boundingBox();
+    const strengthsBox = await resultStrengths.boundingBox();
     expect(photoBox).not.toBeNull();
     expect(summaryBox).not.toBeNull();
-    if (!photoBox || !summaryBox) {
+    expect(strengthsBox).not.toBeNull();
+    if (!photoBox || !summaryBox || !strengthsBox) {
       throw new Error("Expected the desktop result columns to have bounding boxes");
     }
     expect(summaryBox.x).toBeGreaterThan(photoBox.x + photoBox.width);
     expect(Math.abs(summaryBox.width - photoBox.width)).toBeLessThanOrEqual(2);
+    expect(strengthsBox.y - (summaryBox.y + summaryBox.height)).toBeLessThanOrEqual(32);
+    expect(strengthsBox.y).toBeLessThan(photoBox.y + photoBox.height);
     expect(await page.locator(".result-step").evaluate((result) => {
       const orderedSelectors = [
         "#result-title",

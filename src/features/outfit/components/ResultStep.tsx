@@ -112,44 +112,45 @@ export function ResultStep({
         // eslint-disable-next-line @next/next/no-img-element
         <img className="result-photo" src={imageUrl} alt={t("photoAlt")} />
       ) : null}
-      <article className="editorial-card result-summary">
-        <p>{result.summary}</p>
-      </article>
-      <section className="result-strengths">
-        <h2>{t("strengths")}</h2>
-        <ul>
-          {result.strengths.map((strength) => (
-            <li key={strength}>{strength}</li>
-          ))}
-        </ul>
-      </section>
-      <p className="fit-label">
-        {t("fit", { fit: t(fitMessageKey(result.occasion_fit)) })}
-      </p>
-      {primarySuggestion ? (
-        <>
-          <h2>{t("suggestions")}</h2>
-          <article className="primary-suggestion">
-            <strong>{primarySuggestion.action}</strong>
-            <p>{primarySuggestion.reason}</p>
-            <p>{t("effect", { effect: primarySuggestion.expected_effect })}</p>
-          </article>
-          {secondarySuggestions.length > 0 ? (
-            <ul className="suggestion-list">
-              {secondarySuggestions.map((suggestion) => (
-                <li key={suggestion.action}>
-                  <strong>{suggestion.action}</strong>
-                  <span>{suggestion.reason}</span>
-                  <span>
-                    {t("effect", { effect: suggestion.expected_effect })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
-      ) : null}
-      {/* <section aria-labelledby="follow-up-title">
+      <div className="result-analysis">
+        <article className="editorial-card result-summary">
+          <p>{result.summary}</p>
+        </article>
+        <section className="result-strengths">
+          <h2>{t("strengths")}</h2>
+          <ul>
+            {result.strengths.map((strength) => (
+              <li key={strength}>{strength}</li>
+            ))}
+          </ul>
+        </section>
+        <p className="fit-label">
+          {t("fit", { fit: t(fitMessageKey(result.occasion_fit)) })}
+        </p>
+        {primarySuggestion ? (
+          <>
+            <h2>{t("suggestions")}</h2>
+            <article className="primary-suggestion">
+              <strong>{primarySuggestion.action}</strong>
+              <p>{primarySuggestion.reason}</p>
+              <p>{t("effect", { effect: primarySuggestion.expected_effect })}</p>
+            </article>
+            {secondarySuggestions.length > 0 ? (
+              <ul className="suggestion-list">
+                {secondarySuggestions.map((suggestion) => (
+                  <li key={suggestion.action}>
+                    <strong>{suggestion.action}</strong>
+                    <span>{suggestion.reason}</span>
+                    <span>
+                      {t("effect", { effect: suggestion.expected_effect })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        ) : null}
+        {/* <section aria-labelledby="follow-up-title">
         <h2 id="follow-up-title">{t("followUpTitle")}</h2>
         <label>
           {t("followUpLabel")}
@@ -170,36 +171,37 @@ export function ResultStep({
         {alternative ? <p>{alternative}</p> : null}
         {followUpError ? <p role="alert">{t("followUpError")}</p> : null}
       </section> */}
-      <section className="result-feedback" aria-labelledby="feedback-title">
-        <h2 id="feedback-title">{t("feedbackTitle")}</h2>
-        <div className="feedback-actions">
-          <button
-            className="button-secondary"
-            type="button"
-            disabled={feedbackSent}
-            onClick={() => submitFeedback(true)}
-          >
-            {t("helpful")}
+        <section className="result-feedback" aria-labelledby="feedback-title">
+          <h2 id="feedback-title">{t("feedbackTitle")}</h2>
+          <div className="feedback-actions">
+            <button
+              className="button-secondary"
+              type="button"
+              disabled={feedbackSent}
+              onClick={() => submitFeedback(true)}
+            >
+              {t("helpful")}
+            </button>
+            <button
+              className="button-secondary"
+              type="button"
+              disabled={feedbackSent}
+              onClick={() => submitFeedback(false)}
+            >
+              {t("notHelpful")}
+            </button>
+          </div>
+          {feedbackSent ? <p>{t("thanks")}</p> : null}
+        </section>
+        <nav className="result-navigation" aria-label={t("navigation")}>
+          <button className="button-secondary" type="button" onClick={onReselectPhoto}>
+            {t("reselect")}
           </button>
-          <button
-            className="button-secondary"
-            type="button"
-            disabled={feedbackSent}
-            onClick={() => submitFeedback(false)}
-          >
-            {t("notHelpful")}
+          <button className="button-primary" type="button" onClick={onRestart}>
+            {t("restart")}
           </button>
-        </div>
-        {feedbackSent ? <p>{t("thanks")}</p> : null}
-      </section>
-      <nav className="result-navigation" aria-label={t("navigation")}>
-        <button className="button-secondary" type="button" onClick={onReselectPhoto}>
-          {t("reselect")}
-        </button>
-        <button className="button-primary" type="button" onClick={onRestart}>
-          {t("restart")}
-        </button>
-      </nav>
+        </nav>
+      </div>
     </section>
   );
 }
