@@ -82,7 +82,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                 <summary>{t("occasion.optional")}</summary>
                 <div className="context-fields">
                   <label>
-                    {t("occasion.weather")}
+                    <span className="editorial-label">{t("occasion.weather")}</span>
                     <select
                       className="field-control"
                       aria-label={t("occasion.weather")}
@@ -104,7 +104,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                     </select>
                   </label>
                   <label>
-                    {t("occasion.setting")}
+                    <span className="editorial-label">{t("occasion.setting")}</span>
                     <select
                       className="field-control"
                       aria-label={t("occasion.setting")}
@@ -126,7 +126,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                     </select>
                   </label>
                   <label>
-                    {t("occasion.desiredFeel")}
+                    <span className="editorial-label">{t("occasion.desiredFeel")}</span>
                     <input
                       className="field-control"
                       aria-label={t("occasion.desiredFeel")}

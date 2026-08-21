@@ -271,20 +271,31 @@ test.describe("mock-only outfit flow", () => {
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixture);
     const preview = page.getByRole("img", { name: "本機穿搭照片預覽" });
+    const flowCard = page.locator(".flow-card");
     const previewShell = page.locator(".photo-preview-shell");
     await expect(preview).toBeVisible();
     await expect(startAnalysis).toBeVisible();
     expect(analysisRequests).toHaveLength(0);
 
     const previewBox = await preview.boundingBox();
+    const flowCardBox = await flowCard.boundingBox();
     const previewShellBox = await previewShell.boundingBox();
     const replaceBox = await replace.boundingBox();
     expect(previewBox).not.toBeNull();
+    expect(flowCardBox).not.toBeNull();
     expect(previewShellBox).not.toBeNull();
     expect(replaceBox).not.toBeNull();
-    if (!previewBox || !previewShellBox || !replaceBox) {
+    if (!previewBox || !flowCardBox || !previewShellBox || !replaceBox) {
       throw new Error("Expected rendered preview controls to have bounding boxes");
     }
+    expect(Math.abs(previewShellBox.x - flowCardBox.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(
+      previewShellBox.x + previewShellBox.width - (flowCardBox.x + flowCardBox.width),
+    )).toBeLessThanOrEqual(1);
+    await expect(flowCard).toHaveCSS("overflow", "hidden");
+    expect(parseFloat(await flowCard.evaluate((element) => (
+      getComputedStyle(element).borderTopLeftRadius
+    )))).toBeGreaterThan(0);
     expect(previewBox.x).toBeGreaterThanOrEqual(previewShellBox.x);
     expect(previewBox.y).toBeGreaterThanOrEqual(previewShellBox.y);
     expect(previewBox.x + previewBox.width)

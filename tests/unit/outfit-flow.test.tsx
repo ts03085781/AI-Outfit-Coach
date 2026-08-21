@@ -115,6 +115,16 @@ describe("outfit flow", () => {
     expect(screen.getByLabelText("想呈現的感覺")).toHaveValue("專業但親切");
   });
 
+  it("uses the shared editorial label for every optional context field", () => {
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByText("加上選填背景"));
+
+    for (const label of ["天氣", "地點環境", "想呈現的感覺"]) {
+      expect(screen.getByText(label, { selector: ".editorial-label" })).toBeVisible();
+    }
+  });
+
   it("does not show a language selector or reserve its space in the first step", () => {
     render(<HomePage />);
 
