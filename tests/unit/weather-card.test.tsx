@@ -48,6 +48,27 @@ it("classifies UV index boundaries", () => {
   expect(uvRiskLevelFor(11)).toBe("extreme");
 });
 
+it("uses the shared editorial card surface while loading and when weather is ready", async () => {
+  let resolveWeather: (snapshot: WeatherSnapshot) => void;
+  mockedFetchWeatherSnapshot.mockImplementation(() => new Promise((resolve) => {
+    resolveWeather = resolve;
+  }));
+
+  render(<LocaleProvider initialLocale="zh-TW"><WeatherCard /></LocaleProvider>);
+
+  expect(screen.getByText("正在取得所在地天氣…").closest("section")).toHaveClass(
+    "editorial-card",
+    "weather-card",
+  );
+
+  await act(async () => resolveWeather(rainSnapshot));
+
+  expect((await screen.findByTestId("weather-icon-rain")).closest("section")).toHaveClass(
+    "editorial-card",
+    "weather-card",
+  );
+});
+
 it("renders the Bootstrap rain icon and high UV guidance", async () => {
   mockedFetchWeatherSnapshot.mockResolvedValue(rainSnapshot);
 

@@ -163,7 +163,7 @@ p { color: var(--color-muted); line-height: 1.6; }
 .trend-section > h2,
 .section-heading h2 { margin: 0 0 20px; color: var(--color-ink); font-size: clamp(1.5rem, 8vw, 2.25rem); font-weight: 700; letter-spacing: -.04em; line-height: 1; }
 
-.weather-card { min-height: 0; padding: 24px; color: var(--color-ink); background: var(--color-surface); border: 1px solid var(--color-ink); border-radius: var(--radius-card); }
+.weather-card { min-height: 0; padding: 24px; color: var(--color-ink); }
 .weather-card-empty { display: grid; min-height: 144px; place-content: center; gap: 12px; text-align: center; }
 .weather-status-mark { font-size: 1.5rem; line-height: 1; }
 .weather-card-empty p { margin: 0; color: var(--color-muted); font-size: .95rem; }

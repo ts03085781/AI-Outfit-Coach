@@ -80,14 +80,14 @@ export function WeatherCard() {
 
   useEffect(() => { requestWeather(); }, []);
 
-  if (weather.status !== "ready" || !weather.snapshot) return <section aria-live="polite" className="weather-card weather-card-empty">
+  if (weather.status !== "ready" || !weather.snapshot) return <section aria-live="polite" className="editorial-card weather-card weather-card-empty">
     <span aria-hidden="true" className="weather-status-mark">○</span>
     {weather.status === "loading" ? <p>{t("loading")}</p> : <button onClick={() => requestWeather(true)} type="button">{t(weather.status === "blocked" ? "blocked" : "retry")} <span aria-hidden="true">→</span></button>}
   </section>;
 
   const snapshot = weather.snapshot;
   const WeatherIcon = iconFor(snapshot.condition);
-  return <section aria-label={t("label")} className="weather-card">
+  return <section aria-label={t("label")} className="editorial-card weather-card">
     <div className="weather-main">
       <div><p className="weather-location">{t("location")}</p><p className="weather-temperature">{snapshot.currentTemperature}°</p><p className="weather-condition">{t(`condition.${snapshot.condition}`)}</p></div>
       <span aria-hidden="true" className="weather-icon"><WeatherIcon data-testid={`weather-icon-${snapshot.condition}`} /></span>
