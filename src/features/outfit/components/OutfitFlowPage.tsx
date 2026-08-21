@@ -61,7 +61,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
   };
 
   return (
-    <main className="flow-shell app-page-with-nav">
+    <main className="editorial-page analyze-shell flow-shell app-page-with-nav">
       <div className="flow-content">
         {loginSucceeded ? <p className="login-success" role="status">{t("auth.loginSuccess")}</p> : null}
         <div className="flow-header" aria-label={t("step", { step })}>
@@ -73,7 +73,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
             <i className={segment <= step ? "is-current" : ""} key={segment} />
           ))}
         </div>
-        <div className="flow-card">
+        <div className="editorial-card flow-card">
           {flow.state === "occasion" ? (
             <section aria-labelledby="occasion-title">
               <h1 id="occasion-title">{t("occasion.title")}</h1>
@@ -84,6 +84,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                   <label>
                     {t("occasion.weather")}
                     <select
+                      className="field-control"
                       aria-label={t("occasion.weather")}
                       value={flow.weather ?? ""}
                       onChange={(event) =>
@@ -105,6 +106,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                   <label>
                     {t("occasion.setting")}
                     <select
+                      className="field-control"
                       aria-label={t("occasion.setting")}
                       value={flow.setting ?? ""}
                       onChange={(event) =>
@@ -126,6 +128,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                   <label>
                     {t("occasion.desiredFeel")}
                     <input
+                      className="field-control"
                       aria-label={t("occasion.desiredFeel")}
                       type="text"
                       maxLength={60}
@@ -141,6 +144,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               <div className="occasion-grid">
                 {occasions.map((occasion) => (
                   <button
+                    className="occasion-option"
                     key={occasion}
                     type="button"
                     onClick={() => flow.chooseOccasion(occasion)}
@@ -164,7 +168,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
             />
           ) : null}
           {flow.state === "analyzing" ? (
-            <section role="status" aria-live="polite">
+            <section className="analysis-status" role="status" aria-live="polite">
               <h1>{t("analyzing.title")}</h1>
               <p>{t("analyzing.description")}</p>
               <div className="analyzing-loader">
@@ -186,9 +190,9 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
           {flow.state === "error" ? (
             <section aria-labelledby="error-title">
               <h1 id="error-title">{t("error.title")}</h1>
-              <p role="alert">{flow.analysisErrorMessage}</p>
+              <p className="flow-error" role="alert">{flow.analysisErrorMessage}</p>
               <button
-                className="primary-action"
+                className="button-primary primary-action"
                 type="button"
                 disabled={isCheckingAuth}
                 aria-busy={isCheckingAuth}

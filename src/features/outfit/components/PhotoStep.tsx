@@ -67,12 +67,12 @@ export function PhotoStep({
 
   return (
     <section aria-labelledby="photo-title">
-      <button className="photo-back" type="button" onClick={onBack}>
+      <button className="button-ghost photo-back" type="button" onClick={onBack}>
         {t("back")}
       </button>
       <h1 id="photo-title">{t("title")}</h1>
       <p>{t("description")}</p>
-      {error ? <p role="alert">{imageError(error)}</p> : null}
+      {error ? <p className="flow-error" role="alert">{imageError(error)}</p> : null}
       <input
         ref={inputRef}
         id="outfit-photo"
@@ -86,7 +86,7 @@ export function PhotoStep({
           {/* The source is a local object URL and never leaves the browser through this element. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="photo-preview" src={previewUrl} alt={t("preview")} />
-          <button className="photo-replace" type="button" onClick={openPhotoPicker}>
+          <button className="button-ghost photo-replace" type="button" onClick={openPhotoPicker}>
             {t("replacePhoto")}
           </button>
         </div>
@@ -119,7 +119,7 @@ export function PhotoStep({
           ) : null}
           {photoCheckState.status === "error" ? (
             <button
-              className="photo-check-retry"
+              className="button-secondary photo-check-retry"
               type="button"
               onClick={onRetryPhotoCheck}
             >
@@ -127,7 +127,7 @@ export function PhotoStep({
             </button>
           ) : null}
           <button
-            className="primary-action photo-analyze"
+            className="button-primary primary-action photo-analyze"
             type="button"
             disabled={analysisDisabled || photoCheckState.status !== "passed"}
             aria-busy={analysisDisabled}

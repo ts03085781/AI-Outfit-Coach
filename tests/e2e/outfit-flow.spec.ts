@@ -97,6 +97,13 @@ test.beforeEach(async ({ context, page }) => {
 test.describe("mock-only outfit flow", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  test("keeps the initial analysis workflow within a 320px viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.goto("/analyze");
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  });
+
   test("shows one empty upload surface before photo selection", async ({ page }) => {
     await page.goto("/analyze");
     await page.getByRole("button", { name: "日常外出" }).click();

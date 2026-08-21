@@ -95,6 +95,13 @@ beforeEach(() => {
 });
 
 describe("outfit flow", () => {
+  it("uses the editorial workflow shell and occasion option classes", () => {
+    render(<HomePage />);
+
+    expect(screen.getByRole("main")).toHaveClass("editorial-page", "analyze-shell");
+    expect(screen.getByRole("button", { name: /日常外出/i })).toHaveClass("occasion-option");
+  });
+
   it("keeps selected optional context in the first card", () => {
     render(<HomePage />);
 
