@@ -42,13 +42,13 @@ export function RequiredLoginDialog() {
         aria-describedby={descriptionId}
         aria-labelledby={titleId}
         aria-modal="true"
-        className="required-login-dialog"
+        className="editorial-card required-login-dialog"
         onKeyDown={keepFocusOnLoginLink}
         role="alertdialog"
       >
         <h1 id={titleId}>{t("requiredTitle")}</h1>
         <p id={descriptionId}>{t("requiredDescription")}</p>
-        <a className="required-login-action" href="/login?next=/analyze&reason=analysis" ref={loginLinkRef}>
+        <a className="button-primary required-login-action" href="/login?next=/analyze&reason=analysis" ref={loginLinkRef}>
           {t("goToLogin")}
         </a>
       </section>

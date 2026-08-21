@@ -37,13 +37,23 @@ export function LoginPanel({ nextPath, reason: _reason, error }: LoginPanelProps
     }
   }
 
-  return <main className="login-shell"><section className="login-card" aria-labelledby="login-title">
-    <h1 id="login-title">{t("loginTitle")}</h1>
-    <p>{t("loginDescription")}</p>
-    {hasError ? <p className="login-error" role="alert">{t("oauthError")}</p> : null}
-    <button className="login-google-button" type="button" onClick={signIn} disabled={isPending} aria-busy={isPending}>
-      {isPending ? t("loading") : t("googleButton")}
-    </button>
-    <p className="login-privacy">{t("privacy")}</p>
-  </section></main>;
+  return (
+    <main className="editorial-page login-shell">
+      <section className="editorial-card login-card" aria-labelledby="login-title">
+        <h1 id="login-title">{t("loginTitle")}</h1>
+        <p>{t("loginDescription")}</p>
+        {hasError ? <p className="login-error" role="alert">{t("oauthError")}</p> : null}
+        <button
+          className="button-primary login-google-button"
+          type="button"
+          onClick={signIn}
+          disabled={isPending}
+          aria-busy={isPending}
+        >
+          {isPending ? t("loading") : t("googleButton")}
+        </button>
+        <p className="login-privacy">{t("privacy")}</p>
+      </section>
+    </main>
+  );
 }

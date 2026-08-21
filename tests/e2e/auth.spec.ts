@@ -35,7 +35,9 @@ test("anonymous visitors can load the home, analysis, and settings pages", async
   await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
 
   await page.goto("/settings");
+  await expect(page.getByRole("main")).toHaveClass(/editorial-page/);
   await expect(page.getByRole("heading", { name: "設定" })).toBeVisible();
+  await expect(page.getByRole("combobox")).toHaveClass(/field-control/);
   await expect(page.getByText("尚未登入")).toBeVisible();
   await expect(page.getByRole("link", { name: "前往登入" }))
     .toHaveAttribute("href", "/login?next=/settings");
@@ -65,7 +67,11 @@ test("anonymous analysis shows one login action without starting analysis", asyn
 
   const dialog = page.getByRole("alertdialog", { name: "登入後開始分析" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("link", { name: "前往登入" })).toHaveCount(1);
+  await expect(dialog).toHaveClass(/editorial-card/);
+  const loginLink = dialog.getByRole("link", { name: "前往登入" });
+  await expect(loginLink).toHaveCount(1);
+  await expect(loginLink).toHaveClass(/button-primary/);
+  await expect(loginLink).toBeFocused();
   expect(analysisRequests).toHaveLength(0);
 });
 
@@ -100,5 +106,17 @@ test("login presents AI StyleCue information before starting Google OAuth", asyn
   await expect(page.getByRole("heading", { name: "登入 AI StyleCue" })).toBeVisible();
   await expect(page.getByText("登入後即可開始穿搭分析。")).toBeVisible();
   await expect(page.getByText("我們只會取得你的姓名、Email 與 Google 個人頭像。")).toBeVisible();
-  await expect(page.getByRole("button", { name: "使用 Google 登入" })).toBeEnabled();
+  const googleButton = page.getByRole("button", { name: "使用 Google 登入" });
+  await expect(googleButton).toHaveClass(/button-primary/);
+  await expect(googleButton).toBeEnabled();
+});
+
+test("login errors use the error palette without exposing provider details", async ({ page }) => {
+  await page.goto("/login?error=oauth");
+
+  const alert = page.getByText("登入未完成，請再試一次。", { exact: true });
+  await expect(alert).toHaveText("登入未完成，請再試一次。");
+  await expect(alert).toHaveCSS("color", "rgb(186, 26, 26)");
+  await expect(alert).toHaveCSS("background-color", "rgb(255, 218, 214)");
+  await expect(alert).toHaveCSS("border-color", "rgb(186, 26, 26)");
 });

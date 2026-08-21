@@ -31,6 +31,9 @@ describe("SettingsPage", () => {
 
     await screen.findByText("尚未登入");
 
+    expect(screen.getByRole("main")).toHaveClass("editorial-page", "settings-shell");
+    expect(screen.getByRole("combobox")).toHaveClass("field-control");
+
     fireEvent.change(screen.getByLabelText("選擇語言"), { target: { value: "en" } });
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeVisible();

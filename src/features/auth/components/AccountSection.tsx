@@ -87,12 +87,12 @@ export function AccountSection() {
 
   const showAvatar = Boolean(user?.avatarUrl) && !avatarFailed;
 
-  return <section className="account-card" aria-labelledby="account-title">
+  return <section className="editorial-card account-card" aria-labelledby="account-title">
     <h2 id="account-title">{t("accountTitle")}</h2>
     {isLoading ? <p className="account-loading">{t("accountLoading")}</p> : null}
     {!isLoading && !user ? <div className="account-signed-out">
       <p>{t("signedOut")}</p>
-      <a className="account-action" href="/login?next=/settings">{t("signIn")}</a>
+      <a className="button-primary account-action" href="/login?next=/settings">{t("signIn")}</a>
     </div> : null}
     {!isLoading && user ? <div className="account-signed-in">
       {showAvatar ? <img className="account-avatar" src={user.avatarUrl ?? undefined} alt={t("avatarAlt", { name: user.name ?? "?" })} onError={() => setAvatarFailed(true)} /> : <span className="account-avatar account-avatar-placeholder" aria-hidden="true">{avatarInitials(user.name)}</span>}
@@ -101,7 +101,7 @@ export function AccountSection() {
         <div><dt>{t("email")}</dt><dd>{user.email ?? "—"}</dd></div>
       </dl>
       {signOutFailed ? <p className="account-error" role="alert">{t("signOutError")}</p> : null}
-      <button className="account-action" type="button" onClick={signOut} disabled={isSigningOut} aria-busy={isSigningOut}>
+      <button className="button-secondary account-action" type="button" onClick={signOut} disabled={isSigningOut} aria-busy={isSigningOut}>
         {isSigningOut ? t("signingOut") : t("signOut")}
       </button>
     </div> : null}

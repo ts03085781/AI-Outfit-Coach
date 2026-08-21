@@ -23,8 +23,10 @@ describe("LoginPanel", () => {
 
     render(<LocaleProvider initialLocale="zh-TW"><LoginPanel nextPath="/analyze" /></LocaleProvider>);
 
+    expect(screen.getByRole("main")).toHaveClass("editorial-page", "login-shell");
     expect(screen.getByRole("heading", { name: "登入 AI StyleCue" })).toBeVisible();
     const button = screen.getByRole("button", { name: "使用 Google 登入" });
+    expect(button).toHaveClass("button-primary");
     expect(button).toBeEnabled();
 
     fireEvent.click(button);
