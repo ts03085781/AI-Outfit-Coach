@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
+import { Chivo } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { localeCookieName, resolveLocale, resolveLocaleList } from "@/lib/i18n/config";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import "./globals.css";
+
+const chivo = Chivo({
+  subsets: ["latin"],
+  variable: "--font-chivo",
+  weight: ["300", "400", "700", "900"],
+});
 
 export const metadata: Metadata = {
   title: "AI StyleCue",
@@ -25,7 +32,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   return (
     <html lang={locale}>
-      <body><LocaleProvider initialLocale={locale}>{children}</LocaleProvider></body>
+      <body className={chivo.variable}>
+        <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
+      </body>
     </html>
   );
 }
