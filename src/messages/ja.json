@@ -114,6 +114,7 @@
     "iconAlt": "コーデガイドのアイコン",
     "title": "今日は、ちょうどよく。",
     "cta": "コーデを撮影する",
+    "currentConditions": "現在の天気",
     "weather": {
       "label": "現在地の天気",
       "location": "現在地",

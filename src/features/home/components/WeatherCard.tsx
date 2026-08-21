@@ -81,7 +81,8 @@ export function WeatherCard() {
   useEffect(() => { requestWeather(); }, []);
 
   if (weather.status !== "ready" || !weather.snapshot) return <section aria-live="polite" className="weather-card weather-card-empty">
-    {weather.status === "loading" ? <p>{t("loading")}</p> : <button onClick={() => requestWeather(true)} type="button">{t(weather.status === "blocked" ? "blocked" : "retry")}</button>}
+    <span aria-hidden="true" className="weather-status-mark">○</span>
+    {weather.status === "loading" ? <p>{t("loading")}</p> : <button onClick={() => requestWeather(true)} type="button">{t(weather.status === "blocked" ? "blocked" : "retry")} <span aria-hidden="true">→</span></button>}
   </section>;
 
   const snapshot = weather.snapshot;

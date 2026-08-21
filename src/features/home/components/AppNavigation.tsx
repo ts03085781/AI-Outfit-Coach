@@ -30,8 +30,11 @@ export function AppNavigation() {
             href={destination.href}
             key={destination.href}
           >
-            <span aria-hidden="true">
+            <span aria-hidden="true" className="app-navigation-icon">
               <Icon data-testid={`navigation-icon-${destination.key}`} />
+            </span>
+            <span className="app-navigation-label">
+              {t(destination.key === "analyze" ? "analyzeOutfit" : destination.key)}
             </span>
           </Link>
         );

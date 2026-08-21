@@ -114,6 +114,7 @@
     "iconAlt": "코디 가이드 아이콘",
     "title": "오늘에 꼭 맞게 입으세요.",
     "cta": "내 코디 촬영하기",
+    "currentConditions": "현재 날씨",
     "weather": {
       "label": "현재 위치 날씨",
       "location": "현재 위치",

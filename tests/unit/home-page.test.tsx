@@ -22,12 +22,12 @@ it("shows retryable weather, analysis navigation, and searchable trend cards", a
   expect(screen.getByTestId("navigation-icon-settings")).toBeVisible();
   expect(screen.getByRole("link", { name: "分析穿搭" })).toHaveAttribute("href", "/analyze");
   expect(screen.getByRole("link", { name: "首頁" })).toHaveAttribute("aria-current", "page");
+  expect(screen.getByRole("link", { name: "拍下我的穿搭" })).toHaveAttribute("href", "/analyze");
+  expect(screen.getByText("目前天氣條件")).toBeVisible();
   expect(screen.getByRole("link", { name: /透氣亞麻寬褲/ })).toHaveAttribute(
     "href",
     "https://www.google.com/search?q=%E9%80%8F%E6%B0%A3%E4%BA%9E%E9%BA%BB%E5%AF%AC%E8%A4%B2",
   );
-  expect(screen.queryByRole("link", { name: "拍下我的穿搭" })).not.toBeInTheDocument();
-
   fireEvent.click(screen.getByRole("button", { name: "點擊取得所在地天氣" }));
   expect(navigator.geolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
 });
