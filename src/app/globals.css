@@ -222,6 +222,7 @@ p { color: var(--color-muted); line-height: 1.6; }
 .login-card > p:not(.login-error) { color: var(--color-muted); }
 .login-google-button { width: 100%; min-height: 52px; margin-top: 32px; }
 .login-google-button:disabled { cursor: progress; opacity: .65; }
+.login-back-link { display: grid; width: 100%; min-height: 52px; margin-top: 12px; place-items: center; text-decoration: none; }
 .login-error { margin-top: 18px; }
 .login-privacy { margin: 20px 0 0; font-size: .82rem; }
 

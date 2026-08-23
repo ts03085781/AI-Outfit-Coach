@@ -109,6 +109,7 @@ test("login presents AI StyleCue information before starting Google OAuth", asyn
   const googleButton = page.getByRole("button", { name: "使用 Google 登入" });
   await expect(googleButton).toHaveClass(/button-primary/);
   await expect(googleButton).toBeEnabled();
+  await expect(page.getByRole("link", { name: "返回設定" })).toHaveAttribute("href", "/settings");
 });
 
 test("login errors use the error palette without exposing provider details", async ({ page }) => {

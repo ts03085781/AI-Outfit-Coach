@@ -52,6 +52,9 @@ export function LoginPanel({ nextPath, reason: _reason, error }: LoginPanelProps
         >
           {isPending ? t("loading") : t("googleButton")}
         </button>
+        <a className="button-secondary login-back-link" href="/settings">
+          {t("backToSettings")}
+        </a>
         <p className="login-privacy">{t("privacy")}</p>
       </section>
     </main>

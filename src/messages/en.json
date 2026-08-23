@@ -19,6 +19,7 @@
     "loginTitle": "Sign in to AI StyleCue",
     "loginDescription": "Sign in to start your outfit analysis.",
     "googleButton": "Continue with Google",
+    "backToSettings": "Back to settings",
     "privacy": "We only access your name, email address, and Google profile picture.",
     "loading": "Taking you to Google…",
     "oauthError": "Sign-in was not completed. Please try again.",

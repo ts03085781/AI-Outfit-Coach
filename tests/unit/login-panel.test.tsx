@@ -40,6 +40,12 @@ describe("LoginPanel", () => {
     }));
   });
 
+  it("always offers a way back to settings", () => {
+    render(<LocaleProvider initialLocale="zh-TW"><LoginPanel nextPath="/analyze" /></LocaleProvider>);
+
+    expect(screen.getByRole("link", { name: "返回設定" })).toHaveAttribute("href", "/settings");
+  });
+
   it("shows a localized safe alert when the provider rejects login", async () => {
     signInWithOAuth.mockResolvedValue({ data: { provider: "google", url: null }, error: new Error("secret provider failure") });
 

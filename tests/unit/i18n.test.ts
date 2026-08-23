@@ -18,6 +18,7 @@ describe("login messages", () => {
     "loginTitle",
     "loginDescription",
     "googleButton",
+    "backToSettings",
     "privacy",
     "loading",
     "oauthError",
@@ -36,6 +37,7 @@ describe("login messages", () => {
       requiredTitle: "登入後開始分析",
       requiredDescription: "你尚未登入 AI StyleCue，請先登入才能開始穿搭分析。",
       goToLogin: "前往登入",
+      backToSettings: "返回設定",
       loginSuccess: "登入成功，請重新選擇照片開始分析。",
     });
   });

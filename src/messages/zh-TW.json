@@ -19,6 +19,7 @@
     "loginTitle": "登入 AI StyleCue",
     "loginDescription": "登入後即可開始穿搭分析。",
     "googleButton": "使用 Google 登入",
+    "backToSettings": "返回設定",
     "privacy": "我們只會取得你的姓名、Email 與 Google 個人頭像。",
     "loading": "正在前往 Google…",
     "oauthError": "登入未完成，請再試一次。",
