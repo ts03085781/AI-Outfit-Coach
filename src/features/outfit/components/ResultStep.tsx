@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { track } from "@/lib/telemetry";
-
 import type { OutfitAnalysis } from "../domain";
 import type { AppLocale } from "@/lib/i18n/config";
 
@@ -38,7 +36,6 @@ export function ResultStep({
   const [alternative, setAlternative] = useState<string>();
   const [followUpUsed, setFollowUpUsed] = useState(false);
   const [followUpError, setFollowUpError] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>();
 
   useEffect(() => {
@@ -97,12 +94,6 @@ export function ResultStep({
     } finally {
       setQuestion("");
     }
-  };
-
-  const submitFeedback = (helpful: boolean) => {
-    if (feedbackSent) return;
-    track({ type: "feedback", helpful });
-    setFeedbackSent(true);
   };
 
   return (
@@ -171,28 +162,6 @@ export function ResultStep({
         {alternative ? <p>{alternative}</p> : null}
         {followUpError ? <p role="alert">{t("followUpError")}</p> : null}
       </section> */}
-        <section className="result-feedback" aria-labelledby="feedback-title">
-          <h2 id="feedback-title">{t("feedbackTitle")}</h2>
-          <div className="feedback-actions">
-            <button
-              className="button-secondary"
-              type="button"
-              disabled={feedbackSent}
-              onClick={() => submitFeedback(true)}
-            >
-              {t("helpful")}
-            </button>
-            <button
-              className="button-secondary"
-              type="button"
-              disabled={feedbackSent}
-              onClick={() => submitFeedback(false)}
-            >
-              {t("notHelpful")}
-            </button>
-          </div>
-          {feedbackSent ? <p>{t("thanks")}</p> : null}
-        </section>
         <nav className="result-navigation" aria-label={t("navigation")}>
           <button className="button-secondary" type="button" onClick={onReselectPhoto}>
             {t("reselect")}

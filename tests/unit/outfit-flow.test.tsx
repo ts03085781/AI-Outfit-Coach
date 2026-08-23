@@ -699,11 +699,10 @@ describe("outfit flow", () => {
     expect(document.querySelectorAll(".suggestion-list li")).toHaveLength(2);
     expect(screen.getByText(`預期效果：${completeAnalysis.suggestions[1].expected_effect}`)).toBeVisible();
     expect(screen.getByText(`預期效果：${completeAnalysis.suggestions[2].expected_effect}`)).toBeVisible();
-    const feedbackActions = document.querySelector(".feedback-actions");
-    expect(feedbackActions).toContainElement(screen.getByRole("button", { name: "有幫助" }));
-    expect(feedbackActions).toContainElement(screen.getByRole("button", { name: "沒幫助" }));
-    expect(screen.getByRole("button", { name: "有幫助" })).toHaveClass("button-secondary");
-    expect(screen.getByRole("button", { name: "沒幫助" })).toHaveClass("button-secondary");
+    expect(screen.queryByRole("heading", { name: "這項建議有幫助嗎？" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "有幫助" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "沒幫助" })).not.toBeInTheDocument();
     expect(stylesheet).toMatch(/\.result-photo\s*\{[\s\S]*?filter:\s*none/);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:local-preview");
     expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
@@ -850,29 +849,6 @@ describe("outfit flow", () => {
     expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/photo-check")).toHaveLength(1);
   });
 
-  it("sends anonymous helpfulness feedback with no image upload", async () => {
-    vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
-      if (url === "/api/analyze") return analysisResponse();
-      return new Response(null, { status: 204 });
-    });
-    render(<HomePage />);
-    chooseOccasionAndPhoto();
-    await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
-
-    await screen.findByRole("heading", { name: "你的穿搭建議" });
-    fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
-    expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
-    expect(screen.getByRole("button", { name: "有幫助" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "沒幫助" })).toBeDisabled();
-    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
-      url === "/api/telemetry"
-      && JSON.parse(String(init?.body)).type === "feedback"
-    )).toBe(true);
-  });
-
   it("keeps follow-up controls hidden from the result UI", async () => {
     render(<HomePage />);
     chooseOccasionAndPhoto();
@@ -987,9 +963,6 @@ describe("outfit flow", () => {
     await screen.findByRole("img", { name: "本機穿搭照片預覽" });
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
-    fireEvent.click(screen.getByRole("button", { name: "有幫助" }));
-    expect(screen.getByText("謝謝你的回饋。")).toBeVisible();
-
     fireEvent.click(screen.getByRole("button", { name: "重新選擇照片" }));
 
     expect(screen.getByRole("heading", { name: "拍下你的穿搭" })).toBeVisible();
@@ -1003,9 +976,6 @@ describe("outfit flow", () => {
     expect(screen.getByRole("button", { name: "開始分析" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
     await screen.findByRole("heading", { name: "你的穿搭建議" });
-    expect(screen.getByRole("button", { name: "有幫助" })).toBeEnabled();
-    expect(screen.queryByText("謝謝你的回饋。")).not.toBeInTheDocument();
-
     const analysisCalls = vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/analyze");
     const secondBody = analysisCalls[1]?.[1]?.body;
     expect(secondBody).toBeInstanceOf(FormData);

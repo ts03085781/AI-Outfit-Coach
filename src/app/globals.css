@@ -319,11 +319,6 @@ p { color: var(--color-muted); line-height: 1.6; }
 .primary-suggestion { padding: 20px; background: var(--color-surface); border: 1px solid var(--color-ink); border-radius: var(--radius-container); }
 .primary-suggestion strong { color: var(--color-text); font-size: 1.08rem; }
 .primary-suggestion p { margin: 8px 0 0; }
-.result-feedback { margin-top: 32px; padding-top: 4px; border-top: 1px solid var(--color-outline); }
-.feedback-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.feedback-actions button { width: 100%; }
-.feedback-actions button:disabled { cursor: not-allowed; opacity: .45; }
-.result-feedback > p { margin: 12px 0 0; }
 .retake-result p { color: var(--color-text); font-weight: 700; }
 .result-step button { min-width: 44px; min-height: 44px; }
 .result-step textarea { display: block; width: 100%; min-height: 96px; margin-top: 8px; padding: 10px; color: var(--color-text); background: var(--color-surface); border: .5px solid var(--color-outline); border-radius: var(--radius-control); resize: vertical; }

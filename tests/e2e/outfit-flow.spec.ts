@@ -359,9 +359,9 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.locator(".fit-label")).toHaveCSS("color", "rgb(255, 255, 255)");
     await expect(page.locator(".primary-suggestion"))
       .toHaveCSS("background-color", "rgb(255, 255, 255)");
-    await expect(page.locator(".feedback-actions")).toHaveCSS("gap", "12px");
-    await expect(page.getByRole("button", { name: "有幫助" })).toHaveClass(/button-secondary/);
-    await expect(page.getByRole("button", { name: "沒幫助" })).toHaveClass(/button-secondary/);
+    await expect(page.getByRole("heading", { name: "這項建議有幫助嗎？" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "有幫助" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "沒幫助" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "重新選擇照片" }))
       .toHaveClass(/button-secondary/);
     await expect(page.getByRole("button", { name: "返回第一步驟" }))
@@ -402,7 +402,6 @@ test.describe("mock-only outfit flow", () => {
         ".fit-label",
         ".primary-suggestion",
         ".suggestion-list",
-        ".result-feedback",
         ".result-navigation",
       ];
       const orderedElements = orderedSelectors.map((selector) => result.querySelector(selector));
@@ -461,20 +460,6 @@ test.describe("mock-only outfit flow", () => {
     await page.getByRole("button", { name: "返回第一步驟" }).click();
 
     await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
-  });
-
-  test("sends anonymous feedback", async ({ page }) => {
-    const metrics: unknown[] = [];
-    await mockTelemetry(page, metrics);
-    await mockSuccessfulAnalysis(page);
-
-    await completeAnalysis(page);
-    await page.getByRole("button", { name: "有幫助" }).click();
-
-    await expect(page.getByText("謝謝你的回饋。")).toBeVisible();
-    await expect(page.getByRole("button", { name: "有幫助" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "沒幫助" })).toBeDisabled();
-    await expect.poll(() => metrics).toContainEqual({ type: "feedback", helpful: true });
   });
 
   test("keeps the photo for a transient error and retries successfully", async ({ page }) => {
