@@ -147,7 +147,8 @@
     "trends": {
       "eyebrow": "This week’s edit",
       "title": "Trending now",
-      "count": "3 picks",
+      "count": "5 picks",
+      "source": "Trend source",
       "items": {
         "linen": {
           "title": "Breathable linen trousers",

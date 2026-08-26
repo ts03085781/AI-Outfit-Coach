@@ -14,7 +14,18 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-在 `.env.local` 設定僅供伺服器使用的 `OPENAI_API_KEY`、`OPENAI_PHOTO_CHECK_MODEL`、`OPENAI_VISION_MODEL`、`RATE_LIMIT_SECRET` 與 `ANALYSIS_TOKEN_SECRET`，以及公開的 `NEXT_PUBLIC_SUPABASE_URL` 與 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`。`OPENAI_PHOTO_CHECK_MODEL` 預設為 `gpt-5-nano`，供選取照片後的快速規格檢查使用；`OPENAI_VISION_MODEL` 則用於完整穿搭分析。兩個 secret 應各自使用至少 32 bytes 的隨機值。不要提交 `.env.local`，也不要把任何金鑰放在前端程式碼。
+在 `.env.local` 設定僅供伺服器使用的 `OPENAI_API_KEY`、`OPENAI_PHOTO_CHECK_MODEL`、`OPENAI_VISION_MODEL`、`OPENAI_TRENDS_MODEL`、`OPENAI_IMAGE_MODEL`、`RATE_LIMIT_SECRET`、`ANALYSIS_TOKEN_SECRET` 與 `CRON_SECRET`，以及公開的 `NEXT_PUBLIC_SUPABASE_URL` 與 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`。`OPENAI_PHOTO_CHECK_MODEL` 預設為 `gpt-5-nano`，供選取照片後的快速規格檢查使用；`OPENAI_VISION_MODEL` 則用於完整穿搭分析。Secret 應各自使用至少 32 bytes 的隨機值。不要提交 `.env.local`，也不要把任何金鑰放在前端程式碼。
+
+## 每日流行單品更新
+
+首頁會優先顯示 Vercel Blob 中最新成功發布的 5 筆台灣流行單品；尚未建立 Blob 或讀取失敗時，改顯示內建的四語 fallback。正式部署前：
+
+1. 在 Vercel 專案建立並連結 Blob store，讓 Production 自動取得 Blob 憑證；本機需要操作同一 store 時才設定 `BLOB_READ_WRITE_TOKEN`。
+2. 設定支援 Responses API Web Search 的 `OPENAI_TRENDS_MODEL` 與支援圖片生成的 `OPENAI_IMAGE_MODEL`。
+3. 在 Vercel Production 設定強隨機值 `CRON_SECRET`。Vercel Cron 會自動用 `Authorization: Bearer <CRON_SECRET>` 呼叫 Route。
+4. `vercel.json` 每天 UTC 22:00 呼叫 `/api/cron/trends`，即台北時間隔日 06:00。Cron 只會在 Production deployment 執行。
+
+每次執行會先搜尋趨勢與來源、產生 5 張無人物／品牌／文字的商品照，接著以版本化路徑上傳圖片與 manifest，最後才覆寫 `fashion-trends/latest.json`。成功後保留最新與前一個成功版本，其餘版本會刪除；未完成且超過 48 小時的 orphan 檔案也會清除。清理失敗只寫入 Vercel Functions Runtime Logs，下一次執行會再嘗試，不會撤回已發布版本。
 
 ## Supabase 與 Google OAuth 部署設定
 

@@ -140,7 +140,8 @@
     "trends": {
       "eyebrow": "이번 주 셀렉션",
       "title": "지금 인기",
-      "count": "3가지 추천",
+      "count": "5가지 추천",
+      "source": "트렌드 출처",
       "items": {
         "linen": {
           "title": "통기성 좋은 리넨 팬츠",

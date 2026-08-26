@@ -140,7 +140,8 @@
     "trends": {
       "eyebrow": "今週のセレクト",
       "title": "いま注目",
-      "count": "3 アイテム",
+      "count": "5 アイテム",
+      "source": "トレンド情報源",
       "items": {
         "linen": {
           "title": "リネンのワイドパンツ",

@@ -181,15 +181,22 @@ p { color: var(--color-muted); line-height: 1.6; }
 .weather-details dd small { display: block; margin-top: 5px; color: var(--color-muted); font-size: .72rem; font-weight: 400; line-height: 1.4; }
 
 .trend-list { display: grid; gap: 0; border-top: 1px solid var(--color-outline); }
-.trend-list > a { color: var(--color-ink); text-decoration: none; }
 .trend-list article { display: grid; grid-template-columns: 30px 60px 1fr; align-items: center; gap: 12px; min-height: 92px; padding: 16px 0; background: transparent; border: 0; border-bottom: 1px solid var(--color-outline); border-radius: 0; }
 .trend-index { padding-top: 4px; color: var(--color-muted); font-size: .68rem; letter-spacing: .08em; }
 .trend-swatch { width: 60px; height: 60px; flex: none; background: var(--color-surface-high); border: 1px solid var(--color-outline); border-radius: var(--radius-control); }
 .trend-swatch.linen { background: var(--color-surface-high); }
 .trend-swatch.shirt { background: var(--color-surface-low); }
 .trend-swatch.sneakers { background: var(--color-outline-strong); }
+.trend-swatch-2 { background: var(--color-surface-low); }
+.trend-swatch-3 { background: var(--color-outline-strong); }
+.trend-swatch-4 { background: var(--color-surface-high); }
+.trend-swatch-5 { background: var(--color-outline); }
+.trend-image { width: 60px; height: 60px; object-fit: cover; background: var(--color-surface-high); border: 1px solid var(--color-outline); border-radius: var(--radius-control); }
+.trend-copy { min-width: 0; }
 .trend-list h3 { margin: 0; color: var(--color-ink); font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
+.trend-list h3 a { color: inherit; text-decoration: none; }
 .trend-list p { margin: 4px 0 0; color: var(--color-muted); font-size: .83rem; font-weight: 400; line-height: 1.45; }
+.trend-source { display: inline-block; margin-top: 7px; overflow: hidden; color: var(--color-muted); font-size: .68rem; line-height: 1.35; text-decoration-thickness: 1px; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
 .settings-content { display: grid; width: min(100%, 32rem); gap: 64px; margin: 0 auto; }
 .settings-intro { display: grid; gap: 32px; padding-top: 32px; }
