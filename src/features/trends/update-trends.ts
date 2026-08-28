@@ -1,4 +1,5 @@
 import type { TrendManifest, TrendResearch } from "./domain";
+import { getErrorMetadata } from "./error-metadata";
 import {
   cleanupOldTrendRuns,
   publishTrendRun,
@@ -53,13 +54,25 @@ export async function runDailyTrendUpdate(
   const client = dependencies.client ?? vercelTrendBlobClient;
   dependencies.log("info", { event: "trend_update_started", generatedAt: now.toISOString() });
 
-  const research = await dependencies.research();
-  const manifest: TrendManifest = await dependencies.publish({
-    client,
-    research,
-    generateImage: dependencies.generateImage,
-    now,
-  });
+  let phase: "research" | "publish" = "research";
+  let manifest: TrendManifest;
+  try {
+    const research = await dependencies.research();
+    phase = "publish";
+    manifest = await dependencies.publish({
+      client,
+      research,
+      generateImage: dependencies.generateImage,
+      now,
+    });
+  } catch (error) {
+    dependencies.log("error", {
+      event: "trend_update_failed",
+      phase,
+      ...getErrorMetadata(error),
+    });
+    throw error;
+  }
 
   let deletedCount = 0;
   try {

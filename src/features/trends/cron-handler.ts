@@ -1,4 +1,5 @@
 import type { TrendUpdateResult } from "./update-trends";
+import { getErrorMetadata } from "./error-metadata";
 
 export function createTrendCronHandler({
   secret,
@@ -18,7 +19,7 @@ export function createTrendCronHandler({
     } catch (error) {
       console.error(JSON.stringify({
         event: "trend_update_failed",
-        errorName: error instanceof Error ? error.name : "UnknownError",
+        ...getErrorMetadata(error),
       }));
       return Response.json({ ok: false, error: "TREND_UPDATE_FAILED" }, { status: 500 });
     }

@@ -39,6 +39,34 @@ describe("daily trend update", () => {
     })).resolves.toEqual({ runId: "run-current", itemCount: 1, deletedCount: 0 });
     expect(log).toHaveBeenCalledWith("warn", expect.objectContaining({ event: "trend_cleanup_failed" }));
   });
+
+  it("logs the failing update phase with safe provider metadata", async () => {
+    const log = vi.fn();
+    const providerError = Object.assign(new Error("Invalid response schema"), {
+      status: 400,
+      code: "invalid_json_schema",
+      request_id: "req_research_123",
+    });
+
+    await expect(runDailyTrendUpdate({
+      research: vi.fn(async () => { throw providerError; }),
+      generateImage: vi.fn(),
+      publish: vi.fn(),
+      cleanup: vi.fn(),
+      now: () => new Date("2026-08-26T22:00:00.000Z"),
+      log,
+    })).rejects.toBe(providerError);
+
+    expect(log).toHaveBeenCalledWith("error", {
+      event: "trend_update_failed",
+      phase: "research",
+      errorName: "Error",
+      errorMessage: "Invalid response schema",
+      status: 400,
+      code: "invalid_json_schema",
+      requestId: "req_research_123",
+    });
+  });
 });
 
 describe("GET /api/cron/trends", () => {
@@ -70,9 +98,15 @@ describe("GET /api/cron/trends", () => {
   });
 
   it("returns 500 without leaking provider details", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const handler = createTrendCronHandler({
       secret: "cron-secret",
-      run: vi.fn(async () => { throw new Error("sensitive provider response"); }),
+      run: vi.fn(async () => {
+        throw Object.assign(new Error("sensitive provider response"), {
+          status: 429,
+          request_id: "req_rate_limit_123",
+        });
+      }),
     });
 
     const response = await handler(new Request("https://example.com/api/cron/trends", {
@@ -81,5 +115,13 @@ describe("GET /api/cron/trends", () => {
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({ ok: false, error: "TREND_UPDATE_FAILED" });
+    expect(JSON.parse(errorLog.mock.calls[0][0] as string)).toEqual({
+      event: "trend_update_failed",
+      errorName: "Error",
+      errorMessage: "sensitive provider response",
+      status: 429,
+      requestId: "req_rate_limit_123",
+    });
+    errorLog.mockRestore();
   });
 });

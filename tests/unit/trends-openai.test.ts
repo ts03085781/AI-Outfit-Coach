@@ -43,6 +43,31 @@ describe("OpenAITrendGenerator", () => {
     expect(create.mock.calls[0][0].input).toContain("zh-TW, en, ja, and ko");
   });
 
+  it("sends source URLs as plain strings in the OpenAI strict schema", async () => {
+    const create = vi.fn().mockResolvedValue({ output_text: researchOutput() });
+    const generator = new OpenAITrendGenerator({
+      responses: { create },
+      images: { generate: vi.fn() },
+    }, { researchModel: "gpt-research", imageModel: "gpt-image" });
+
+    await generator.research();
+
+    const schema = create.mock.calls[0][0].text.format.schema as {
+      properties: {
+        items: {
+          items: {
+            properties: {
+              sources: { items: { properties: { url: Record<string, unknown> } } };
+            };
+          };
+        };
+      };
+    };
+    expect(schema.properties.items.items.properties.sources.items.properties.url).toEqual({
+      type: "string",
+    });
+  });
+
   it("generates an unbranded product image as PNG bytes", async () => {
     const generate = vi.fn().mockResolvedValue({
       data: [{ b64_json: Buffer.from("image-bytes").toString("base64") }],

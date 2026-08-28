@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { toJSONSchema } from "zod";
+import { toJSONSchema, z } from "zod";
 
 import { TrendResearchSchema, type TrendResearch } from "./domain";
 
@@ -40,7 +40,30 @@ type TrendModels = {
   imageModel: string;
 };
 
-const RESEARCH_SCHEMA = toJSONSchema(TrendResearchSchema) as Record<string, unknown>;
+const LocalizedTrendOutputSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+}).strict();
+
+const TrendResearchOutputSchema = z.object({
+  items: z.array(z.object({
+    id: z.string(),
+    translations: z.object({
+      "zh-TW": LocalizedTrendOutputSchema,
+      en: LocalizedTrendOutputSchema,
+      ja: LocalizedTrendOutputSchema,
+      ko: LocalizedTrendOutputSchema,
+    }).strict(),
+    image_prompt: z.string(),
+    sources: z.array(z.object({
+      title: z.string(),
+      url: z.string(),
+    }).strict()),
+  }).strict()),
+}).strict();
+
+const RESEARCH_SCHEMA = toJSONSchema(TrendResearchOutputSchema) as Record<string, unknown>;
+delete RESEARCH_SCHEMA.$schema;
 
 const RESEARCH_PROMPT = `Research the five fashion items currently gaining meaningful popularity in Taiwan.
 Use recent, credible web sources and favor evidence published within the last 30 days. Avoid brands,
