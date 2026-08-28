@@ -71,7 +71,7 @@ single-store promotions, celebrity gossip, and items supported by only one comme
 
 For exactly five distinct wearable items, return:
 - a stable lowercase kebab-case id
-- concise names and useful descriptions in zh-TW, en, ja, and ko
+- concise names and useful descriptions in zh-TW, en, ja, and ko; every description must be 240 characters or fewer, including spaces and punctuation
 - an English image_prompt describing only the item
 - one to five HTTPS sources with an accurate page title and direct URL
 

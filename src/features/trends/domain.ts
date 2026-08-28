@@ -4,7 +4,7 @@ import { locales, type AppLocale } from "@/lib/i18n/config";
 
 const LocalizedCopySchema = z.object({
   name: z.string().trim().min(1).max(80),
-  description: z.string().trim().min(1).max(240),
+  description: z.string().trim().min(1),
 }).strict();
 
 const TranslationsSchema = z.object({
