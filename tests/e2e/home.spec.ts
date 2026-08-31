@@ -6,6 +6,12 @@ test("opens the magazine-style homepage and links to analysis", async ({ context
     value: "zh-TW",
     url: "http://127.0.0.1:3000",
   }]);
+  await page.route("**/api/auth/session", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ user: { id: "e2e-user" } }),
+    });
+  });
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

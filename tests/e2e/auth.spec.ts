@@ -1,7 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const fixture = "tests/fixtures/outfit-safe.png";
-
 type SessionUser = {
   id: string;
   name: string | null;
@@ -32,7 +30,7 @@ test("anonymous visitors can load the home, analysis, and settings pages", async
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   await page.goto("/analyze");
-  await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
+  await expect(page.getByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
 
   await page.goto("/settings");
   await expect(page.getByRole("main")).toHaveClass(/editorial-page/);
@@ -43,27 +41,12 @@ test("anonymous visitors can load the home, analysis, and settings pages", async
     .toHaveAttribute("href", "/login?next=/settings");
 });
 
-test("anonymous analysis shows one login action without starting analysis", async ({ page }) => {
+test("anonymous analysis shows one login action on entry without accepting flow input", async ({ page }) => {
   const analysisRequests: string[] = [];
   page.on("request", (request) => {
     if (request.url().includes("/api/analyze")) analysisRequests.push(request.url());
   });
-  await page.route("**/api/photo-check", async (route) => {
-    await route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ eligible: true, reason: null }),
-    });
-  });
-
   await page.goto("/analyze");
-  await page.getByRole("button", { name: "日常外出" }).click();
-  const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "加入一張穿搭照" }).click();
-  const fileChooser = await fileChooserPromise;
-  await fileChooser.setFiles(fixture);
-  await expect(page.getByRole("button", { name: "開始分析" })).toBeEnabled();
-
-  await page.getByRole("button", { name: "開始分析" }).click();
 
   const dialog = page.getByRole("alertdialog", { name: "登入後開始分析" });
   await expect(dialog).toBeVisible();
@@ -72,6 +55,7 @@ test("anonymous analysis shows one login action without starting analysis", asyn
   await expect(loginLink).toHaveCount(1);
   await expect(loginLink).toHaveClass(/button-primary/);
   await expect(loginLink).toBeFocused();
+  await expect(page.getByRole("button", { name: "日常外出", includeHidden: true })).toBeDisabled();
   expect(analysisRequests).toHaveLength(0);
 });
 

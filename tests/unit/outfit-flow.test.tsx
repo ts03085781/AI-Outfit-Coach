@@ -95,15 +95,17 @@ beforeEach(() => {
 });
 
 describe("outfit flow", () => {
-  it("uses the editorial workflow shell and occasion option classes", () => {
+  it("uses the editorial workflow shell and occasion option classes", async () => {
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     expect(screen.getByRole("main")).toHaveClass("editorial-page", "analyze-shell");
     expect(screen.getByRole("button", { name: /日常外出/i })).toHaveClass("occasion-option");
   });
 
-  it("keeps selected optional context in the first card", () => {
+  it("keeps selected optional context in the first card", async () => {
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
@@ -115,8 +117,9 @@ describe("outfit flow", () => {
     expect(screen.getByLabelText("想呈現的感覺")).toHaveValue("專業但親切");
   });
 
-  it("uses the shared editorial label for every optional context field", () => {
+  it("uses the shared editorial label for every optional context field", async () => {
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     fireEvent.click(screen.getByText("加上選填背景"));
 
@@ -125,8 +128,9 @@ describe("outfit flow", () => {
     }
   });
 
-  it("does not show a language selector or reserve its space in the first step", () => {
+  it("does not show a language selector or reserve its space in the first step", async () => {
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     expect(screen.queryByLabelText("選擇語言")).not.toBeInTheDocument();
     expect(document.querySelector(".flow-card")).not.toHaveClass("has-language-select");
@@ -161,8 +165,9 @@ describe("outfit flow", () => {
     await screen.findByRole("heading", { name: "你的穿搭建議" });
   });
 
-  it("shows one upload surface and hides the analysis action before a photo is prepared", () => {
+  it("shows one upload surface and hides the analysis action before a photo is prepared", async () => {
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
@@ -178,9 +183,10 @@ describe("outfit flow", () => {
     expect(input).not.toHaveAttribute("capture");
   });
 
-  it("opens the shared file input from the empty upload surface", () => {
+  it("opens the shared file input from the empty upload surface", async () => {
     const inputClick = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(() => {});
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
 
     fireEvent.click(screen.getByRole("button", { name: "加入一張穿搭照" }));
@@ -221,6 +227,7 @@ describe("outfit flow", () => {
   it("locks analysis while checking, passes automatically, and never starts full analysis", async () => {
     const pendingCheck = deferred<Response>();
     vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") return pendingCheck.promise;
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
@@ -264,6 +271,7 @@ describe("outfit flow", () => {
     ["CLOTHING_UNRECOGNIZABLE", "無法可靠辨識衣物，請重新拍攝清楚的穿搭照。"],
   ])("announces the %s precheck rejection and keeps analysis locked", async (reason, message) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") {
         return photoCheckResponse({ eligible: false, reason });
       }
@@ -287,9 +295,10 @@ describe("outfit flow", () => {
     new Response(JSON.stringify({ eligible: true, reason: "NO_PERSON" }), { status: 200 }),
     new Response(JSON.stringify({ error: "UNKNOWN_ERROR" }), { status: 503 }),
   ])("fails closed when a precheck response violates its schema", async (response) => {
-    vi.mocked(fetch).mockImplementation(async (url) => (
-      url === "/api/photo-check" ? response : new Response(null, { status: 204 })
-    ));
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/auth/session") return sessionResponse();
+      return url === "/api/photo-check" ? response : new Response(null, { status: 204 });
+    });
     render(<HomePage />);
 
     chooseOccasionAndPhoto();
@@ -310,11 +319,12 @@ describe("outfit flow", () => {
     ["PHOTO_CHECK_UNAVAILABLE", "照片檢查暫時無法完成，請重新檢查。"],
     ["RATE_LIMITED", "照片檢查次數過多，請稍後再試。"],
   ])("announces the %s precheck error and offers retry", async (errorCode, message) => {
-    vi.mocked(fetch).mockImplementation(async (url) => (
-      url === "/api/photo-check"
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/auth/session") return sessionResponse();
+      return url === "/api/photo-check"
         ? photoCheckErrorResponse(errorCode, errorCode === "RATE_LIMITED" ? 429 : 503)
-        : new Response(null, { status: 204 })
-    ));
+        : new Response(null, { status: 204 });
+    });
     render(<HomePage />);
 
     chooseOccasionAndPhoto();
@@ -332,6 +342,7 @@ describe("outfit flow", () => {
   it("retries the current prepared photo and unlocks analysis after success", async () => {
     let checks = 0;
     vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") {
         checks += 1;
         return checks === 1
@@ -357,6 +368,7 @@ describe("outfit flow", () => {
     prepareImage.mockImplementationOnce(async (file: File) => file)
       .mockImplementationOnce(() => pendingReplacement.promise);
     vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") {
         checks += 1;
         return checks === 1 ? photoCheckResponse() : pendingCheck.promise;
@@ -380,6 +392,7 @@ describe("outfit flow", () => {
     const pendingCheck = deferred<Response>();
     let signal: AbortSignal | undefined;
     vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") {
         signal = init?.signal ?? undefined;
         return pendingCheck.promise;
@@ -404,6 +417,7 @@ describe("outfit flow", () => {
     const pendingCheck = deferred<Response>();
     let signal: AbortSignal | undefined;
     vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") {
         signal = init?.signal ?? undefined;
         return pendingCheck.promise;
@@ -431,6 +445,7 @@ describe("outfit flow", () => {
     const signals: AbortSignal[] = [];
     let checks = 0;
     vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") {
         signals.push(init?.signal as AbortSignal);
         checks += 1;
@@ -466,6 +481,7 @@ describe("outfit flow", () => {
     const staleCheck = deferred<Response>();
     let checks = 0;
     vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/auth/session") return sessionResponse();
       if (url === "/api/photo-check") {
         checks += 1;
         return checks === 1 ? staleCheck.promise : photoCheckResponse();
@@ -532,7 +548,7 @@ describe("outfit flow", () => {
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
   });
 
-  it("shows the required-login dialog instead of analysis for a signed-out user", async () => {
+  it("shows the required-login dialog before a signed-out user can start the first step", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
       if (url === "/api/auth/session") return sessionResponse(null);
@@ -540,10 +556,6 @@ describe("outfit flow", () => {
       return new Response(null, { status: 204 });
     });
     render(<HomePage />);
-    chooseOccasionAndPhoto();
-    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
-
-    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(await screen.findByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
     expect(screen.getAllByRole("link")).toEqual([
@@ -557,6 +569,7 @@ describe("outfit flow", () => {
     fireEvent.keyDown(screen.getByRole("alertdialog"), { key: "Escape" });
     expect(screen.getByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
     expect(screen.queryByRole("button", { name: /取消|關閉|稍後/ })).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith("/api/photo-check", expect.anything());
     expect(fetch).not.toHaveBeenCalledWith("/api/analyze", expect.anything());
   });
 
@@ -568,16 +581,12 @@ describe("outfit flow", () => {
       return new Response(null, { status: 204 });
     });
     render(<HomePage />);
-    chooseOccasionAndPhoto();
-    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
-
-    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(await screen.findByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
     expect(fetch).not.toHaveBeenCalledWith("/api/analyze", expect.anything());
   });
 
-  it("disables analysis while the login check is pending", async () => {
+  it("locks the first step while the entry login check is pending", async () => {
     const pendingSession = deferred<Response>();
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
@@ -586,14 +595,24 @@ describe("outfit flow", () => {
       return new Response(null, { status: 204 });
     });
     render(<HomePage />);
+
+    expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "true");
+    expect(document.querySelector(".flow-content")).toHaveAttribute("inert");
+    pendingSession.resolve(sessionResponse());
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
+    expect(document.querySelector(".flow-content")).not.toHaveAttribute("inert");
+  });
+
+  it("checks login only on entry and starts analysis without a second session request", async () => {
+    render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled());
     chooseOccasionAndPhoto();
     await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
 
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
-    expect(screen.getByRole("button", { name: "開始分析" })).toBeDisabled();
-    pendingSession.resolve(sessionResponse());
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/auth/session")).toHaveLength(1);
   });
 
   it("shows the required-login dialog when analysis returns 401 after a valid session", async () => {
@@ -618,6 +637,7 @@ describe("outfit flow", () => {
     const pendingImage = deferred<File>();
     prepareImage.mockImplementationOnce(() => pendingImage.promise);
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
     fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
@@ -878,39 +898,6 @@ describe("outfit flow", () => {
       url === "/api/telemetry"
       && JSON.parse(String(init?.body)).type === "analysis_error"
     )).toBe(true);
-  });
-
-  it("disables the error retry and marks it busy while it checks authentication", async () => {
-    const pendingRetrySession = deferred<Response>();
-    let sessionChecks = 0;
-    vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") {
-        sessionChecks += 1;
-        return sessionChecks === 1 ? sessionResponse() : pendingRetrySession.promise;
-      }
-      if (url === "/api/analyze") {
-        return new Response(JSON.stringify({ error: "AI_UNAVAILABLE" }), { status: 503 });
-      }
-      return new Response(null, { status: 204 });
-    });
-    render(<HomePage />);
-    chooseOccasionAndPhoto();
-    await screen.findByRole("img", { name: "本機穿搭照片預覽" });
-    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
-    await screen.findByRole("alert");
-
-    fireEvent.click(screen.getByRole("button", { name: "再試一次" }));
-
-    const retry = screen.getByRole("button", { name: "再試一次" });
-    expect(retry).toBeDisabled();
-    expect(retry).toHaveAttribute("aria-busy", "true");
-    retry.removeAttribute("disabled");
-    fireEvent.click(retry);
-    expect(sessionChecks).toBe(2);
-
-    pendingRetrySession.resolve(sessionResponse());
-    await screen.findByRole("alert");
   });
 
   it.each([

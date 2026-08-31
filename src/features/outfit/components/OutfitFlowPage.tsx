@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ImSpinner8 } from "react-icons/im";
 
@@ -35,34 +35,45 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
   const locale = useLocale() as AppLocale;
   const t = useTranslations();
   const flow = useOutfitFlow(locale);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
-  const [requiresLogin, setRequiresLogin] = useState(false);
+  const [authStatus, setAuthStatus] = useState<"checking" | "authenticated" | "anonymous">("checking");
   const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
 
-  const handleAnalyze = async () => {
-    if (isCheckingAuth) return;
-    setIsCheckingAuth(true);
-    try {
-      const response = await fetch("/api/auth/session", { cache: "no-store" });
-      const summary: unknown = await response.json();
-      if (!response.ok || !isAuthenticatedSessionSummary(summary)) {
-        setRequiresLogin(true);
-        return;
-      }
+  useEffect(() => {
+    const controller = new AbortController();
 
-      flow.setConsented(true);
-      const outcome = await flow.analyze();
-      if (outcome === "unauthorized") setRequiresLogin(true);
-    } catch {
-      setRequiresLogin(true);
-    } finally {
-      setIsCheckingAuth(false);
-    }
+    const checkAuthentication = async () => {
+      try {
+        const response = await fetch("/api/auth/session", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const summary: unknown = await response.json();
+        if (!controller.signal.aborted) {
+          setAuthStatus(response.ok && isAuthenticatedSessionSummary(summary)
+            ? "authenticated"
+            : "anonymous");
+        }
+      } catch {
+        if (!controller.signal.aborted) setAuthStatus("anonymous");
+      }
+    };
+
+    void checkAuthentication();
+    return () => controller.abort();
+  }, []);
+
+  const handleAnalyze = async () => {
+    flow.setConsented(true);
+    const outcome = await flow.analyze();
+    if (outcome === "unauthorized") setAuthStatus("anonymous");
   };
 
   return (
-    <main className="editorial-page analyze-shell flow-shell app-page-with-nav">
-      <div className="flow-content">
+    <main
+      aria-busy={authStatus === "checking"}
+      className="editorial-page analyze-shell flow-shell app-page-with-nav"
+    >
+      <div className="flow-content" inert={authStatus !== "authenticated" ? true : undefined}>
         {loginSucceeded ? <p className="login-success" role="status">{t("auth.loginSuccess")}</p> : null}
         <div className="flow-header" aria-label={t("step", { step })}>
           <span>{t("appName")}</span>
@@ -145,6 +156,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                 {occasions.map((occasion) => (
                   <button
                     className="occasion-option"
+                    disabled={authStatus === "anonymous"}
                     key={occasion}
                     type="button"
                     onClick={() => flow.chooseOccasion(occasion)}
@@ -160,7 +172,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               image={flow.image}
               error={flow.photoError}
               photoCheckState={flow.photoCheckState}
-              analysisDisabled={isCheckingAuth}
+              analysisDisabled={authStatus !== "authenticated"}
               onChoosePhoto={flow.choosePhoto}
               onRetryPhotoCheck={flow.retryPhotoCheck}
               onAnalyze={handleAnalyze}
@@ -194,8 +206,8 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               <button
                 className="button-primary primary-action"
                 type="button"
-                disabled={isCheckingAuth}
-                aria-busy={isCheckingAuth}
+                disabled={authStatus !== "authenticated"}
+                aria-busy={authStatus === "checking"}
                 onClick={handleAnalyze}
               >
                 {t("error.retry")}
@@ -205,7 +217,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
         </div>
       </div>
       <AppNavigation />
-      {requiresLogin ? <RequiredLoginDialog /> : null}
+      {authStatus === "anonymous" ? <RequiredLoginDialog /> : null}
     </main>
   );
 }
