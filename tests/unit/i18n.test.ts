@@ -85,7 +85,7 @@ describe("photo precheck messages", () => {
   it.each([
     ["zh-TW", {
       title: "拍下你的穿搭",
-      description: "請讓上衣與下身，或連身服裝清楚入鏡，若能讓鞋子與頭部也入鏡，分析結果會更精準唷 ❤️。",
+      description: "請讓上衣與下身，或連身服裝清楚入鏡，若能讓鞋子與頭部也入鏡，分析結果會更精準唷。",
       addPhoto: "加入一張穿搭照",
       checking: "正在檢查照片是否適合分析…",
       passed: "照片符合分析規格。",
@@ -109,7 +109,7 @@ describe("photo precheck messages", () => {
     }],
     ["en", {
       title: "Capture your outfit",
-      description: "Please show your top and bottom, or a one-piece outfit, clearly. If you can include footwear and your head too, the analysis will be more accurate ❤️.",
+      description: "Please show your top and bottom, or a one-piece outfit, clearly. If you can include footwear and your head too, the analysis will be more accurate.",
       addPhoto: "Add an outfit photo",
       checking: "Checking whether this photo is ready for analysis…",
       passed: "This photo is ready for analysis.",
@@ -133,7 +133,7 @@ describe("photo precheck messages", () => {
     }],
     ["ja", {
       title: "コーデを撮影",
-      description: "トップスとボトムス、または上下を覆う服装がはっきり写るようにしてください。靴や頭部も写せると、より正確に分析できます ❤️。",
+      description: "トップスとボトムス、または上下を覆う服装がはっきり写るようにしてください。靴や頭部も写せると、より正確に分析できます。",
       addPhoto: "コーデ写真を追加",
       checking: "写真が分析に適しているか確認しています…",
       passed: "この写真は分析に使用できます。",
@@ -157,7 +157,7 @@ describe("photo precheck messages", () => {
     }],
     ["ko", {
       title: "코디를 촬영하세요",
-      description: "상의와 하의 또는 상하의를 덮는 원피스가 선명하게 보이게 해주세요. 신발과 머리도 나오면 분석 결과가 더 정확해져요 ❤️.",
+      description: "상의와 하의 또는 상하의를 덮는 원피스가 선명하게 보이게 해주세요. 신발과 머리도 나오면 분석 결과가 더 정확해져요.",
       addPhoto: "코디 사진 추가",
       checking: "사진이 분석에 적합한지 확인하는 중…",
       passed: "이 사진은 분석할 수 있습니다.",

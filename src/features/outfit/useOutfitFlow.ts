@@ -86,7 +86,10 @@ export function useOutfitFlow(locale: AppLocale) {
 
   const chooseOccasion = (nextOccasion: Occasion) => {
     setOccasion(nextOccasion);
-    setState("photo");
+  };
+
+  const continueToPhoto = () => {
+    if (occasion) setState("photo");
   };
 
   const invalidatePhotoCheck = () => {
@@ -322,6 +325,7 @@ export function useOutfitFlow(locale: AppLocale) {
     analysisToken,
     analysisErrorMessage: messages[locale].error[analysisErrorCode ?? "AI_UNAVAILABLE"],
     chooseOccasion,
+    continueToPhoto,
     choosePhoto,
     setWeather,
     setSetting,

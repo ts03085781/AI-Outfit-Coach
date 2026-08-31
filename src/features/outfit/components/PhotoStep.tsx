@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useTranslations } from "next-intl";
+import { LuArrowLeft } from "react-icons/lu";
 
 import type { ImagePreparationErrorCode } from "../image";
 import type { PhotoCheckState } from "../photo-check";
@@ -68,7 +69,8 @@ export function PhotoStep({
   return (
     <section aria-labelledby="photo-title">
       <button className="button-ghost photo-back" type="button" onClick={onBack}>
-        {t("back")}
+        <LuArrowLeft aria-hidden="true" />
+        <span>{t("back")}</span>
       </button>
       <h1 id="photo-title">{t("title")}</h1>
       <p>{t("description")}</p>

@@ -71,6 +71,7 @@ function chooseOccasionAndPhoto(
   file = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" }),
 ) {
   fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+  fireEvent.click(screen.getByRole("button", { name: "下一步" }));
   fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
     target: { files: [file] },
   });
@@ -103,11 +104,58 @@ describe("outfit flow", () => {
     expect(screen.getByRole("button", { name: /日常外出/i })).toHaveClass("occasion-option");
   });
 
+  it("requires an explicit next action after selecting an occasion", async () => {
+    render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
+
+    const nextButton = screen.getByRole("button", { name: "下一步" });
+    const casualButton = screen.getByRole("button", { name: "日常外出" });
+    expect(nextButton).toBeDisabled();
+
+    fireEvent.click(casualButton);
+
+    expect(screen.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
+    expect(casualButton).toHaveAttribute("aria-pressed", "true");
+    expect(nextButton).toBeEnabled();
+
+    fireEvent.click(nextButton);
+    expect(screen.getByRole("heading", { name: "拍下你的穿搭" })).toBeVisible();
+  });
+
+  it("shows icon-backed occasion choices before expanded optional context", async () => {
+    render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
+
+    const casualButton = screen.getByRole("button", { name: "日常外出" });
+    const optionalContext = screen.getByText("加上選填背景").closest("details");
+    const occasionGrid = casualButton.closest(".occasion-grid");
+
+    expect(casualButton.querySelector("svg[aria-hidden='true']")).toBeInTheDocument();
+    expect(optionalContext).toHaveAttribute("open");
+    const relativePosition = occasionGrid?.compareDocumentPosition(optionalContext as Node) ?? 0;
+    expect(relativePosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows a directional icon in the photo-step back button", async () => {
+    render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
+    fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
+
+    const backButton = screen.getByRole("button", { name: "返回" });
+    expect(backButton.querySelector("svg[aria-hidden='true']")).toBeInTheDocument();
+  });
+
+  it("gives the photo-step back button a bordered 44px tap target", () => {
+    expect(stylesheet).toMatch(/\.photo-back\s*\{[^}]*min-width:\s*44px/);
+    expect(stylesheet).toMatch(/\.photo-back\s*\{[^}]*min-height:\s*44px/);
+    expect(stylesheet).toMatch(/\.photo-back\s*\{[^}]*border:\s*2px solid/);
+  });
+
   it("keeps selected optional context in the first card", async () => {
     render(<HomePage />);
     await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
-    fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
     fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
@@ -120,8 +168,6 @@ describe("outfit flow", () => {
   it("uses the shared editorial label for every optional context field", async () => {
     render(<HomePage />);
     await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
-
-    fireEvent.click(screen.getByText("加上選填背景"));
 
     for (const label of ["天氣", "地點環境", "想呈現的感覺"]) {
       expect(screen.getByText(label, { selector: ".editorial-label" })).toBeVisible();
@@ -147,6 +193,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
     expect(screen.queryByLabelText("選擇語言")).not.toBeInTheDocument();
     fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
@@ -170,6 +217,7 @@ describe("outfit flow", () => {
     await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
 
     expect(screen.getByRole("button", { name: "加入一張穿搭照" })).toBeVisible();
     expect(screen.getByText("JPG、PNG、WebP，單張照片")).toBeVisible();
@@ -188,6 +236,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
     await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
 
     fireEvent.click(screen.getByRole("button", { name: "加入一張穿搭照" }));
 
@@ -198,6 +247,7 @@ describe("outfit flow", () => {
   it("clears the shared input so the same file can be selected again", async () => {
     render(<HomePage />);
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
     const input = document.querySelector("#outfit-photo") as HTMLInputElement;
     const file = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
     Object.defineProperty(input, "value", {
@@ -512,13 +562,13 @@ describe("outfit flow", () => {
 
     expect(screen.getByRole("button", { name: "工作／面試" })).toBeVisible();
     expect(screen.getByRole("button", { name: "正式活動" })).toBeVisible();
-    fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
     fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), {
       target: { value: "專業但親切" },
     });
     fireEvent.click(screen.getByRole("button", { name: "工作／面試" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
     fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
@@ -640,6 +690,7 @@ describe("outfit flow", () => {
     await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
     fireEvent.change(document.querySelector("#outfit-photo") as HTMLInputElement, {
       target: { files: [new File(["outfit"], "outfit.jpg", { type: "image/jpeg" })] },
     });
@@ -659,6 +710,7 @@ describe("outfit flow", () => {
     render(<HomePage />);
 
     fireEvent.click(screen.getByRole("button", { name: "日常外出" }));
+    fireEvent.click(screen.getByRole("button", { name: "下一步" }));
     const input = document.querySelector("#outfit-photo") as HTMLInputElement;
     fireEvent.change(input, {
       target: { files: [new File(["old"], "old.jpg", { type: "image/jpeg" })] },
@@ -942,7 +994,6 @@ describe("outfit flow", () => {
     });
     render(<HomePage />);
 
-    fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
     fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
@@ -974,7 +1025,6 @@ describe("outfit flow", () => {
   it("returns to the first step with all optional context cleared", async () => {
     render(<HomePage />);
 
-    fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
     fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
@@ -986,7 +1036,6 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "返回第一步驟" }));
 
     expect(screen.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
-    fireEvent.click(screen.getByText("加上選填背景"));
     expect(screen.getByLabelText("天氣")).toHaveValue("");
     expect(screen.getByLabelText("地點環境")).toHaveValue("");
     expect(screen.getByLabelText("想呈現的感覺")).toHaveValue("");
@@ -995,7 +1044,6 @@ describe("outfit flow", () => {
   it("returns from the combined photo step without discarding optional context", async () => {
     render(<HomePage />);
 
-    fireEvent.click(screen.getByText("加上選填背景"));
     fireEvent.change(screen.getByLabelText("天氣"), { target: { value: "rainy" } });
     fireEvent.change(screen.getByLabelText("地點環境"), { target: { value: "mixed" } });
     fireEvent.change(screen.getByLabelText("想呈現的感覺"), { target: { value: "專業但親切" } });
@@ -1005,7 +1053,6 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "返回" }));
 
     expect(screen.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
-    fireEvent.click(screen.getByText("加上選填背景"));
     expect(screen.getByLabelText("天氣")).toHaveValue("rainy");
     expect(screen.getByLabelText("地點環境")).toHaveValue("mixed");
     expect(screen.getByLabelText("想呈現的感覺")).toHaveValue("專業但親切");

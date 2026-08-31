@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ImSpinner8 } from "react-icons/im";
+import {
+  LuArrowRight,
+  LuBriefcaseBusiness,
+  LuCoffee,
+  LuHeart,
+  LuSparkles,
+} from "react-icons/lu";
 
 import { RequiredLoginDialog } from "@/features/auth/components/RequiredLoginDialog";
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
@@ -13,6 +20,12 @@ import { type AppLocale } from "@/lib/i18n/config";
 import { AppNavigation } from "@/features/home/components/AppNavigation";
 
 const occasions: Occasion[] = ["casual", "date", "work", "formal"];
+const occasionIcons = {
+  casual: LuCoffee,
+  date: LuHeart,
+  work: LuBriefcaseBusiness,
+  formal: LuSparkles,
+};
 const weatherOptions: Weather[] = ["sunny", "rainy", "cold", "hot", "mild"];
 const settingOptions: Setting[] = ["indoor", "outdoor", "mixed"];
 
@@ -89,7 +102,25 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
             <section aria-labelledby="occasion-title">
               <h1 id="occasion-title">{t("occasion.title")}</h1>
               <p>{t("occasion.description")}</p>
-              <details className="optional-context">
+              <div className="occasion-grid">
+                {occasions.map((occasion) => {
+                  const OccasionIcon = occasionIcons[occasion];
+                  return (
+                    <button
+                      aria-pressed={flow.occasion === occasion}
+                      className="occasion-option"
+                      disabled={authStatus === "anonymous"}
+                      key={occasion}
+                      type="button"
+                      onClick={() => flow.chooseOccasion(occasion)}
+                    >
+                      <OccasionIcon className="occasion-option-icon" aria-hidden="true" />
+                      <span>{t(`occasion.${occasion}`)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <details className="optional-context" open>
                 <summary>{t("occasion.optional")}</summary>
                 <div className="context-fields">
                   <label>
@@ -152,19 +183,15 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                   </label>
                 </div>
               </details>
-              <div className="occasion-grid">
-                {occasions.map((occasion) => (
-                  <button
-                    className="occasion-option"
-                    disabled={authStatus === "anonymous"}
-                    key={occasion}
-                    type="button"
-                    onClick={() => flow.chooseOccasion(occasion)}
-                  >
-                    {t(`occasion.${occasion}`)}
-                  </button>
-                ))}
-              </div>
+              <button
+                className="button-primary primary-action occasion-next"
+                type="button"
+                disabled={!flow.occasion || authStatus === "anonymous"}
+                onClick={flow.continueToPhoto}
+              >
+                <span>{t("occasion.next")}</span>
+                <LuArrowRight aria-hidden="true" />
+              </button>
             </section>
           ) : null}
           {flow.state === "photo" ? (

@@ -40,7 +40,8 @@
     "casual": "日常外出",
     "date": "約會",
     "work": "工作／面試",
-    "formal": "正式活動"
+    "formal": "正式活動",
+    "next": "下一步"
   },
   "weather": {
     "sunny": "晴天",
@@ -53,7 +54,7 @@
   "photo": {
     "back": "返回",
     "title": "拍下你的穿搭",
-    "description": "請讓上衣與下身，或連身服裝清楚入鏡，若能讓鞋子與頭部也入鏡，分析結果會更精準唷 ❤️。",
+    "description": "請讓上衣與下身，或連身服裝清楚入鏡，若能讓鞋子與頭部也入鏡，分析結果會更精準唷。",
     "addPhoto": "加入一張穿搭照",
     "fileHint": "JPG、PNG、WebP，單張照片",
     "replacePhoto": "更換照片",

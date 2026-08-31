@@ -54,6 +54,7 @@ async function mockSuccessfulPhotoCheck(page: Page) {
 async function selectPhoto(page: Page, occasion = "日常外出") {
   await page.goto("/analyze");
   await page.getByRole("button", { name: occasion }).click();
+  await page.getByRole("button", { name: "下一步" }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "加入一張穿搭照" }).click();
   const fileChooser = await fileChooserPromise;
@@ -104,9 +105,36 @@ test.describe("mock-only outfit flow", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   });
 
+  test("uses an explicit occasion step with visible selection and accessible navigation", async ({ page }) => {
+    await page.goto("/analyze");
+
+    const next = page.getByRole("button", { name: "下一步" });
+    const casual = page.getByRole("button", { name: "日常外出" });
+    const optionalContext = page.locator("details.optional-context");
+    await expect(next).toBeDisabled();
+    await expect(optionalContext).toHaveAttribute("open", "");
+    await expect(page.getByLabel("天氣")).toBeVisible();
+    await expect(casual.locator("svg")).toBeVisible();
+
+    await casual.click();
+    await expect(page.getByRole("heading", { name: "今天要去哪裡？" })).toBeVisible();
+    await expect(casual).toHaveAttribute("aria-pressed", "true");
+    await expect(casual).toHaveCSS("background-color", "rgb(0, 0, 0)");
+    await expect(next).toBeEnabled();
+
+    await next.click();
+    const back = page.getByRole("button", { name: "返回" });
+    const backBox = await back.boundingBox();
+    expect(backBox?.width).toBeGreaterThanOrEqual(44);
+    expect(backBox?.height).toBeGreaterThanOrEqual(44);
+    await expect(back).toHaveCSS("border-top-width", "2px");
+    await expect(back.locator("svg")).toBeVisible();
+  });
+
   test("shows one empty upload surface before photo selection", async ({ page }) => {
     await page.goto("/analyze");
     await page.getByRole("button", { name: "日常外出" }).click();
+    await page.getByRole("button", { name: "下一步" }).click();
 
     const upload = page.getByRole("button", { name: "加入一張穿搭照" });
     await expect(upload).toBeVisible();

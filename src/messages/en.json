@@ -40,7 +40,8 @@
     "casual": "Everyday outing",
     "date": "Date",
     "work": "Work / interview",
-    "formal": "Formal event"
+    "formal": "Formal event",
+    "next": "Next"
   },
   "weather": {
     "sunny": "Sunny",
@@ -57,7 +58,7 @@
   "photo": {
     "back": "Back",
     "title": "Capture your outfit",
-    "description": "Please show your top and bottom, or a one-piece outfit, clearly. If you can include footwear and your head too, the analysis will be more accurate ❤️.",
+    "description": "Please show your top and bottom, or a one-piece outfit, clearly. If you can include footwear and your head too, the analysis will be more accurate.",
     "addPhoto": "Add an outfit photo",
     "fileHint": "JPG, PNG, WebP, one photo",
     "replacePhoto": "Replace photo",
