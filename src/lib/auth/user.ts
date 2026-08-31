@@ -9,11 +9,16 @@ export type BasicUser = {
   avatarUrl: string | null;
 };
 
+export async function getVerifiedCurrentUser(): Promise<User | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return data.user;
+}
+
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase.auth.getUser();
-    return error ? null : data.user;
+    return await getVerifiedCurrentUser();
   } catch {
     return null;
   }

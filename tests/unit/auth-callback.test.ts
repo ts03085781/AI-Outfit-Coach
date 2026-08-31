@@ -7,11 +7,22 @@ import { createAuthCallbackHandler } from "@/lib/auth/callback";
 describe("GET /auth/callback", () => {
   it("exchanges a valid code and redirects to the safe next path", async () => {
     const exchangeCode = vi.fn().mockResolvedValue({ error: null });
+    const notifyLogin = vi.fn().mockResolvedValue("sent");
     const request = new Request("https://stylecue.example/auth/callback?code=valid&next=/settings");
 
-    const response = await createAuthCallbackHandler(exchangeCode)(request);
+    const response = await createAuthCallbackHandler(exchangeCode, notifyLogin)(request);
 
     expect(exchangeCode).toHaveBeenCalledWith("valid");
+    expect(notifyLogin).toHaveBeenCalledOnce();
+    expect(response.headers.get("location")).toBe("https://stylecue.example/settings?login=success");
+  });
+
+  it("keeps login successful when the notification side effect throws", async () => {
+    const response = await createAuthCallbackHandler(
+      vi.fn().mockResolvedValue({ error: null }),
+      vi.fn().mockRejectedValue(new Error("email provider unavailable")),
+    )(new Request("https://stylecue.example/auth/callback?code=valid&next=/settings"));
+
     expect(response.headers.get("location")).toBe("https://stylecue.example/settings?login=success");
   });
 
