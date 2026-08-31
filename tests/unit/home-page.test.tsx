@@ -13,9 +13,12 @@ beforeEach(() => {
 });
 
 it("shows retryable weather, analysis navigation, and searchable trend cards", async () => {
-  render(<LocaleProvider initialLocale="zh-TW"><HomeContent trendManifest={null} /></LocaleProvider>);
+  const { container } = render(
+    <LocaleProvider initialLocale="zh-TW"><HomeContent trendManifest={null} /></LocaleProvider>,
+  );
 
   expect(screen.getByRole("main")).toHaveClass("editorial-page", "home-shell");
+  expect(screen.getByRole("link", { name: "AI StyleCue" })).toHaveAttribute("href", "/");
   expect(await screen.findByRole("button", { name: "點擊取得所在地天氣" })).toBeVisible();
   expect(screen.getByRole("navigation", { name: "主要導覽" })).toBeVisible();
   expect(screen.getByRole("navigation")).toHaveAttribute("data-testid", "app-navigation");
@@ -31,6 +34,7 @@ it("shows retryable weather, analysis navigation, and searchable trend cards", a
     "https://www.google.com/search?q=%E9%80%8F%E6%B0%A3%E4%BA%9E%E9%BA%BB%E5%AF%AC%E8%A4%B2",
   );
   expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(5);
+  expect(container.querySelector(".trend-index")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "點擊取得所在地天氣" }));
   expect(navigator.geolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
 });

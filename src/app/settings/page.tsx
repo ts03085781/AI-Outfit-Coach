@@ -14,6 +14,7 @@ export default function SettingsPage() {
 
   return (
     <main className="editorial-page settings-shell app-page-with-nav">
+      <AppNavigation />
       <div className="settings-content">
         <section className="settings-intro">
           <div className="settings-heading">
@@ -43,7 +44,6 @@ export default function SettingsPage() {
         </section>
         <AccountSection />
       </div>
-      <AppNavigation />
     </main>
   );
 }

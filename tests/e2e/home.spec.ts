@@ -79,3 +79,32 @@ test("keeps English navigation labels on one line at the label-caps scale on a 3
     { labelOverflows: false, linkOverflows: false, isSingleLine: true },
   ]);
 });
+
+test("keeps a full-width branded navigation fixed to the top across desktop pages", async ({ context, page }) => {
+  await context.addCookies([{
+    name: "NEXT_LOCALE",
+    value: "zh-TW",
+    url: "http://127.0.0.1:3000",
+  }]);
+  await page.setViewportSize({ width: 768, height: 900 });
+  for (const path of ["/", "/analyze", "/settings"]) {
+    await page.goto(path);
+
+    const navigation = page.getByRole("navigation", { name: "主要導覽" });
+    const navigationBox = await navigation.boundingBox();
+
+    await expect(page.getByRole("link", { name: "AI StyleCue" })).toBeVisible();
+    await expect(navigation).toHaveCSS("position", "fixed");
+    expect(navigationBox).not.toBeNull();
+    expect(navigationBox!.x).toBeCloseTo(0, 0);
+    expect(navigationBox!.y).toBeCloseTo(0, 0);
+    expect(navigationBox!.width).toBeCloseTo(768, 0);
+  }
+
+  await page.goto("/");
+  const navigationBox = await page.getByRole("navigation", { name: "主要導覽" }).boundingBox();
+  const heroBox = await page.locator(".home-hero").boundingBox();
+  expect(navigationBox).not.toBeNull();
+  expect(heroBox).not.toBeNull();
+  expect(navigationBox!.y + navigationBox!.height).toBeLessThanOrEqual(heroBox!.y);
+});

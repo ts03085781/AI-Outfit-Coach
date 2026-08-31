@@ -86,6 +86,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
       aria-busy={authStatus === "checking"}
       className="editorial-page analyze-shell flow-shell app-page-with-nav"
     >
+      <AppNavigation />
       <div className="flow-content" inert={authStatus !== "authenticated" ? true : undefined}>
         {loginSucceeded ? <p className="login-success" role="status">{t("auth.loginSuccess")}</p> : null}
         <div className="flow-header" aria-label={t("step", { step })}>
@@ -243,7 +244,6 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
           ) : null}
         </div>
       </div>
-      <AppNavigation />
       {authStatus === "anonymous" ? <RequiredLoginDialog /> : null}
     </main>
   );

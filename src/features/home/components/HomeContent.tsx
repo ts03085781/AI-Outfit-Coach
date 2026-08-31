@@ -20,6 +20,7 @@ export function HomeContent({ trendManifest }: { trendManifest: TrendManifest | 
 
   return (
     <main className="editorial-page home-shell app-page-with-nav">
+      <AppNavigation />
       <section aria-labelledby="home-title" className="home-hero">
         <p className="home-kicker">{t("eyebrow")}</p>
         <h1 id="home-title">{t("title")}</h1>
@@ -46,7 +47,6 @@ export function HomeContent({ trendManifest }: { trendManifest: TrendManifest | 
         <div className="trend-list">
           {trends.map((item, index) => (
             <article key={item.id}>
-              <span aria-hidden="true" className="trend-index">0{index + 1}</span>
               {item.imageUrl ? (
                 <Image
                   alt=""
@@ -80,7 +80,6 @@ export function HomeContent({ trendManifest }: { trendManifest: TrendManifest | 
           ))}
         </div>
       </section>
-      <AppNavigation />
     </main>
   );
 }
