@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 
+import type { RegistrationNotificationEmail } from "@/features/auth/registration-notification";
 import { getVerifiedCurrentUser } from "@/lib/auth/user";
 import { isSameOriginRequest } from "@/lib/abuse-guard";
 import { getResendClient } from "@/lib/resend";
@@ -39,6 +40,7 @@ type LoginNotificationEmailDependencies = {
 type LoginNotifierDependencies = {
   getUser: () => Promise<User | null>;
   sendEmail: (input: LoginNotificationEmail) => Promise<void>;
+  sendRegistrationEmail?: (input: RegistrationNotificationEmail) => Promise<void>;
   now: () => Date;
   logError: (message: string, error?: unknown) => void;
 };
@@ -53,6 +55,7 @@ export type LoginNotificationResult =
 
 const LOGIN_NOTIFICATION_WINDOW_MS = 5 * 60_000;
 const LOGIN_CLOCK_SKEW_MS = 60_000;
+const REGISTRATION_SIGN_IN_MATCH_WINDOW_MS = 60_000;
 
 function escapeHtml(value: string): string {
   return value
@@ -132,7 +135,7 @@ export async function sendLoginNotificationEmail(
   if (error) throw new Error("Resend rejected the login notification", { cause: error });
 }
 
-export function createLoginNotifier(dependencies: LoginNotifierDependencies) {
+export function createAuthNotifier(dependencies: LoginNotifierDependencies) {
   return async function notifyLogin(): Promise<LoginNotificationResult> {
     let user: User | null;
     try {
@@ -150,9 +153,32 @@ export function createLoginNotifier(dependencies: LoginNotifierDependencies) {
         && !Number.isNaN(verifiedLoginAt.getTime());
       if (!hasVerifiedLoginTime) return "login-not-recent";
 
-      const loginAgeMs = dependencies.now().getTime() - verifiedLoginAt.getTime();
+      const nowMs = dependencies.now().getTime();
+      const loginAgeMs = nowMs - verifiedLoginAt.getTime();
       if (loginAgeMs < -LOGIN_CLOCK_SKEW_MS || loginAgeMs > LOGIN_NOTIFICATION_WINDOW_MS) {
         return "login-not-recent";
+      }
+
+      const registeredAt = user.created_at ? new Date(user.created_at) : null;
+      const registrationAgeMs = registeredAt === null
+        ? Number.POSITIVE_INFINITY
+        : nowMs - registeredAt.getTime();
+      const registrationSignInDifferenceMs = registeredAt === null
+        ? Number.POSITIVE_INFINITY
+        : Math.abs(verifiedLoginAt.getTime() - registeredAt.getTime());
+      const isRecentRegistration = registeredAt !== null
+        && !Number.isNaN(registeredAt.getTime())
+        && registrationAgeMs >= -LOGIN_CLOCK_SKEW_MS
+        && registrationAgeMs <= LOGIN_NOTIFICATION_WINDOW_MS
+        && registrationSignInDifferenceMs <= REGISTRATION_SIGN_IN_MATCH_WINDOW_MS;
+
+      if (isRecentRegistration && dependencies.sendRegistrationEmail) {
+        await dependencies.sendRegistrationEmail({
+          email: user.email,
+          registeredAt,
+          idempotencyKey: `registration-notification/${user.id}/${registeredAt.toISOString()}`,
+        });
+        return "sent";
       }
 
       await dependencies.sendEmail({
@@ -168,7 +194,9 @@ export function createLoginNotifier(dependencies: LoginNotifierDependencies) {
   };
 }
 
-export const notifyCurrentLogin = createLoginNotifier({
+export const createLoginNotifier = createAuthNotifier;
+
+export const notifyCurrentLogin = createAuthNotifier({
   getUser: getVerifiedCurrentUser,
   sendEmail: sendLoginNotificationEmail,
   now: () => new Date(),

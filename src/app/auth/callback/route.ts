@@ -1,15 +1,16 @@
 import { after } from "next/server";
 
 import {
-  createLoginNotifier,
+  createAuthNotifier,
   sendLoginNotificationEmail,
 } from "@/features/auth/login-notification";
+import { sendRegistrationNotificationEmail } from "@/features/auth/registration-notification";
 import { createAuthCallbackHandler } from "@/lib/auth/callback";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
-  const notifyLogin = createLoginNotifier({
+  const notifyLogin = createAuthNotifier({
     getUser: async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error) throw error;
@@ -19,6 +20,13 @@ export async function GET(request: Request) {
       after(async () => {
         await sendLoginNotificationEmail(input).catch((error) => {
           console.error("Login notification email failed", error);
+        });
+      });
+    },
+    sendRegistrationEmail: async (input) => {
+      after(async () => {
+        await sendRegistrationNotificationEmail(input).catch((error) => {
+          console.error("Registration notification email failed", error);
         });
       });
     },

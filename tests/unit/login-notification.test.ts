@@ -94,6 +94,61 @@ describe("login notification", () => {
     });
   });
 
+  it("sends only a registration notification for a newly created account", async () => {
+    const sendEmail = vi.fn().mockResolvedValue(undefined);
+    const sendRegistrationEmail = vi.fn().mockResolvedValue(undefined);
+    const dependencies = {
+      getUser: async () => ({
+        id: "user-1",
+        email: "verified@example.com",
+        created_at: "2026-08-30T02:13:58.000Z",
+        last_sign_in_at: "2026-08-30T02:14:00.000Z",
+      } as User),
+      sendEmail,
+      sendRegistrationEmail,
+      now: () => new Date("2026-08-30T02:15:00.000Z"),
+      logError: vi.fn(),
+    } as Parameters<typeof createLoginNotifier>[0] & {
+      sendRegistrationEmail: typeof sendRegistrationEmail;
+    };
+    const notify = createLoginNotifier(dependencies);
+
+    await expect(notify()).resolves.toBe("sent");
+    expect(sendRegistrationEmail).toHaveBeenCalledWith({
+      email: "verified@example.com",
+      registeredAt: new Date("2026-08-30T02:13:58.000Z"),
+      idempotencyKey: "registration-notification/user-1/2026-08-30T02:13:58.000Z",
+    });
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("sends a login notification when a recent account has signed in again", async () => {
+    const sendEmail = vi.fn().mockResolvedValue(undefined);
+    const sendRegistrationEmail = vi.fn().mockResolvedValue(undefined);
+    const dependencies = {
+      getUser: async () => ({
+        id: "user-1",
+        email: "verified@example.com",
+        created_at: "2026-08-30T02:12:00.000Z",
+        last_sign_in_at: "2026-08-30T02:14:00.000Z",
+      } as User),
+      sendEmail,
+      sendRegistrationEmail,
+      now: () => new Date("2026-08-30T02:15:00.000Z"),
+      logError: vi.fn(),
+    } as Parameters<typeof createLoginNotifier>[0] & {
+      sendRegistrationEmail: typeof sendRegistrationEmail;
+    };
+
+    await expect(createLoginNotifier(dependencies)()).resolves.toBe("sent");
+    expect(sendRegistrationEmail).not.toHaveBeenCalled();
+    expect(sendEmail).toHaveBeenCalledWith({
+      email: "verified@example.com",
+      loginAt: new Date("2026-08-30T02:14:00.000Z"),
+      idempotencyKey: "login-notification/user-1/2026-08-30T02:14:00.000Z",
+    });
+  });
+
   it("logs a server error and contains an email delivery failure", async () => {
     const providerError = new Error("provider rejected request");
     const logError = vi.fn();
