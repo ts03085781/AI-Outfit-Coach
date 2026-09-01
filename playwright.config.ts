@@ -7,6 +7,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 const baseURL = `http://127.0.0.1:${port}`;
+const reuseExistingServer = !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "1";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -18,7 +19,7 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "e2e-test-public-key",
     },
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer,
   },
   use: {
     baseURL,

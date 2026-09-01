@@ -70,6 +70,20 @@ test("renders the home shell before delayed trends arrive", async ({ context, pa
   const responseGate = new Promise<void>((resolve) => {
     releaseResponse = resolve;
   });
+  let imageOptimizerRequestCount = 0;
+  await page.route("**/_next/image**", async (route) => {
+    const sourceUrl = new URL(route.request().url()).searchParams.get("url");
+    if (sourceUrl?.startsWith("https://store.public.blob.vercel-storage.com/e2e-")) {
+      imageOptimizerRequestCount++;
+      await route.fulfill({
+        contentType: "image/png",
+        path: "tests/fixtures/outfit-safe.png",
+      });
+      return;
+    }
+
+    await route.continue();
+  });
   await page.route("**/api/trends", async (route) => {
     await responseGate;
     await route.fulfill({
@@ -85,6 +99,7 @@ test("renders the home shell before delayed trends arrive", async ({ context, pa
   releaseResponse?.();
   await expect(page.getByRole("heading", { name: "API 薄透風衣" }).first()).toBeVisible();
   await expect(page.getByTestId("trend-skeleton")).toHaveCount(0);
+  await expect.poll(() => imageOptimizerRequestCount).toBe(5);
 });
 
 test("keeps the app navigation visible without horizontal overflow on a narrow screen", async ({ context, page }) => {
