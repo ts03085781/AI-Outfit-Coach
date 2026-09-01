@@ -8,7 +8,6 @@ import { getFallbackTrends } from "@/features/trends/fallback";
 import { getLocalizedTrend, type TrendManifest } from "@/features/trends/domain";
 import { useAppLocale } from "@/lib/i18n/LocaleProvider";
 
-import { AppNavigation } from "./AppNavigation";
 import { WeatherCard } from "./WeatherCard";
 
 export function HomeContent({ trendManifest }: { trendManifest: TrendManifest | null }) {
@@ -20,7 +19,6 @@ export function HomeContent({ trendManifest }: { trendManifest: TrendManifest | 
 
   return (
     <main className="editorial-page home-shell app-page-with-nav">
-      <AppNavigation />
       <section aria-labelledby="home-title" className="home-hero">
         <p className="home-kicker">{t("eyebrow")}</p>
         <h1 id="home-title">{t("title")}</h1>

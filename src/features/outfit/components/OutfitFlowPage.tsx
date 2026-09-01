@@ -17,7 +17,6 @@ import { ResultStep } from "@/features/outfit/components/ResultStep";
 import type { Occasion, Setting, Weather } from "@/features/outfit/domain";
 import { useOutfitFlow } from "@/features/outfit/useOutfitFlow";
 import { type AppLocale } from "@/lib/i18n/config";
-import { AppNavigation } from "@/features/home/components/AppNavigation";
 
 const occasions: Occasion[] = ["casual", "date", "work", "formal"];
 const occasionIcons = {
@@ -86,7 +85,6 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
       aria-busy={authStatus === "checking"}
       className="editorial-page analyze-shell flow-shell app-page-with-nav"
     >
-      <AppNavigation />
       <div className="flow-content" inert={authStatus !== "authenticated" ? true : undefined}>
         {loginSucceeded ? <p className="login-success" role="status">{t("auth.loginSuccess")}</p> : null}
         <div className="flow-header" aria-label={t("step", { step })}>

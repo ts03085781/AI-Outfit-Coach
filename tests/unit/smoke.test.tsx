@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
-import AnalyzePage from "@/app/analyze/page";
+import AnalyzePage from "@/app/(app)/analyze/page";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 beforeEach(() => {

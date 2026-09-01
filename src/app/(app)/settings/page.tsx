@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 
 import { AccountSection } from "@/features/auth/components/AccountSection";
-import { AppNavigation } from "@/features/home/components/AppNavigation";
 import { locales, type AppLocale } from "@/lib/i18n/config";
 import { persistLocale, useAppLocale } from "@/lib/i18n/LocaleProvider";
 
@@ -14,7 +13,6 @@ export default function SettingsPage() {
 
   return (
     <main className="editorial-page settings-shell app-page-with-nav">
-      <AppNavigation />
       <div className="settings-content">
         <section className="settings-intro">
           <div className="settings-heading">

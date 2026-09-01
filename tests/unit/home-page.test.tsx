@@ -12,21 +12,13 @@ beforeEach(() => {
   });
 });
 
-it("shows retryable weather, analysis navigation, and searchable trend cards", async () => {
+it("shows retryable weather and searchable trend cards", async () => {
   const { container } = render(
     <LocaleProvider initialLocale="zh-TW"><HomeContent trendManifest={null} /></LocaleProvider>,
   );
 
   expect(screen.getByRole("main")).toHaveClass("editorial-page", "home-shell");
-  expect(screen.getByRole("link", { name: "AI StyleCue" })).toHaveAttribute("href", "/");
   expect(await screen.findByRole("button", { name: "點擊取得所在地天氣" })).toBeVisible();
-  expect(screen.getByRole("navigation", { name: "主要導覽" })).toBeVisible();
-  expect(screen.getByRole("navigation")).toHaveAttribute("data-testid", "app-navigation");
-  expect(screen.getByTestId("navigation-icon-home")).toBeVisible();
-  expect(screen.getByTestId("navigation-icon-analyze")).toBeVisible();
-  expect(screen.getByTestId("navigation-icon-settings")).toBeVisible();
-  expect(screen.getByRole("link", { name: "分析穿搭" })).toHaveAttribute("href", "/analyze");
-  expect(screen.getByRole("link", { name: "首頁" })).toHaveAttribute("aria-current", "page");
   expect(screen.getByRole("link", { name: "拍下我的穿搭" })).toHaveAttribute("href", "/analyze");
   expect(screen.getByText("目前天氣條件")).toBeVisible();
   expect(screen.getByRole("link", { name: /透氣亞麻寬褲/ })).toHaveAttribute(
