@@ -32,3 +32,8 @@ Use concise Conventional Commit-style messages seen in history: `feat: add resul
 ## Security & Configuration
 
 Copy `.env.example` to `.env.local`; never commit it or expose server secrets in client code. Treat photos, model output, telemetry, and rate limiting as sensitive boundaries. Preserve existing fail-closed output validation and privacy constraints when modifying analysis or telemetry code.
+
+## ECPay API Skill
+
+讀取 `.ecpay-skill/<入口文件>` 作為 ECPay 整合知識庫入口。
+完整指南位於 `.ecpay-skill/guides/`（29 份），即時 API 規格索引位於 `.ecpay-skill/references/`。

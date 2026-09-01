@@ -1,0 +1,3 @@
+[submodule ".ecpay-skill"]
+	path = .ecpay-skill
+	url = https://github.com/ECPay/ECPay-API-Skill.git
