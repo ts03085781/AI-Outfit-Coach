@@ -18,7 +18,7 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "e2e-test-public-key",
     },
     url: baseURL,
-    reuseExistingServer: !process.env.CI && !process.env.PLAYWRIGHT_PORT,
+    reuseExistingServer: !process.env.CI,
   },
   use: {
     baseURL,
