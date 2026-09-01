@@ -13,7 +13,16 @@ if (middleware.name !== "src/middleware" || !middleware.files?.includes("server/
   throw new Error("Next.js did not load the middleware from src/middleware.ts.");
 }
 
-const matcher = "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)";
-if (!middleware.matchers?.some(({ originalSource }) => originalSource === matcher)) {
+const expectedMatchers = [
+  "/api/auth/session",
+  "/api/analyze",
+  "/api/follow-up",
+  "/api/auth/login-notification",
+];
+const actualMatchers = middleware.matchers?.map(({ originalSource }) => originalSource) ?? [];
+const hasExpectedMatchers = actualMatchers.length === expectedMatchers.length
+  && expectedMatchers.every((matcher) => actualMatchers.includes(matcher));
+
+if (!hasExpectedMatchers) {
   throw new Error("Next.js did not load the expected middleware matcher configuration.");
 }
