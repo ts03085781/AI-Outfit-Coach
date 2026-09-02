@@ -20,6 +20,7 @@ export function DailyAnalysisLimitDialog({
   const layerRef = useRef<HTMLDivElement>(null);
   const retryRef = useRef<HTMLButtonElement>(null);
   const homeRef = useRef<HTMLAnchorElement>(null);
+  const navigationIntentRef = useRef(false);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement instanceof HTMLElement
@@ -38,7 +39,11 @@ export function DailyAnalysisLimitDialog({
         if (previousValue === null) element.removeAttribute("aria-hidden");
         else element.setAttribute("aria-hidden", previousValue);
       });
-      if (previouslyFocused?.isConnected && previouslyFocused !== document.body) {
+      if (
+        !navigationIntentRef.current
+        && previouslyFocused?.isConnected
+        && previouslyFocused !== document.body
+      ) {
         previouslyFocused.focus();
       }
     };
@@ -98,6 +103,12 @@ export function DailyAnalysisLimitDialog({
           <Link
             className={isUnavailable ? "button-secondary" : "button-primary"}
             href="/"
+            onClick={() => {
+              navigationIntentRef.current = true;
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") navigationIntentRef.current = true;
+            }}
             ref={homeRef}
           >
             {t("backHome")}

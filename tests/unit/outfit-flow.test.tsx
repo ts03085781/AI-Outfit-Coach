@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OutfitFlowPage } from "@/features/outfit/components/OutfitFlowPage";
+import { DailyAnalysisLimitDialog } from "@/features/outfit/components/DailyAnalysisLimitDialog";
 import { useOutfitFlow } from "@/features/outfit/useOutfitFlow";
 import * as outfitFlowModule from "@/features/outfit/useOutfitFlow";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
@@ -707,6 +708,46 @@ describe("outfit flow", () => {
     expect(stylesheet).toMatch(/\.analysis-quota-layer\s*\{[^}]*z-index:\s*25/);
     expect(stylesheet).toMatch(/\.analysis-quota-actions > \*\s*\{[^}]*min-height:\s*44px/);
     expect(stylesheet).toMatch(/\.analysis-quota-actions > \*:focus-visible/);
+  });
+
+  it.each([
+    ["mouse", (home: HTMLElement) => fireEvent.click(home)],
+    ["keyboard", (home: HTMLElement) => fireEvent.keyDown(home, { key: "Enter" })],
+  ])("does not restore stale page focus after %s home navigation intent", (_input, activate) => {
+    const renderDialog = (showDialog: boolean) => (
+      <LocaleProvider>
+        <a href="/analyze">持續存在的分析導覽</a>
+        {showDialog ? <DailyAnalysisLimitDialog kind="limited" onRetry={vi.fn()} /> : null}
+      </LocaleProvider>
+    );
+    const { rerender } = render(renderDialog(false));
+    const priorNavigation = screen.getByRole("link", { name: "持續存在的分析導覽" });
+    priorNavigation.focus();
+    rerender(renderDialog(true));
+    const home = screen.getByRole("link", { name: "返回首頁" });
+    home.addEventListener("click", (event) => event.preventDefault());
+
+    activate(home);
+    rerender(renderDialog(false));
+
+    expect(document.activeElement).not.toBe(priorNavigation);
+  });
+
+  it("restores the previous focus target after an ordinary dialog unmount", () => {
+    const renderDialog = (showDialog: boolean) => (
+      <LocaleProvider>
+        <button type="button">原本的操作</button>
+        {showDialog ? <DailyAnalysisLimitDialog kind="limited" onRetry={vi.fn()} /> : null}
+      </LocaleProvider>
+    );
+    const { rerender } = render(renderDialog(false));
+    const priorAction = screen.getByRole("button", { name: "原本的操作" });
+    priorAction.focus();
+    rerender(renderDialog(true));
+
+    rerender(renderDialog(false));
+
+    expect(document.activeElement).toBe(priorAction);
   });
 
   it("offers retry and home when quota status is unavailable, then unlocks on retry", async () => {
