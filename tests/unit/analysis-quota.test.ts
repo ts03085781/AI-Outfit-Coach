@@ -7,6 +7,7 @@ import {
 } from "@/features/outfit/analysis-quota";
 import {
   createAnalysisQuotaService,
+  createThrowingAnalysisQuotaRpc,
   type AnalysisQuotaRpc,
 } from "@/features/outfit/analysis-quota-service";
 
@@ -55,20 +56,61 @@ describe("analysis quota service", () => {
   });
 
   it.each([
-    ["daily_limit_reached", "daily_limit_reached"],
-    ["slots_busy", "slots_busy"],
-  ] as const)("maps the %s reservation denial", async (outcome, status) => {
+    ["daily_limit_reached", "daily_limit_reached", {
+      ...quotaRow,
+      used_count: 3,
+      remaining_count: 0,
+      available_now_count: 0,
+    }],
+    ["slots_busy", "slots_busy", {
+      ...quotaRow,
+      reserved_count: 1,
+      available_now_count: 0,
+    }],
+  ] as const)("maps the %s reservation denial", async (outcome, status, counts) => {
     const rpc = rpcReturning([{
       outcome,
       reservation_id: "reservation-1",
-      ...quotaRow,
+      ...counts,
     }]);
     const service = createAnalysisQuotaService(rpc);
 
     await expect(service.reserve("user-1", "reservation-1")).resolves.toEqual({
       status,
-      quota: quotaSummary,
+      quota: {
+        ...quotaSummary,
+        used: counts.used_count,
+        remaining: counts.remaining_count,
+      },
     });
+  });
+
+  it.each([
+    {
+      name: "daily limit before three completed uses",
+      outcome: "daily_limit_reached",
+      counts: quotaRow,
+    },
+    {
+      name: "busy slots while capacity is available",
+      outcome: "slots_busy",
+      counts: quotaRow,
+    },
+    {
+      name: "a reservation without a live reserved slot",
+      outcome: "reserved",
+      counts: quotaRow,
+    },
+  ])("rejects an inconsistent reservation outcome: $name", async ({ outcome, counts }) => {
+    const service = createAnalysisQuotaService(rpcReturning([{
+      outcome,
+      reservation_id: "reservation-1",
+      ...counts,
+    }]));
+
+    await expect(service.reserve("user-1", "reservation-1")).rejects.toBeInstanceOf(
+      QuotaUnavailableError,
+    );
   });
 
   it("returns a reserved result without exposing internal quota fields", async () => {
@@ -76,6 +118,8 @@ describe("analysis quota service", () => {
       outcome: "reserved",
       reservation_id: "reservation-1",
       ...quotaRow,
+      reserved_count: 1,
+      available_now_count: 0,
     }]);
     const service = createAnalysisQuotaService(rpc);
 
@@ -110,6 +154,8 @@ describe("analysis quota service", () => {
           outcome: "reserved",
           reservation_id: "reservation-1",
           ...quotaRow,
+          reserved_count: 1,
+          available_now_count: 0,
         }],
         error: null,
       });
@@ -128,6 +174,53 @@ describe("analysis quota service", () => {
       p_user_id: "user-1",
       p_reservation_id: "reservation-1",
     });
+  });
+
+  it("uses the production throwing RPC seam so a lost response is retried", async () => {
+    const firstBuilder = {
+      throwOnError: vi.fn(() => Promise.reject(new TypeError("fetch failed"))),
+    };
+    const secondBuilder = {
+      throwOnError: vi.fn(async () => ({
+        data: [{
+          outcome: "reserved",
+          reservation_id: "reservation-1",
+          ...quotaRow,
+          reserved_count: 1,
+          available_now_count: 0,
+        }],
+        error: null,
+      })),
+    };
+    const client = {
+      rpc: vi.fn()
+        .mockReturnValueOnce(firstBuilder)
+        .mockReturnValueOnce(secondBuilder),
+    };
+    const service = createAnalysisQuotaService(createThrowingAnalysisQuotaRpc(client));
+
+    await expect(service.reserve("user-1", "reservation-1")).resolves.toMatchObject({
+      status: "reserved",
+      reservationId: "reservation-1",
+    });
+    expect(client.rpc).toHaveBeenCalledTimes(2);
+    expect(firstBuilder.throwOnError).toHaveBeenCalledOnce();
+    expect(secondBuilder.throwOnError).toHaveBeenCalledOnce();
+  });
+
+  it("does not retry a database rejection from the production throwing RPC seam", async () => {
+    const databaseError = Object.assign(new Error("permission denied"), { code: "42501" });
+    const builder = {
+      throwOnError: vi.fn(() => Promise.reject(databaseError)),
+    };
+    const client = { rpc: vi.fn(() => builder) };
+    const service = createAnalysisQuotaService(createThrowingAnalysisQuotaRpc(client));
+
+    await expect(service.reserve("user-1", "reservation-1")).rejects.toBeInstanceOf(
+      QuotaUnavailableError,
+    );
+    expect(client.rpc).toHaveBeenCalledOnce();
+    expect(builder.throwOnError).toHaveBeenCalledOnce();
   });
 
   it("does not retry a resolved Postgres error", async () => {

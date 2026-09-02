@@ -24,34 +24,63 @@ export type AnalysisQuotaRpc = (
   arguments_: Record<string, string>,
 ) => PromiseLike<RpcResponse>;
 
-const RawQuotaSchema = z.object({
+type ThrowingRpcBuilder = {
+  throwOnError(): PromiseLike<RpcResponse>;
+};
+
+type AnalysisQuotaRpcClient = {
+  rpc(functionName: string, arguments_: Record<string, string>): ThrowingRpcBuilder;
+};
+
+const RawQuotaFields = {
   limit_count: z.literal(DAILY_ANALYSIS_LIMIT),
   used_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
   reserved_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
   remaining_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
   available_now_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
   reset_at: z.string().datetime({ offset: true }),
-}).strict().refine(
+} as const;
+
+const RawQuotaSchema = z.object(RawQuotaFields).strict().refine(
   ({ used_count, remaining_count }) => (
     used_count + remaining_count === DAILY_ANALYSIS_LIMIT
   ),
 ).refine(
-  ({ available_now_count, remaining_count }) => available_now_count <= remaining_count,
+  ({ available_now_count, remaining_count, reserved_count }) => (
+    available_now_count === Math.max(0, remaining_count - reserved_count)
+  ),
 );
 
 const ReserveRowSchema = z.object({
   outcome: z.enum(["reserved", "daily_limit_reached", "slots_busy"]),
   reservation_id: z.string().min(1),
-  limit_count: z.literal(DAILY_ANALYSIS_LIMIT),
-  used_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
-  reserved_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
-  remaining_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
-  available_now_count: z.number().int().min(0).max(DAILY_ANALYSIS_LIMIT),
-  reset_at: z.string().datetime({ offset: true }),
-}).strict();
+  ...RawQuotaFields,
+}).strict().superRefine((row, context) => {
+  const totalAllocated = row.used_count + row.reserved_count;
+  const consistent = (
+    (row.outcome === "daily_limit_reached"
+      && row.used_count === DAILY_ANALYSIS_LIMIT
+      && row.reserved_count === 0)
+    || (row.outcome === "slots_busy"
+      && row.used_count < DAILY_ANALYSIS_LIMIT
+      && row.reserved_count > 0
+      && totalAllocated === DAILY_ANALYSIS_LIMIT)
+    || (row.outcome === "reserved"
+      && row.reserved_count > 0
+      && totalAllocated <= DAILY_ANALYSIS_LIMIT)
+  );
+  if (!consistent) {
+    context.addIssue({
+      code: "custom",
+      message: "Reservation outcome is inconsistent with quota counts",
+    });
+  }
+});
 
-const CompleteRowSchema = ReserveRowSchema.extend({
+const CompleteRowSchema = z.object({
   outcome: z.enum(["completed", "invalid_reservation", "expired_reservation"]),
+  reservation_id: z.string().min(1),
+  ...RawQuotaFields,
 }).strict();
 
 const ReleaseOutcomeSchema = z.enum([
@@ -181,13 +210,21 @@ export function createAnalysisQuotaService(rpc: AnalysisQuotaRpc): AnalysisQuota
   };
 }
 
+export function createThrowingAnalysisQuotaRpc(
+  client: AnalysisQuotaRpcClient,
+): AnalysisQuotaRpc {
+  return (functionName, arguments_) => (
+    client.rpc(functionName, arguments_).throwOnError()
+  );
+}
+
 async function createConfiguredService(): Promise<AnalysisQuotaService> {
   try {
     const { createAdminSupabaseClient } = await import("@/lib/supabase/admin");
     const client = createAdminSupabaseClient();
-    return createAnalysisQuotaService((functionName, arguments_) => (
-      client.rpc(functionName, arguments_)
-    ));
+    return createAnalysisQuotaService(createThrowingAnalysisQuotaRpc({
+      rpc: (functionName, arguments_) => client.rpc(functionName, arguments_),
+    }));
   } catch {
     throw unavailable();
   }
