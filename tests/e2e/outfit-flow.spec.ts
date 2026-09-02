@@ -23,6 +23,10 @@ const analysis = {
   retake_reason: null,
 };
 
+const resetAt = "2026-09-01T16:00:00.000Z";
+const availableQuota = { limit: 3, used: 1, remaining: 2, resetAt };
+const exhaustedQuota = { limit: 3, used: 3, remaining: 0, resetAt };
+
 async function mockTelemetry(page: Page, received: unknown[] = []) {
   await page.route("**/api/telemetry", async (route) => {
     received.push(route.request().postDataJSON());
@@ -30,13 +34,17 @@ async function mockTelemetry(page: Page, received: unknown[] = []) {
   });
 }
 
-async function mockSuccessfulAnalysis(page: Page) {
+async function mockSuccessfulAnalysis(page: Page, quota = availableQuota) {
   await page.route("**/api/analyze", async (route) => {
     expect(route.request().method()).toBe("POST");
     expect(route.request().postDataBuffer()?.toString()).toContain('name="locale"');
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ analysis, analysisToken: "mock-signed-analysis-token" }),
+      body: JSON.stringify({
+        analysis,
+        analysisToken: "mock-signed-analysis-token",
+        quota,
+      }),
     });
   });
 }
@@ -52,7 +60,7 @@ async function mockSuccessfulPhotoCheck(page: Page) {
 }
 
 async function selectPhoto(page: Page, occasion = "日常外出") {
-  await page.goto("/analyze");
+  await page.goto("/analyze", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: occasion }).click();
   await page.getByRole("button", { name: "下一步" }).click();
   const fileChooserPromise = page.waitForEvent("filechooser");
@@ -93,6 +101,17 @@ test.beforeEach(async ({ context, page }) => {
       }),
     });
   });
+  await page.route("**/api/analysis-quota", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        limit: 3,
+        used: 0,
+        remaining: 3,
+        resetAt,
+      }),
+    });
+  });
 });
 
 test.describe("mock-only outfit flow", () => {
@@ -103,6 +122,39 @@ test.describe("mock-only outfit flow", () => {
     await page.goto("/analyze");
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  });
+
+  test("blocks exhausted entry with one focused home action and no analysis request", async ({ page }) => {
+    const requests: string[] = [];
+    page.on("request", (request) => requests.push(request.url()));
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.route("**/api/analysis-quota", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify(exhaustedQuota),
+      });
+    });
+
+    await page.goto("/analyze");
+
+    const dialog = page.getByRole("dialog", { name: "今日分析次數已用完" });
+    const home = page.getByRole("link", { name: "返回首頁" });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByText("今日分析次數已達 3 次上限，請訂閱或等待刷新")).toBeVisible();
+    await expect(page.getByText("每日次數將於台灣時間 00:00 重置。")).toBeVisible();
+    await expect(home).toHaveAttribute("href", "/");
+    await expect(home).toBeFocused();
+    await expect(dialog.getByRole("button")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /訂閱/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /訂閱/ })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+    expect(requests.filter((url) => (
+      url.includes("/api/photo-check") || url.includes("/api/analyze")
+    ))).toEqual([]);
+
+    await home.click();
+    await expect(page).toHaveURL("/");
   });
 
   test("uses an explicit occasion step with visible selection and accessible navigation", async ({ page }) => {
@@ -480,6 +532,24 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByRole("heading", { name: "你的穿搭建議" })).toHaveCount(0);
   });
 
+  test("keeps the third successful result behind the limit dialog when starting another analysis", async ({ page }) => {
+    const requests: string[] = [];
+    page.on("request", (request) => requests.push(request.url()));
+    await mockTelemetry(page);
+    await mockSuccessfulAnalysis(page, exhaustedQuota);
+    await completeAnalysis(page);
+    const photoCheckCount = requests.filter((url) => url.includes("/api/photo-check")).length;
+
+    await expect(page.locator(".result-step")).toBeVisible();
+    await expect(page.getByText(analysis.summary)).toBeVisible();
+    await page.getByRole("button", { name: "重新選擇照片" }).click();
+
+    await expect(page.getByRole("dialog", { name: "今日分析次數已用完" })).toBeVisible();
+    await expect(page.locator(".result-step")).toBeVisible();
+    await expect(page.locator(".flow-content")).toHaveAttribute("inert", "");
+    expect(requests.filter((url) => url.includes("/api/photo-check"))).toHaveLength(photoCheckCount);
+  });
+
   test("returns from a normal result to the first step", async ({ page }) => {
     await mockTelemetry(page);
     await mockSuccessfulAnalysis(page);
@@ -506,7 +576,11 @@ test.describe("mock-only outfit flow", () => {
       }
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ analysis, analysisToken: "mock-signed-analysis-token" }),
+        body: JSON.stringify({
+          analysis,
+          analysisToken: "mock-signed-analysis-token",
+          quota: availableQuota,
+        }),
       });
     });
 

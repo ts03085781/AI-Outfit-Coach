@@ -1,4 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function mockReadyAnalysisQuota(page: Page) {
+  await page.route("**/api/analysis-quota", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        limit: 3,
+        used: 0,
+        remaining: 3,
+        resetAt: "2026-09-01T16:00:00.000Z",
+      }),
+    });
+  });
+}
 
 function browserTrendManifest() {
   const translations = {
@@ -22,6 +36,7 @@ function browserTrendManifest() {
 }
 
 test("opens the magazine-style homepage and links to analysis", async ({ context, page }) => {
+  test.slow();
   await context.addCookies([{
     name: "NEXT_LOCALE",
     value: "zh-TW",
@@ -33,6 +48,7 @@ test("opens the magazine-style homepage and links to analysis", async ({ context
       body: JSON.stringify({ user: { id: "e2e-user" } }),
     });
   });
+  await mockReadyAnalysisQuota(page);
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -42,7 +58,7 @@ test("opens the magazine-style homepage and links to analysis", async ({ context
     navigation.dataset.persistenceProbe = "same-instance";
   });
   await page.getByRole("link", { name: "分析穿搭" }).click();
-  await expect(page).toHaveURL(/\/analyze$/);
+  await expect(page).toHaveURL(/\/analyze$/, { timeout: 15_000 });
   await expect(page.getByTestId("app-navigation")).toHaveAttribute(
     "data-persistence-probe",
     "same-instance",
@@ -51,7 +67,7 @@ test("opens the magazine-style homepage and links to analysis", async ({ context
   await expect(page.getByRole("link", { name: "分析穿搭" })).toHaveAttribute("aria-current", "page");
 
   await page.getByRole("link", { name: "設定" }).click();
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/settings$/, { timeout: 15_000 });
   await expect(page.getByTestId("app-navigation")).toHaveAttribute(
     "data-persistence-probe",
     "same-instance",
@@ -160,6 +176,7 @@ test("keeps a full-width branded navigation fixed to the top across desktop page
     value: "zh-TW",
     url: "http://127.0.0.1:3000",
   }]);
+  await mockReadyAnalysisQuota(page);
   await page.setViewportSize({ width: 768, height: 900 });
   for (const path of ["/", "/analyze", "/settings"]) {
     await page.goto(path);

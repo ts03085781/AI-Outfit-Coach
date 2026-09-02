@@ -14,7 +14,13 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-在 `.env.local` 設定僅供伺服器使用的 `OPENAI_API_KEY`、`OPENAI_PHOTO_CHECK_MODEL`、`OPENAI_VISION_MODEL`、`OPENAI_TRENDS_MODEL`、`OPENAI_IMAGE_MODEL`、`RATE_LIMIT_SECRET`、`ANALYSIS_TOKEN_SECRET` 與 `CRON_SECRET`，以及公開的 `NEXT_PUBLIC_SUPABASE_URL` 與 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`。`OPENAI_PHOTO_CHECK_MODEL` 預設為 `gpt-5-nano`，供選取照片後的快速規格檢查使用；`OPENAI_VISION_MODEL` 則用於完整穿搭分析。Secret 應各自使用至少 32 bytes 的隨機值。不要提交 `.env.local`，也不要把任何金鑰放在前端程式碼。
+在 `.env.local` 設定僅供伺服器使用的 `OPENAI_API_KEY`、`OPENAI_PHOTO_CHECK_MODEL`、`OPENAI_VISION_MODEL`、`OPENAI_TRENDS_MODEL`、`OPENAI_IMAGE_MODEL`、`RATE_LIMIT_SECRET`、`ANALYSIS_TOKEN_SECRET`、`CRON_SECRET` 與 `SUPABASE_SECRET_KEY`，以及公開的 `NEXT_PUBLIC_SUPABASE_URL` 與 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`。`OPENAI_PHOTO_CHECK_MODEL` 預設為 `gpt-5-nano`，供選取照片後的快速規格檢查使用；`OPENAI_VISION_MODEL` 則用於完整穿搭分析。Secret 應各自使用至少 32 bytes 的隨機值。`SUPABASE_SECRET_KEY` 必須設定在本機與 Vercel Preview／Production 的伺服器環境，絕不可改用 `NEXT_PUBLIC_` 名稱、寫入前端 bundle 或出現在 build log。不要提交 `.env.local`，也不要把任何金鑰放在前端程式碼。
+
+## 每日免費分析額度
+
+登入使用者每日可取得 3 次成功穿搭分析，日期邊界固定為 IANA 時區 `Asia/Taipei` 的 00:00。資料庫以台灣日期分列紀錄，因此午夜不需要 cron 或批次重置。只有通過輸出結構與安全檢查、可交付給使用者的完整分析才消耗一次；照片規格不符、重拍、逾時、供應商或驗證失敗都不扣次數。
+
+分析開始前會保留一個最長 2 分鐘的額度 reservation。請求終止時 reservation 會到期並自動恢復可用額度。Supabase 只保存使用者 ID、台灣日期、reservation 狀態與時間欄位，不保存照片、prompt、分析內容或分析歷史。若額度服務無法確認狀態，分析會 fail-closed 並在呼叫 OpenAI 前停止。
 
 ## 每日流行單品更新
 
@@ -38,6 +44,24 @@ pnpm dev
 5. Google client ID 與 client secret 僅設定在 Supabase，絕不可將 secret 加入 Vercel。
 6. 在本機 `.env.local` 與 Vercel Production 設定公開的 Supabase URL 與 publishable key。
 
+### 本機 Supabase 額度資料庫
+
+Supabase CLI 固定為專案 `devDependencies` 中的 `2.116.0`；一律透過 `pnpm exec` 或下列 package scripts 執行，不使用全域版本。Docker 執行中後可用：
+
+```bash
+pnpm install --frozen-lockfile
+pnpm supabase:start
+pnpm supabase:reset
+pnpm test:db
+pnpm test:db:concurrency
+pnpm exec supabase db advisors --local --level error --fail-on error
+pnpm exec supabase migration list --local
+```
+
+本機服務使用 `supabase/config.toml` 的 5532x port，避免干擾其他專案。若 pinned CLI 在特定機器遇到 profile 存取問題，先保存錯誤輸出並依 `docs/DEVELOPMENT-SOP.md` 的 fallback 驗證，不要停止或刪除其他專案的 Supabase containers。
+
+正式發布必須先把 `supabase/migrations/` 套用至目標 Supabase 專案，再部署相依的應用程式碼；不得反向部署。Preview 與 Production 均需分別設定 server-only `SUPABASE_SECRET_KEY`。
+
 ## 驗證
 
 ```bash
@@ -49,7 +73,7 @@ pnpm build
 rg -n "console\.(log|debug)|writeFile|createWriteStream|base64|data:image" src
 ```
 
-Playwright 會啟動本機伺服器，攔截 `/api/photo-check`、`/api/auth/session`、分析與遙測 API 並回傳固定假資料；它使用 `tests/fixtures/outfit-safe.png`（64×64、無真人的色塊服裝圖），不需金鑰，也不會將測試照片上傳到外部服務。測試涵蓋登入／匿名登入閘門、自動照片檢查、重拍、回饋、錯誤重試、reload 清除狀態，以及 320／390／430px 版面。
+Playwright 會啟動本機伺服器，攔截 `/api/photo-check`、`/api/auth/session`、`/api/analysis-quota`、分析與遙測 API 並回傳固定假資料；它使用 `tests/fixtures/outfit-safe.png`（64×64、無真人的色塊服裝圖），不需金鑰，也不會將測試照片上傳到外部服務。測試涵蓋登入／匿名登入閘門、額度已滿進頁、第三次成功後再分析、自動照片檢查、重拍、回饋、錯誤重試、reload 清除狀態，以及 320／390／430px 版面。
 
 若本機的預設 port 3000 已被其他開發伺服器使用，可改用 `PLAYWRIGHT_PORT=3100 pnpm test:e2e`。明確指定 `PLAYWRIGHT_PORT` 時，Playwright 會啟動對應 port 的新伺服器而不重用既有程序，確保驗證的是目前 worktree。
 

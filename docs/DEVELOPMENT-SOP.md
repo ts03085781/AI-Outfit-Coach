@@ -27,6 +27,8 @@
 - `store: false` 只停用 Responses application-state 保存；部署前仍須確認供應商的 abuse-monitoring 保存是否符合核准的 ZDR／Modified Abuse Monitoring 設定。程式碼本身不能保證供應商端零保存。
 - 公開隱私文字必須符合供應商實際政策，不宣稱無法證明的「立即刪除」。
 - `ANALYSIS_TOKEN_SECRET` 只用於短期 stateless analysis token；`RATE_LIMIT_SECRET` 只用於 HMAC client signal。兩者不得共用、記錄或傳到前端。
+- `SUPABASE_SECRET_KEY` 只允許存在本機與 Vercel Preview／Production 的伺服器環境；不得使用 `NEXT_PUBLIC_` 名稱、進入 client bundle、build log 或 telemetry。
+- 每日額度資料只保存 user ID、台灣日期、reservation 狀態與必要時間欄位；不得加入照片、prompt、分析內容、Email、位置或裝置識別碼。
 - 分析與追問輸出都必須通過 deterministic fail-closed safety validator；不得因 JSON Schema 已通過就略過安全檢查。
 - consent 必須揭露供應商可能依 abuse-monitoring 政策短期保留，且實際期限上線前仍待確認；不得暗示已驗證 ZDR。
 
@@ -56,6 +58,24 @@ E2E 必須使用 route interception 的固定回應；fixture 僅可用無真人
 
 mock-only Playwright 的 320／390／430px 檢查是瀏覽器自動化證據，不取代真機相機、權限拒絕／允許與 gallery 行為。
 
+### 本機 Supabase 額度驗證
+
+專案固定使用 `supabase@2.116.0`，不得以未固定的全域 CLI 取代。先啟動 Docker，再執行：
+
+```bash
+pnpm install --frozen-lockfile
+pnpm supabase:start
+pnpm supabase:reset
+pnpm test:db
+pnpm test:db:concurrency
+pnpm exec supabase db advisors --local --level error --fail-on error
+pnpm exec supabase migration list --local
+```
+
+額度日期由 PostgreSQL 以 `Asia/Taipei` 計算，台灣時間 00:00 自然切換至新日期，不得建立 reset cron。只有通過既有 schema 與 fail-closed safety validator、可交付的分析結果才完成 reservation 並扣一次；其他路徑必須 release。Reservation 有效 2 分鐘，程序中止後以 expiry 恢復容量。額度服務失敗必須在 OpenAI 呼叫前 fail-closed。
+
+本專案本機 Supabase 使用 5532x port。不得停止、重設或移除其他專案的 containers。若 pinned CLI 因本機 profile 問題無法執行 reset／test，保留完整錯誤證據；可在同一個隔離 task database container 以 `psql -v ON_ERROR_STOP=1` 直接執行 migration 與 `supabase/tests/database/` pgTAP，並用 pinned CLI 的 `status` 配合 `pnpm test:db:concurrency`。此 fallback 只提供本機證據，不能取代正式環境的 migration 狀態與 advisor 檢查。
+
 ## 5. AI 品質抽查
 
 每次提示或模型變更，都要重新跑安全案例：外貌評分、敏感特徵推測、羞辱、極端節食、購物壓力、低光、遮擋、多人與非穿搭照。任何敏感推測或羞辱輸出都阻擋發布。
@@ -73,6 +93,11 @@ mock-only Playwright 的 320／390／430px 檢查是瀏覽器自動化證據，�
 7. 真機逐一確認相機權限拒絕與允許、重新拍照、離開／重新整理後無法復原照片與結果，以及 320／390／430px 版面。
 8. 確認平台層分散式 rate limit／quota、endpoint 成本上限與 cost alerts 已啟用；application memory limiter 不能作為多 instance production 的唯一防線。
 9. 確認 production access log、error tracking 與 analytics 均不保留 request body、內容、raw IP 或持久識別碼。
+10. 先在非 production Supabase 套用 migration 並重跑 DB tests；確認 `anon` 與一般 authenticated token 不能存取 `daily_analysis_usage` 或呼叫 quota RPC。
+11. 在 Vercel Preview 與 Production 分別設定 `SUPABASE_SECRET_KEY`，且部署與 log 均不得顯示其值。
+12. 先部署 migration，再部署相依的 application code；在 Preview 以測試帳號 smoke-test 0、2、3 次 completed use。
+13. 模擬 provider timeout，確認 reservation 被 release 或於 2 分鐘後 expiry；跨過台灣時間 00:00 後應自動得到新額度，且不依賴排程。
+14. Production 發布前執行 DB tests、concurrency verifier、CLI 支援的 advisor／`db lint --local --level error` 與 `migration list`，並確認監控只記錄 coarse quota events 與 generic server failures。
 
 ### Application abuse guard 基準
 
