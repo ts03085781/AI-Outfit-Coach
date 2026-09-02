@@ -11,6 +11,7 @@ const reuseExistingServer = !process.env.CI && process.env.PLAYWRIGHT_REUSE_EXIS
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  workers: 1,
   webServer: {
     command: `pnpm exec next dev --port ${port}`,
     env: {

@@ -128,6 +128,15 @@ test.describe("mock-only outfit flow", () => {
     const requests: string[] = [];
     page.on("request", (request) => requests.push(request.url()));
     await page.setViewportSize({ width: 320, height: 800 });
+    await page.route(/^https?:\/\/(?!127\.0\.0\.1(?::\d+)?(?:\/|$))/, async (route) => {
+      await route.abort("blockedbyclient");
+    });
+    await page.route("**/api/trends", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ manifest: null }),
+      });
+    });
     await page.route("**/api/analysis-quota", async (route) => {
       await route.fulfill({
         contentType: "application/json",
@@ -155,6 +164,9 @@ test.describe("mock-only outfit flow", () => {
 
     await home.click();
     await expect(page).toHaveURL("/");
+    expect(requests.filter((url) => url.startsWith("http")).every((url) => (
+      new URL(url).origin === new URL(page.url()).origin
+    ))).toBe(true);
   });
 
   test("uses an explicit occasion step with visible selection and accessible navigation", async ({ page }) => {
