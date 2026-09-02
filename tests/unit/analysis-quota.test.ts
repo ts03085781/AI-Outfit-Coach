@@ -257,7 +257,7 @@ describe("analysis quota service", () => {
     expect(rpc).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects a completed outcome that did not increase successful usage", async () => {
+  it("accepts a completed pre-midnight reservation with the new day's empty summary", async () => {
     const service = createAnalysisQuotaService(rpcReturning([{
       outcome: "completed",
       reservation_id: "reservation-1",
@@ -267,9 +267,12 @@ describe("analysis quota service", () => {
       available_now_count: 3,
     }]));
 
-    await expect(service.complete("user-1", "reservation-1")).rejects.toBeInstanceOf(
-      QuotaUnavailableError,
-    );
+    await expect(service.complete("user-1", "reservation-1")).resolves.toEqual({
+      limit: 3,
+      used: 0,
+      remaining: 3,
+      resetAt: "2026-09-01T16:00:00.000Z",
+    });
   });
 
   it.each(["invalid_reservation", "expired_reservation"])(

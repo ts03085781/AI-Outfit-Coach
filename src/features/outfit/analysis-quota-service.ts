@@ -83,14 +83,7 @@ const CompleteRowSchema = z.object({
   outcome: z.enum(["completed", "invalid_reservation", "expired_reservation"]),
   reservation_id: z.string().min(1),
   ...RawQuotaFields,
-}).strict().superRefine((row, context) => {
-  if (row.outcome === "completed" && row.used_count < 1) {
-    context.addIssue({
-      code: "custom",
-      message: "A completed reservation must include a successful use",
-    });
-  }
-});
+}).strict();
 
 const ReleaseOutcomeSchema = z.enum([
   "released",
