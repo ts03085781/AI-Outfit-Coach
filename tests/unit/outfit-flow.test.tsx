@@ -66,8 +66,13 @@ function photoCheckErrorResponse(error: string, status = 503) {
   return new Response(JSON.stringify({ error }), { status });
 }
 
-function sessionResponse(user: { id: string } | null = { id: "user-1" }) {
-  return new Response(JSON.stringify({ user }), { status: 200 });
+function quotaResponse(used = 0) {
+  return new Response(JSON.stringify({
+    limit: 3,
+    used,
+    remaining: 3 - used,
+    resetAt: "2026-09-01T16:00:00.000Z",
+  }), { status: 200 });
 }
 
 function telemetryEvents() {
@@ -98,7 +103,7 @@ beforeEach(() => {
   Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
   vi.stubGlobal("fetch", vi.fn(async (url) => {
     if (url === "/api/photo-check") return photoCheckResponse();
-    if (url === "/api/auth/session") return sessionResponse();
+    if (url === "/api/analysis-quota") return quotaResponse();
     if (url === "/api/analyze") return analysisResponse();
     return new Response(null, { status: 204 });
   }));
@@ -195,7 +200,7 @@ describe("outfit flow", () => {
     const pendingResponse = deferred<Response>();
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/analyze") return pendingResponse.promise;
       return new Response(null, { status: 204 });
     });
@@ -286,7 +291,7 @@ describe("outfit flow", () => {
   it("locks analysis while checking, passes automatically, and never starts full analysis", async () => {
     const pendingCheck = deferred<Response>();
     vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") return pendingCheck.promise;
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
@@ -330,7 +335,7 @@ describe("outfit flow", () => {
     ["CLOTHING_UNRECOGNIZABLE", "無法可靠辨識衣物，請重新拍攝清楚的穿搭照。"],
   ])("announces the %s precheck rejection and keeps analysis locked", async (reason, message) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") {
         return photoCheckResponse({ eligible: false, reason });
       }
@@ -355,7 +360,7 @@ describe("outfit flow", () => {
     new Response(JSON.stringify({ error: "UNKNOWN_ERROR" }), { status: 503 }),
   ])("fails closed when a precheck response violates its schema", async (response) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       return url === "/api/photo-check" ? response : new Response(null, { status: 204 });
     });
     render(<HomePage />);
@@ -379,7 +384,7 @@ describe("outfit flow", () => {
     ["RATE_LIMITED", "照片檢查次數過多，請稍後再試。"],
   ])("announces the %s precheck error and offers retry", async (errorCode, message) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       return url === "/api/photo-check"
         ? photoCheckErrorResponse(errorCode, errorCode === "RATE_LIMITED" ? 429 : 503)
         : new Response(null, { status: 204 });
@@ -401,7 +406,7 @@ describe("outfit flow", () => {
   it("retries the current prepared photo and unlocks analysis after success", async () => {
     let checks = 0;
     vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") {
         checks += 1;
         return checks === 1
@@ -411,6 +416,7 @@ describe("outfit flow", () => {
       return new Response(null, { status: 204 });
     });
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled());
     chooseOccasionAndPhoto();
     await screen.findByRole("alert");
 
@@ -427,7 +433,7 @@ describe("outfit flow", () => {
     prepareImage.mockImplementationOnce(async (file: File) => file)
       .mockImplementationOnce(() => pendingReplacement.promise);
     vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") {
         checks += 1;
         return checks === 1 ? photoCheckResponse() : pendingCheck.promise;
@@ -451,7 +457,7 @@ describe("outfit flow", () => {
     const pendingCheck = deferred<Response>();
     let signal: AbortSignal | undefined;
     vi.mocked(fetch).mockImplementation(async (url, init) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") {
         signal = init?.signal ?? undefined;
         return pendingCheck.promise;
@@ -459,6 +465,7 @@ describe("outfit flow", () => {
       return new Response(null, { status: 204 });
     });
     render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled());
     chooseOccasionAndPhoto();
     await screen.findByRole("status");
 
@@ -476,7 +483,7 @@ describe("outfit flow", () => {
     const pendingCheck = deferred<Response>();
     let signal: AbortSignal | undefined;
     vi.mocked(fetch).mockImplementation(async (url, init) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") {
         signal = init?.signal ?? undefined;
         return pendingCheck.promise;
@@ -504,7 +511,7 @@ describe("outfit flow", () => {
     const signals: AbortSignal[] = [];
     let checks = 0;
     vi.mocked(fetch).mockImplementation(async (url, init) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") {
         signals.push(init?.signal as AbortSignal);
         checks += 1;
@@ -540,7 +547,7 @@ describe("outfit flow", () => {
     const staleCheck = deferred<Response>();
     let checks = 0;
     vi.mocked(fetch).mockImplementation(async (url) => {
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/photo-check") {
         checks += 1;
         return checks === 1 ? staleCheck.promise : photoCheckResponse();
@@ -610,7 +617,7 @@ describe("outfit flow", () => {
   it("shows the required-login dialog before a signed-out user can start the first step", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse(null);
+      if (url === "/api/analysis-quota") return new Response(null, { status: 401 });
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
     });
@@ -632,16 +639,18 @@ describe("outfit flow", () => {
     expect(fetch).not.toHaveBeenCalledWith("/api/analyze", expect.anything());
   });
 
-  it("treats an invalid session summary as signed out", async () => {
+  it("fails closed when the quota response is malformed", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse({ id: "" });
+      if (url === "/api/analysis-quota") {
+        return new Response(JSON.stringify({ limit: 3, used: 0 }), { status: 200 });
+      }
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
     });
     render(<HomePage />);
 
-    expect(await screen.findByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
+    expect(await screen.findByRole("dialog", { name: "目前無法確認分析額度" })).toBeVisible();
     expect(fetch).not.toHaveBeenCalledWith("/api/analyze", expect.anything());
   });
 
@@ -649,7 +658,7 @@ describe("outfit flow", () => {
     const pendingSession = deferred<Response>();
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return pendingSession.promise;
+      if (url === "/api/analysis-quota") return pendingSession.promise;
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
     });
@@ -657,12 +666,12 @@ describe("outfit flow", () => {
 
     expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "true");
     expect(document.querySelector(".flow-content")).toHaveAttribute("inert");
-    pendingSession.resolve(sessionResponse());
+    pendingSession.resolve(quotaResponse());
     await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "false"));
     expect(document.querySelector(".flow-content")).not.toHaveAttribute("inert");
   });
 
-  it("checks login only on entry and starts analysis without a second session request", async () => {
+  it("checks quota only on entry and starts analysis without a second quota request", async () => {
     render(<HomePage />);
     await waitFor(() => expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled());
     chooseOccasionAndPhoto();
@@ -671,13 +680,147 @@ describe("outfit flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
 
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
-    expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/auth/session")).toHaveLength(1);
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/analysis-quota")).toHaveLength(1);
+  });
+
+  it("blocks an exhausted entry with exact copy and one focused home action", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/analysis-quota") return quotaResponse(3);
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+
+    const dialog = await screen.findByRole("dialog", { name: "今日分析次數已用完" });
+    expect(dialog).toHaveTextContent("今日分析次數已達 3 次上限，請訂閱或等待刷新");
+    expect(dialog).toHaveTextContent("每日次數將於台灣時間 00:00 重置。");
+    const homeLink = screen.getByRole("link", { name: "返回首頁" });
+    expect(homeLink).toHaveAttribute("href", "/");
+    expect(document.activeElement).toBe(homeLink);
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(homeLink);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(dialog).toBeVisible();
+    expect(screen.queryByRole("button", { name: /訂閱|關閉|重新嘗試/ })).not.toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/photo-check")).toBe(false);
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/analyze")).toBe(false);
+    expect(stylesheet).toMatch(/\.analysis-quota-layer\s*\{[^}]*z-index:\s*25/);
+    expect(stylesheet).toMatch(/\.analysis-quota-actions > \*\s*\{[^}]*min-height:\s*44px/);
+    expect(stylesheet).toMatch(/\.analysis-quota-actions > \*:focus-visible/);
+  });
+
+  it("offers retry and home when quota status is unavailable, then unlocks on retry", async () => {
+    let quotaChecks = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/analysis-quota") {
+        quotaChecks += 1;
+        return quotaChecks === 1
+          ? new Response(JSON.stringify({ error: "QUOTA_UNAVAILABLE" }), { status: 503 })
+          : quotaResponse();
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+
+    const dialog = await screen.findByRole("dialog", { name: "目前無法確認分析額度" });
+    expect(dialog).toHaveTextContent("目前無法確認今日分析額度，請稍後再試。");
+    const retry = screen.getByRole("button", { name: "重新嘗試" });
+    const home = screen.getByRole("link", { name: "返回首頁" });
+    expect(document.activeElement).toBe(retry);
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(home);
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(retry);
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(home);
+
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled();
+  });
+
+  it("shows the login dialog when quota retry returns 401", async () => {
+    let quotaChecks = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/analysis-quota") {
+        quotaChecks += 1;
+        return quotaChecks === 1
+          ? new Response(null, { status: 503 })
+          : new Response(null, { status: 401 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    fireEvent.click(await screen.findByRole("button", { name: "重新嘗試" }));
+
+    expect(await screen.findByRole("alertdialog", { name: "登入後開始分析" })).toBeVisible();
+  });
+
+  it.each([
+    [
+      "daily limit",
+      new Response(JSON.stringify({
+        error: "DAILY_ANALYSIS_LIMIT_REACHED",
+        limit: 3,
+        used: 3,
+        remaining: 0,
+        resetAt: "2026-09-01T16:00:00.000Z",
+      }), { status: 429 }),
+      "今日分析次數已用完",
+    ],
+    [
+      "quota outage",
+      new Response(JSON.stringify({ error: "QUOTA_UNAVAILABLE" }), { status: 503 }),
+      "目前無法確認分析額度",
+    ],
+  ])("opens the blocking dialog for an analyze-time %s", async (_label, analyzeReply, title) => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/analysis-quota") return quotaResponse();
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") return analyzeReply;
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled());
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    expect(await screen.findByRole("dialog", { name: title })).toBeVisible();
+  });
+
+  it("keeps the third result visible until a new-analysis action opens the limit dialog", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/analysis-quota") return quotaResponse(2);
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return analysisResponse(completeAnalysis, {
+          limit: 3,
+          used: 3,
+          remaining: 0,
+          resetAt: "2026-09-01T16:00:00.000Z",
+        });
+      }
+      return new Response(null, { status: 204 });
+    });
+    render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled());
+    chooseOccasionAndPhoto();
+    await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+
+    expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
+    expect(screen.queryByRole("dialog", { name: "今日分析次數已用完" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重新選擇照片" }));
+
+    expect(await screen.findByRole("dialog", { name: "今日分析次數已用完" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "你的穿搭建議", hidden: true })).toBeInTheDocument();
   });
 
   it("shows the required-login dialog when analysis returns 401 after a valid session", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/analyze") return new Response(null, { status: 401 });
       return new Response(null, { status: 204 });
     });
@@ -800,7 +943,7 @@ describe("outfit flow", () => {
   it("does not render a primary suggestion card when the analysis has no suggestions", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/analyze") {
         return analysisResponse({ ...completeAnalysis, suggestions: [] });
       }
@@ -831,7 +974,7 @@ describe("outfit flow", () => {
   it("shows only a retake reason and retake action when the photo needs retaking", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/analyze") {
         return new Response(
           JSON.stringify({ error: "RETAKE_REQUIRED", retake_reason: "衣物細節不清楚" }),
@@ -1175,7 +1318,7 @@ describe("outfit flow", () => {
   it("announces an API failure and lets the user try again", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/analyze") throw new Error("network unavailable");
       return new Response(null, { status: 204 });
     });
@@ -1201,7 +1344,7 @@ describe("outfit flow", () => {
   ])("shows an actionable message for %s", async (errorCode, message) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/analyze") {
         return new Response(JSON.stringify({ error: errorCode }), { status: 503 });
       }
@@ -1228,7 +1371,7 @@ describe("outfit flow", () => {
   it("returns to photo selection without discarding optional context", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
-      if (url === "/api/auth/session") return sessionResponse();
+      if (url === "/api/analysis-quota") return quotaResponse();
       if (url === "/api/analyze") return analysisResponse();
       return new Response(null, { status: 204 });
     });

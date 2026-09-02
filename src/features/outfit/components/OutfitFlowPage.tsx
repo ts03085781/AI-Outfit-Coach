@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ImSpinner8 } from "react-icons/im";
 import {
@@ -12,8 +12,10 @@ import {
 } from "react-icons/lu";
 
 import { RequiredLoginDialog } from "@/features/auth/components/RequiredLoginDialog";
+import { DailyAnalysisLimitDialog } from "@/features/outfit/components/DailyAnalysisLimitDialog";
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
 import { ResultStep } from "@/features/outfit/components/ResultStep";
+import { DailyQuotaSummarySchema } from "@/features/outfit/analysis-quota";
 import type { Occasion, Setting, Weather } from "@/features/outfit/domain";
 import { useOutfitFlow } from "@/features/outfit/useOutfitFlow";
 import { type AppLocale } from "@/lib/i18n/config";
@@ -32,60 +34,72 @@ type OutfitFlowPageProps = {
   loginSucceeded?: boolean;
 };
 
-function isAuthenticatedSessionSummary(value: unknown): value is { user: { id: string } } {
-  return typeof value === "object"
-    && value !== null
-    && "user" in value
-    && typeof value.user === "object"
-    && value.user !== null
-    && "id" in value.user
-    && typeof value.user.id === "string"
-    && value.user.id.length > 0;
-}
+type AccessStatus = "checking" | "ready" | "anonymous" | "limited" | "unavailable";
 
 export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) {
   const locale = useLocale() as AppLocale;
   const t = useTranslations();
   const flow = useOutfitFlow(locale);
-  const [authStatus, setAuthStatus] = useState<"checking" | "authenticated" | "anonymous">("checking");
+  const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
   const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
+
+  const checkQuota = useCallback(async (signal?: AbortSignal) => {
+    setAccessStatus("checking");
+    try {
+      const response = await fetch("/api/analysis-quota", {
+        cache: "no-store",
+        signal,
+      });
+      if (signal?.aborted) return;
+      if (response.status === 401) {
+        setAccessStatus("anonymous");
+        return;
+      }
+      if (!response.ok) {
+        setAccessStatus("unavailable");
+        return;
+      }
+
+      const parsed = DailyQuotaSummarySchema.safeParse(await response.json());
+      if (signal?.aborted) return;
+      if (!parsed.success) {
+        setAccessStatus("unavailable");
+        return;
+      }
+      setAccessStatus(parsed.data.used === 3 ? "limited" : "ready");
+    } catch {
+      if (!signal?.aborted) setAccessStatus("unavailable");
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-
-    const checkAuthentication = async () => {
-      try {
-        const response = await fetch("/api/auth/session", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const summary: unknown = await response.json();
-        if (!controller.signal.aborted) {
-          setAuthStatus(response.ok && isAuthenticatedSessionSummary(summary)
-            ? "authenticated"
-            : "anonymous");
-        }
-      } catch {
-        if (!controller.signal.aborted) setAuthStatus("anonymous");
-      }
-    };
-
-    void checkAuthentication();
+    void checkQuota(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [checkQuota]);
 
   const handleAnalyze = async () => {
     flow.setConsented(true);
     const outcome = await flow.analyze();
-    if (outcome === "unauthorized") setAuthStatus("anonymous");
+    if (outcome === "unauthorized") setAccessStatus("anonymous");
+    if (outcome === "daily-limit") setAccessStatus("limited");
+    if (outcome === "quota-unavailable") setAccessStatus("unavailable");
+  };
+
+  const startAnother = (action: () => void) => {
+    if (flow.quota?.remaining === 0) {
+      setAccessStatus("limited");
+      return;
+    }
+    action();
   };
 
   return (
     <main
-      aria-busy={authStatus === "checking"}
+      aria-busy={accessStatus === "checking"}
       className="editorial-page analyze-shell flow-shell app-page-with-nav"
     >
-      <div className="flow-content" inert={authStatus !== "authenticated" ? true : undefined}>
+      <div className="flow-content" inert={accessStatus !== "ready" ? true : undefined}>
         {loginSucceeded ? <p className="login-success" role="status">{t("auth.loginSuccess")}</p> : null}
         <div className="flow-header" aria-label={t("step", { step })}>
           <span>{t("appName")}</span>
@@ -108,7 +122,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                     <button
                       aria-pressed={flow.occasion === occasion}
                       className="occasion-option"
-                      disabled={authStatus === "anonymous"}
+                      disabled={accessStatus === "anonymous"}
                       key={occasion}
                       type="button"
                       onClick={() => flow.chooseOccasion(occasion)}
@@ -185,7 +199,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               <button
                 className="button-primary primary-action occasion-next"
                 type="button"
-                disabled={!flow.occasion || authStatus === "anonymous"}
+                disabled={!flow.occasion || accessStatus === "anonymous"}
                 onClick={flow.continueToPhoto}
               >
                 <span>{t("occasion.next")}</span>
@@ -198,7 +212,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               image={flow.image}
               error={flow.photoError}
               photoCheckState={flow.photoCheckState}
-              analysisDisabled={authStatus !== "authenticated"}
+              analysisDisabled={accessStatus !== "ready"}
               onChoosePhoto={flow.choosePhoto}
               onRetryPhotoCheck={flow.retryPhotoCheck}
               onAnalyze={handleAnalyze}
@@ -220,9 +234,9 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               image={flow.image}
               analysisToken={flow.analysisToken}
               locale={locale}
-              onRetake={flow.retake}
-              onReselectPhoto={flow.reselectPhoto}
-              onRestart={flow.restart}
+              onRetake={() => startAnother(flow.retake)}
+              onReselectPhoto={() => startAnother(flow.reselectPhoto)}
+              onRestart={() => startAnother(flow.restart)}
             />
           ) : null}
           {flow.state === "error" ? (
@@ -232,8 +246,8 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
               <button
                 className="button-primary primary-action"
                 type="button"
-                disabled={authStatus !== "authenticated"}
-                aria-busy={authStatus === "checking"}
+                disabled={accessStatus !== "ready"}
+                aria-busy={accessStatus === "checking"}
                 onClick={handleAnalyze}
               >
                 {t("error.retry")}
@@ -242,7 +256,13 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
           ) : null}
         </div>
       </div>
-      {authStatus === "anonymous" ? <RequiredLoginDialog /> : null}
+      {accessStatus === "anonymous" ? <RequiredLoginDialog /> : null}
+      {accessStatus === "limited" || accessStatus === "unavailable" ? (
+        <DailyAnalysisLimitDialog
+          kind={accessStatus}
+          onRetry={() => void checkQuota()}
+        />
+      ) : null}
     </main>
   );
 }

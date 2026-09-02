@@ -21,6 +21,15 @@
     "goToLogin": "로그인으로 이동",
     "loginSuccess": "로그인했습니다. 사진을 다시 선택해 코디 분석을 시작해 주세요."
   },
+  "analysisQuota": {
+    "limitTitle": "오늘의 분석 횟수를 모두 사용했습니다",
+    "limitMessage": "오늘의 분석이 3회 한도에 도달했습니다. 구독하거나 횟수가 갱신될 때까지 기다려 주세요.",
+    "resetNote": "일일 분석 횟수는 대만 시간 00:00에 초기화됩니다.",
+    "backHome": "홈으로 돌아가기",
+    "unavailableTitle": "분석 가능 횟수를 확인할 수 없습니다",
+    "unavailableMessage": "현재 오늘의 분석 가능 횟수를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    "retry": "다시 시도"
+  },
   "occasion": {
     "title": "오늘 어디에 가시나요?",
     "description": "가장 가까운 항목을 고르면 제안을 맞춰 드립니다.",

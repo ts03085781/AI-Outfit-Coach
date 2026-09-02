@@ -21,6 +21,15 @@
     "goToLogin": "ログインへ進む",
     "loginSuccess": "ログインしました。写真を選び直してコーデ分析を開始してください。"
   },
+  "analysisQuota": {
+    "limitTitle": "本日の分析回数を使い切りました",
+    "limitMessage": "本日の分析は上限の3回に達しました。登録するか、回数の更新をお待ちください。",
+    "resetNote": "分析回数は台湾時間 00:00 にリセットされます。",
+    "backHome": "ホームへ戻る",
+    "unavailableTitle": "分析可能回数を確認できません",
+    "unavailableMessage": "現在、本日の分析可能回数を確認できません。しばらくしてからもう一度お試しください。",
+    "retry": "もう一度試す"
+  },
   "occasion": {
     "title": "今日はどこへ行きますか？",
     "description": "最も近いものを選ぶと、提案を合わせます。",

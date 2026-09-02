@@ -28,6 +28,15 @@
     "goToLogin": "Go to sign in",
     "loginSuccess": "Signed in successfully. Please choose a photo again to start analysis."
   },
+  "analysisQuota": {
+    "limitTitle": "Today's analyses are used up",
+    "limitMessage": "You've reached today's limit of 3 analyses. Please subscribe or wait for it to refresh.",
+    "resetNote": "Your daily allowance resets at 00:00 Taiwan time.",
+    "backHome": "Return home",
+    "unavailableTitle": "We can't confirm your analysis allowance",
+    "unavailableMessage": "We can't confirm today's analysis allowance right now. Please try again later.",
+    "retry": "Try again"
+  },
   "occasion": {
     "title": "Where are you going today?",
     "description": "Choose the closest option and I’ll tailor the suggestion.",

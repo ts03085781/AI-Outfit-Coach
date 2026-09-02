@@ -5,7 +5,12 @@ import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(async () => new Response(
-    JSON.stringify({ user: { id: "smoke-user" } }),
+    JSON.stringify({
+      limit: 3,
+      used: 0,
+      remaining: 3,
+      resetAt: "2026-09-01T16:00:00.000Z",
+    }),
     { status: 200 },
   )));
 });

@@ -28,6 +28,15 @@
     "goToLogin": "前往登入",
     "loginSuccess": "登入成功，請重新選擇照片開始分析。"
   },
+  "analysisQuota": {
+    "limitTitle": "今日分析次數已用完",
+    "limitMessage": "今日分析次數已達 3 次上限，請訂閱或等待刷新",
+    "resetNote": "每日次數將於台灣時間 00:00 重置。",
+    "backHome": "返回首頁",
+    "unavailableTitle": "目前無法確認分析額度",
+    "unavailableMessage": "目前無法確認今日分析額度，請稍後再試。",
+    "retry": "重新嘗試"
+  },
   "occasion": {
     "title": "今天要去哪裡？",
     "description": "選最接近的一種，我會依此調整建議。",
