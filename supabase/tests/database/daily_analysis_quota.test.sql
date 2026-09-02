@@ -62,6 +62,10 @@ select is((select outcome from public.complete_daily_analysis(
   '00000000-0000-4000-8000-000000000001',
   '10000000-0000-4000-8000-000000000001'
 )), 'completed', 'completion is idempotent');
+select is(public.release_daily_analysis(
+  '00000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001'
+), 'already_completed', 'release observes the completed transition');
 select is((select used_count from public.get_daily_analysis_quota(
   '00000000-0000-4000-8000-000000000001'
 )), 1, 'one completed result is counted');
@@ -86,10 +90,10 @@ insert into public.daily_analysis_usage (
 );
 select is((select outcome from public.reserve_daily_analysis(
   '00000000-0000-4000-8000-000000000001',
-  '10000000-0000-4000-8000-000000000005'
-)), 'reserved', 'expired capacity can be reused');
-select is((select count(*)::integer from public.daily_analysis_usage
-  where id = '10000000-0000-4000-8000-000000000004'), 0, 'expired row is cleaned');
+  '10000000-0000-4000-8000-000000000004'
+)), 'reserved', 'expired same id can be reused');
+select ok((select expires_at > now() from public.daily_analysis_usage
+  where id = '10000000-0000-4000-8000-000000000004'), 'same id was reallocated as a live reservation');
 
 select is((select outcome from public.complete_daily_analysis(
   '00000000-0000-4000-8000-000000000002',
@@ -101,7 +105,7 @@ select is((select outcome from public.complete_daily_analysis(
 )), 'completed', 'second result completes');
 select is((select outcome from public.complete_daily_analysis(
   '00000000-0000-4000-8000-000000000001',
-  '10000000-0000-4000-8000-000000000005'
+  '10000000-0000-4000-8000-000000000004'
 )), 'completed', 'third result completes');
 select is((select outcome from public.reserve_daily_analysis(
   '00000000-0000-4000-8000-000000000001',
