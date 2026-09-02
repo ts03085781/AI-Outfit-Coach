@@ -15,6 +15,7 @@ const ErrorCodeSchema = z.enum([
   "AI_SAFETY_REJECTED",
   "RATE_LIMITED",
   "RATE_LIMIT_UNAVAILABLE",
+  "ANALYSIS_SLOTS_BUSY",
   "INVALID_RESPONSE",
 ]);
 const PhotoCheckTelemetryErrorCodeSchema = z.enum([
@@ -67,6 +68,18 @@ const PhotoCheckErrorEventSchema = z.object({
   latencyBucket: LatencyBucketSchema,
 }).strict();
 
+const AnalysisQuotaReachedEventSchema = z.object({
+  type: z.literal("analysis_quota_reached"),
+}).strict();
+
+const AnalysisQuotaBusyEventSchema = z.object({
+  type: z.literal("analysis_quota_busy"),
+}).strict();
+
+const AnalysisQuotaUnavailableEventSchema = z.object({
+  type: z.literal("analysis_quota_unavailable"),
+}).strict();
+
 export const TelemetryEventSchema = z.discriminatedUnion("type", [
   AnalysisSuccessEventSchema,
   AnalysisRetakeEventSchema,
@@ -75,6 +88,9 @@ export const TelemetryEventSchema = z.discriminatedUnion("type", [
   PhotoCheckPassEventSchema,
   PhotoCheckRejectEventSchema,
   PhotoCheckErrorEventSchema,
+  AnalysisQuotaReachedEventSchema,
+  AnalysisQuotaBusyEventSchema,
+  AnalysisQuotaUnavailableEventSchema,
 ]);
 
 export type SafeEvent = z.infer<typeof TelemetryEventSchema>;

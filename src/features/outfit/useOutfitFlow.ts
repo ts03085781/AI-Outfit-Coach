@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 
 import {
   coarseLatencyBucket,
@@ -17,6 +18,10 @@ import {
   type Setting,
   type Weather,
 } from "./domain";
+import {
+  DAILY_ANALYSIS_LIMIT,
+  type DailyQuotaSummary,
+} from "./analysis-quota";
 import { ImagePreparationError, prepareImage, type ImagePreparationErrorCode } from "./image";
 import {
   PhotoCheckErrorResponseSchema,
@@ -26,6 +31,27 @@ import {
 } from "./photo-check";
 
 export type OutfitFlowState = "occasion" | "photo" | "analyzing" | "result" | "error";
+export type AnalysisOutcome =
+  | "completed"
+  | "unauthorized"
+  | "daily-limit"
+  | "quota-unavailable";
+
+const DailyLimitErrorResponseSchema = z.object({
+  error: z.literal("DAILY_ANALYSIS_LIMIT_REACHED"),
+  limit: z.literal(DAILY_ANALYSIS_LIMIT),
+  used: z.literal(DAILY_ANALYSIS_LIMIT),
+  remaining: z.literal(0),
+  resetAt: z.string().datetime({ offset: true }),
+}).strict();
+
+const SlotsBusyErrorResponseSchema = z.object({
+  error: z.literal("ANALYSIS_SLOTS_BUSY"),
+}).strict();
+
+const QuotaUnavailableErrorResponseSchema = z.object({
+  error: z.literal("QUOTA_UNAVAILABLE"),
+}).strict();
 
 const TELEMETRY_ERROR_CODES = new Set<TelemetryErrorCode>([
   "INVALID_IMAGE",
@@ -38,6 +64,7 @@ const TELEMETRY_ERROR_CODES = new Set<TelemetryErrorCode>([
   "AI_SAFETY_REJECTED",
   "RATE_LIMITED",
   "RATE_LIMIT_UNAVAILABLE",
+  "ANALYSIS_SLOTS_BUSY",
   "INVALID_RESPONSE",
 ]);
 
@@ -75,6 +102,7 @@ export function useOutfitFlow(locale: AppLocale) {
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
   const [analysisErrorCode, setAnalysisErrorCode] = useState<TelemetryErrorCode>();
+  const [quota, setQuota] = useState<DailyQuotaSummary>();
 
   useEffect(() => () => {
     photoRequestRef.current += 1;
@@ -210,7 +238,7 @@ export function useOutfitFlow(locale: AppLocale) {
     setConsented(nextConsented);
   };
 
-  const analyze = async (): Promise<"completed" | "unauthorized"> => {
+  const analyze = async (): Promise<AnalysisOutcome> => {
     if (!occasion || !image || !consentedRef.current || !photoCheckPassedRef.current) {
       return "completed";
     }
@@ -231,7 +259,12 @@ export function useOutfitFlow(locale: AppLocale) {
         setState("photo");
         return "unauthorized";
       }
-      const body: unknown = await response.json();
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch {
+        throw new AnalysisRequestError("INVALID_RESPONSE");
+      }
       const latencyBucket = coarseLatencyBucket(performance.now() - startedAt);
 
       if (response.status === 422 && typeof body === "object" && body !== null && "retake_reason" in body) {
@@ -248,6 +281,32 @@ export function useOutfitFlow(locale: AppLocale) {
         }
       }
 
+      if (response.status === 429) {
+        const parsedLimit = DailyLimitErrorResponseSchema.safeParse(body);
+        if (!parsedLimit.success) throw new AnalysisRequestError("INVALID_RESPONSE");
+        const { error: _error, ...nextQuota } = parsedLimit.data;
+        setQuota(nextQuota);
+        setState("photo");
+        track({ type: "analysis_quota_reached" });
+        return "daily-limit";
+      }
+
+      if (response.status === 503 && QuotaUnavailableErrorResponseSchema.safeParse(body).success) {
+        setState("photo");
+        track({ type: "analysis_quota_unavailable" });
+        return "quota-unavailable";
+      }
+
+      if (response.status === 409) {
+        if (!SlotsBusyErrorResponseSchema.safeParse(body).success) {
+          throw new AnalysisRequestError("INVALID_RESPONSE");
+        }
+        setAnalysisErrorCode("ANALYSIS_SLOTS_BUSY");
+        setState("error");
+        track({ type: "analysis_quota_busy" });
+        return "completed";
+      }
+
       if (!response.ok) throw new AnalysisRequestError(errorCodeFromBody(body));
       const parsed = AnalyzeSuccessResponseSchema.safeParse(body);
       if (!parsed.success || parsed.data.analysis.retake_required) {
@@ -257,6 +316,7 @@ export function useOutfitFlow(locale: AppLocale) {
       invalidatePhotoCheck();
       setResult(parsed.data.analysis);
       setAnalysisToken(parsed.data.analysisToken);
+      setQuota(parsed.data.quota);
       setAnalysisErrorCode(undefined);
       setState("result");
       track({ type: "analysis_success", occasion, latencyBucket });
@@ -323,6 +383,7 @@ export function useOutfitFlow(locale: AppLocale) {
     photoCheckState,
     result,
     analysisToken,
+    quota,
     analysisErrorMessage: messages[locale].error[analysisErrorCode ?? "AI_UNAVAILABLE"],
     chooseOccasion,
     continueToPhoto,

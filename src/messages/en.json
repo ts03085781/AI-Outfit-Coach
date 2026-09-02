@@ -195,6 +195,7 @@
     "AI_SAFETY_REJECTED": "This photo did not pass the safety check. Use a clear, full-body outfit photo of one person.",
     "RATE_LIMITED": "There are many analysis requests right now. Please try again shortly.",
     "RATE_LIMIT_UNAVAILABLE": "Analysis is temporarily unavailable. Please try again shortly.",
+    "ANALYSIS_SLOTS_BUSY": "Another analysis is in progress. Please try again shortly.",
     "INVALID_RESPONSE": "The model response format was invalid. Please try again."
   }
 }

@@ -191,6 +191,7 @@
     "AI_SAFETY_REJECTED": "這張照片目前無法完成安全檢查，請改用清楚、完整的單人穿搭照。",
     "RATE_LIMITED": "目前分析次數較多，請稍後再試一次。",
     "RATE_LIMIT_UNAVAILABLE": "分析服務暫時無法使用，請稍後再試一次。",
+    "ANALYSIS_SLOTS_BUSY": "另一個分析正在進行，請稍後再試。",
     "INVALID_RESPONSE": "模型回覆格式暫時異常，請再試一次。"
   }
 }

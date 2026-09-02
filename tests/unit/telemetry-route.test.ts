@@ -58,6 +58,18 @@ describe("POST /api/telemetry", () => {
   });
 
   it.each([
+    { type: "analysis_quota_reached" },
+    { type: "analysis_quota_busy" },
+    { type: "analysis_quota_unavailable" },
+  ])("accepts a coarse quota event with no payload", async (body) => {
+    const writeMetric = vi.fn();
+    const response = await createTelemetryHandler({ writeMetric })(request(body));
+
+    expect(response.status).toBe(204);
+    expect(writeMetric).toHaveBeenCalledWith(body);
+  });
+
+  it.each([
     { type: "feedback", helpful: true, question: "私人內容" },
     { type: "feedback", helpful: true, occasion: "casual" },
     { type: "analysis_error", occasion: "casual", latencyBucket: "0-5s" },
@@ -70,6 +82,11 @@ describe("POST /api/telemetry", () => {
     { type: "photo_check_pass", latencyBucket: "0-5s", occasion: "casual" },
     { type: "photo_check_reject", reason: "NO_PERSON", latencyBucket: "0-5s", errorCode: "PHOTO_CHECK_TIMEOUT" },
     { type: "photo_check_error", errorCode: "PHOTO_CHECK_TIMEOUT", latencyBucket: "0-5s", reason: "NO_PERSON" },
+    { type: "analysis_quota_reached", userId: "user-1" },
+    { type: "analysis_quota_reached", used: 3 },
+    { type: "analysis_quota_busy", resetAt: "2026-09-01T16:00:00.000Z" },
+    { type: "analysis_quota_busy", reservationId: "reservation-1" },
+    { type: "analysis_quota_unavailable", error: "database unavailable" },
   ])("rejects unsafe or incompatible metric fields", async (body) => {
     const writeMetric = vi.fn();
     const response = await createTelemetryHandler({ writeMetric })(request(body));

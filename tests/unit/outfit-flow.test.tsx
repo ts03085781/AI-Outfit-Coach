@@ -38,16 +38,19 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function analysisResponse(analysis = completeAnalysis) {
+function analysisResponse(
+  analysis = completeAnalysis,
+  quota = {
+    limit: 3,
+    used: 1,
+    remaining: 2,
+    resetAt: "2026-09-01T16:00:00.000Z",
+  },
+) {
   return new Response(JSON.stringify({
     analysis,
     analysisToken: "signed-analysis-token",
-    quota: {
-      limit: 3,
-      used: 1,
-      remaining: 2,
-      resetAt: "2026-09-01T16:00:00.000Z",
-    },
+    quota,
   }), { status: 200 });
 }
 
@@ -925,6 +928,209 @@ describe("outfit flow", () => {
     expect(flow.current.state).toBe("result");
     expect(analyzeAttempts).toBe(2);
     expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/photo-check")).toHaveLength(1);
+  });
+
+  it("returns a daily-limit outcome and stores the server quota without losing the photo", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({
+          error: "DAILY_ANALYSIS_LIMIT_REACHED",
+          limit: 3,
+          used: 3,
+          remaining: 0,
+          resetAt: "2026-09-01T16:00:00.000Z",
+        }), { status: 429 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+
+    let outcome: Awaited<ReturnType<typeof flow.current.analyze>> | undefined;
+    await act(async () => {
+      outcome = await flow.current.analyze();
+    });
+    expect(outcome).toBe("daily-limit");
+    expect(flow.current.state).toBe("photo");
+    expect(flow.current.image).toBe(image);
+    expect(flow.current.quota).toEqual({
+      limit: 3,
+      used: 3,
+      remaining: 0,
+      resetAt: "2026-09-01T16:00:00.000Z",
+    });
+    expect(telemetryEvents()).toContainEqual({ type: "analysis_quota_reached" });
+  });
+
+  it("returns quota-unavailable without turning it into an ordinary analysis error", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({ error: "QUOTA_UNAVAILABLE" }), { status: 503 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+
+    let outcome: Awaited<ReturnType<typeof flow.current.analyze>> | undefined;
+    await act(async () => {
+      outcome = await flow.current.analyze();
+    });
+    expect(outcome).toBe("quota-unavailable");
+    expect(flow.current.state).toBe("photo");
+    expect(flow.current.image).toBe(image);
+    expect(telemetryEvents()).toContainEqual({ type: "analysis_quota_unavailable" });
+  });
+
+  it("keeps slots-busy retryable and preserves the passed photo", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({ error: "ANALYSIS_SLOTS_BUSY" }), { status: 409 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+
+    let outcome: Awaited<ReturnType<typeof flow.current.analyze>> | undefined;
+    await act(async () => {
+      outcome = await flow.current.analyze();
+    });
+    expect(outcome).toBe("completed");
+    expect(flow.current.state).toBe("error");
+    expect(flow.current.image).toBe(image);
+    expect(flow.current.photoCheckState).toEqual({ status: "passed" });
+    expect(flow.current.analysisErrorMessage).toBe("另一個分析正在進行，請稍後再試。");
+    expect(telemetryEvents()).toContainEqual({ type: "analysis_quota_busy" });
+  });
+
+  it("stores the exhausted quota after a third successful analysis", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return analysisResponse(completeAnalysis, {
+          limit: 3,
+          used: 3,
+          remaining: 0,
+          resetAt: "2026-09-01T16:00:00.000Z",
+        });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    let outcome: Awaited<ReturnType<typeof flow.current.analyze>> | undefined;
+    await act(async () => {
+      outcome = await flow.current.analyze();
+    });
+    expect(outcome).toBe("completed");
+
+    expect(flow.current.state).toBe("result");
+    expect(flow.current.quota).toEqual({
+      limit: 3,
+      used: 3,
+      remaining: 0,
+      resetAt: "2026-09-01T16:00:00.000Z",
+    });
+  });
+
+  it.each([
+    { limit: 3, used: 3, remaining: 1, resetAt: "2026-09-01T16:00:00.000Z" },
+    { limit: 3, used: 3, remaining: 0, resetAt: "not-a-date" },
+    { limit: 4, used: 3, remaining: 1, resetAt: "2026-09-01T16:00:00.000Z" },
+  ])("rejects malformed success quota as INVALID_RESPONSE", async (quota) => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") return analysisResponse(completeAnalysis, quota);
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    await act(() => flow.current.analyze());
+
+    expect(flow.current.state).toBe("error");
+    expect(flow.current.analysisErrorMessage).toBe("模型回覆格式暫時異常，請再試一次。");
+    expect(flow.current.quota).toBeUndefined();
+  });
+
+  it("rejects a malformed daily-limit response as INVALID_RESPONSE", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({
+          error: "DAILY_ANALYSIS_LIMIT_REACHED",
+          limit: 3,
+          used: 3,
+          remaining: 0,
+        }), { status: 429 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    await act(() => flow.current.analyze());
+
+    expect(flow.current.state).toBe("error");
+    expect(flow.current.analysisErrorMessage).toBe("模型回覆格式暫時異常，請再試一次。");
+    expect(telemetryEvents()).not.toContainEqual({ type: "analysis_quota_reached" });
+  });
+
+  it("rejects a slots-busy response carrying internal data as INVALID_RESPONSE", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({
+          error: "ANALYSIS_SLOTS_BUSY",
+          reservationId: "must-not-reach-the-browser",
+        }), { status: 409 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    await act(() => flow.current.analyze());
+
+    expect(flow.current.state).toBe("error");
+    expect(flow.current.analysisErrorMessage).toBe("模型回覆格式暫時異常，請再試一次。");
+    expect(telemetryEvents()).not.toContainEqual({ type: "analysis_quota_busy" });
   });
 
   it("keeps follow-up controls hidden from the result UI", async () => {
