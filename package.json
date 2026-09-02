@@ -13,7 +13,11 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset",
+    "test:db": "supabase test db",
+    "test:db:concurrency": "node scripts/verify-analysis-quota-concurrency.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -41,6 +45,7 @@
     "eslint": "9.35.0",
     "eslint-config-next": "15.5.2",
     "jsdom": "26.1.0",
+    "supabase": "2.116.0",
     "typescript": "5.9.2",
     "vitest": "3.2.4"
   }
