@@ -263,7 +263,7 @@ describe("POST /api/analyze", () => {
     expect(analyze).not.toHaveBeenCalled();
   });
 
-  it("completes quota before issuing the token and delivering a valid result", async () => {
+  it("prepares the token before completing quota and only then delivers a valid result", async () => {
     const events: string[] = [];
     const quotaService = allowingQuotaService({
       reserve: vi.fn(async (_userId, reservationId) => {
@@ -293,7 +293,7 @@ describe("POST /api/analyze", () => {
     })(makeMultipartRequest(validImage()), "user-1");
 
     expect(response.status).toBe(200);
-    expect(events).toEqual(["reserve", "analyze", "complete", "issue-token"]);
+    expect(events).toEqual(["reserve", "analyze", "issue-token", "complete"]);
     const reservationId = vi.mocked(quotaService.reserve).mock.calls[0]?.[1];
     expect(reservationId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
@@ -572,7 +572,7 @@ describe("POST /api/analyze", () => {
     expect(release).toHaveBeenCalledOnce();
   });
 
-  it("does not deliver analysis or issue a token when quota completion fails", async () => {
+  it("does not deliver the prepared analysis or token when quota completion fails", async () => {
     const issueAnalysisToken = vi.fn(() => "signed-analysis-token");
     const release = vi.fn(async () => undefined);
     const response = await createAnalyzeHandler({
@@ -587,7 +587,24 @@ describe("POST /api/analyze", () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ error: "QUOTA_UNAVAILABLE" });
-    expect(issueAnalysisToken).not.toHaveBeenCalled();
+    expect(issueAnalysisToken).toHaveBeenCalledOnce();
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("releases the reservation without consuming quota when token issuance fails", async () => {
+    const complete = vi.fn(async () => quotaSummary);
+    const release = vi.fn(async () => undefined);
+    const response = await createAnalyzeHandler({
+      createAnalyzer: () => analyzerReturning(completeAnalysis),
+      abuseGuard: allowingGuard(),
+      quotaService: allowingQuotaService({ complete, release }),
+      issueAnalysisToken: () => { throw new Error("missing token secret"); },
+    })(makeMultipartRequest(validImage()), "user-1");
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
+    expect(complete).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledWith("user-1", expect.any(String));
     expect(release).toHaveBeenCalledOnce();
   });
 

@@ -170,11 +170,12 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
           return json({ error: "RETAKE_REQUIRED", retake_reason: analysis.retake_reason }, 422);
         }
 
+        const analysisToken = dependencies.issueAnalysisToken(analysis);
         const quota = await dependencies.quotaService.complete(userId, reservationId);
         completed = true;
         return json({
           analysis,
-          analysisToken: dependencies.issueAnalysisToken(analysis),
+          analysisToken,
           quota,
         }, 200);
       } catch (error) {
