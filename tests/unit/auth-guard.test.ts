@@ -27,4 +27,16 @@ describe("withAuthenticatedUser", () => {
     expect(response.status).toBe(204);
     expect(handler).toHaveBeenCalledOnce();
   });
+
+  it("passes the verified user to the protected handler", async () => {
+    const user = { id: "user-1" } as User;
+    const handler = vi.fn(async (_request: Request, received: User) =>
+      Response.json({ id: received.id }));
+    const response = await withAuthenticatedUser(handler, async () => user)(
+      new Request("http://localhost/api/protected"),
+    );
+
+    await expect(response.json()).resolves.toEqual({ id: "user-1" });
+    expect(handler).toHaveBeenCalledWith(expect.any(Request), user);
+  });
 });
