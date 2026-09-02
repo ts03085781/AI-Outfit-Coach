@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { OutfitAnalyzer } from "@/features/outfit/analyzer";
 import {
+  QuotaUnavailableError,
+  type AnalysisQuotaService,
+} from "@/features/outfit/analysis-quota";
+import {
   AnalyzerProviderError,
   AnalyzerSafetyError,
   AnalyzerTimeoutError,
@@ -24,6 +28,27 @@ const completeAnalysis = {
   retake_required: false as const,
   retake_reason: null,
 };
+
+const quotaSummary = {
+  limit: 3 as const,
+  used: 1,
+  remaining: 2,
+  resetAt: "2026-09-01T16:00:00.000Z",
+};
+
+function allowingQuotaService(overrides: Partial<AnalysisQuotaService> = {}): AnalysisQuotaService {
+  return {
+    get: vi.fn(async () => quotaSummary),
+    reserve: vi.fn(async (_userId, reservationId) => ({
+      status: "reserved" as const,
+      reservationId,
+      quota: { ...quotaSummary, used: 0, remaining: 3 },
+    })),
+    complete: vi.fn(async () => quotaSummary),
+    release: vi.fn(async () => undefined),
+    ...overrides,
+  };
+}
 
 const validPng = readFileSync("tests/fixtures/outfit-safe.png");
 
@@ -64,12 +89,19 @@ function allowingGuard(): AbuseGuard {
   });
 }
 
-function handleRequest(request: Request, analyzer: OutfitAnalyzer, abuseGuard = allowingGuard()) {
+function handleRequest(
+  request: Request,
+  analyzer: OutfitAnalyzer,
+  abuseGuard = allowingGuard(),
+  quotaService = allowingQuotaService(),
+  userId = "user-1",
+) {
   return createAnalyzeHandler({
     createAnalyzer: () => analyzer,
     abuseGuard,
+    quotaService,
     issueAnalysisToken: () => "signed-analysis-token",
-  })(request);
+  })(request, userId);
 }
 
 function makeOversizedMultipartRequest(contentLength?: string) {
@@ -121,6 +153,157 @@ describe("POST /api/analyze", () => {
     await expect(response.json()).resolves.toEqual({
       analysis: completeAnalysis,
       analysisToken: "signed-analysis-token",
+      quota: quotaSummary,
+    });
+  });
+
+  it("uses the verified authenticated user ID for quota reservation", async () => {
+    const originalRateLimitSecret = process.env.RATE_LIMIT_SECRET;
+    process.env.RATE_LIMIT_SECRET = "verified-user-test-secret";
+    const reserve = vi.fn(async (_userId: string, reservationId: string) => ({
+      status: "reserved" as const,
+      reservationId,
+      quota: { ...quotaSummary, used: 0, remaining: 3 },
+    }));
+    const quotaService = allowingQuotaService({ reserve });
+    try {
+      const response = await createAuthenticatedAnalyzeRoute(
+        async () => ({ id: "verified-user" } as User),
+        quotaService,
+      )(makeMultipartRequest(validImage()));
+
+      expect(response.status).toBe(503);
+      expect(reserve).toHaveBeenCalledWith("verified-user", expect.any(String));
+    } finally {
+      if (originalRateLimitSecret === undefined) delete process.env.RATE_LIMIT_SECRET;
+      else process.env.RATE_LIMIT_SECRET = originalRateLimitSecret;
+    }
+  });
+
+  it.each([
+    ["missing image", (() => {
+      const formData = new FormData();
+      formData.set("occasion", "casual");
+      formData.set("locale", "zh-TW");
+      return new Request("http://localhost/api/analyze", { method: "POST", body: formData });
+    })()],
+    ["oversized body", makeOversizedMultipartRequest().request],
+    ["undecodable image", makeMultipartRequest(new Blob(["not-an-image"], { type: "image/png" }))],
+  ])("does not reserve quota for %s", async (_case, request) => {
+    const quotaService = allowingQuotaService();
+    const response = await handleRequest(
+      request,
+      analyzerReturning(completeAnalysis),
+      allowingGuard(),
+      quotaService,
+    );
+
+    expect(response.status).toBe(400);
+    expect(quotaService.reserve).not.toHaveBeenCalled();
+  });
+
+  it("returns the daily limit response without calling the analyzer", async () => {
+    const analyze = vi.fn(async () => completeAnalysis);
+    const quotaService = allowingQuotaService({
+      reserve: vi.fn(async () => ({ status: "daily_limit_reached" as const, quota: {
+        ...quotaSummary,
+        used: 3,
+        remaining: 0,
+      } })),
+    });
+    const response = await handleRequest(
+      makeMultipartRequest(validImage()),
+      { analyze },
+      allowingGuard(),
+      quotaService,
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({
+      error: "DAILY_ANALYSIS_LIMIT_REACHED",
+      limit: 3,
+      used: 3,
+      remaining: 0,
+      resetAt: "2026-09-01T16:00:00.000Z",
+    });
+    expect(analyze).not.toHaveBeenCalled();
+  });
+
+  it("returns slots busy without calling the analyzer", async () => {
+    const analyze = vi.fn(async () => completeAnalysis);
+    const quotaService = allowingQuotaService({
+      reserve: vi.fn(async () => ({ status: "slots_busy" as const, quota: quotaSummary })),
+    });
+    const response = await handleRequest(
+      makeMultipartRequest(validImage()),
+      { analyze },
+      allowingGuard(),
+      quotaService,
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ error: "ANALYSIS_SLOTS_BUSY" });
+    expect(analyze).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when quota reservation is unavailable", async () => {
+    const analyze = vi.fn(async () => completeAnalysis);
+    const quotaService = allowingQuotaService({
+      reserve: vi.fn(async () => { throw new QuotaUnavailableError(); }),
+    });
+    const response = await handleRequest(
+      makeMultipartRequest(validImage()),
+      { analyze },
+      allowingGuard(),
+      quotaService,
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "QUOTA_UNAVAILABLE" });
+    expect(analyze).not.toHaveBeenCalled();
+  });
+
+  it("completes quota before issuing the token and delivering a valid result", async () => {
+    const events: string[] = [];
+    const quotaService = allowingQuotaService({
+      reserve: vi.fn(async (_userId, reservationId) => {
+        events.push("reserve");
+        return {
+          status: "reserved" as const,
+          reservationId,
+          quota: { ...quotaSummary, used: 0, remaining: 3 },
+        };
+      }),
+      complete: vi.fn(async () => {
+        events.push("complete");
+        return quotaSummary;
+      }),
+    });
+    const response = await createAnalyzeHandler({
+      createAnalyzer: () => ({ analyze: async () => {
+        events.push("analyze");
+        return completeAnalysis;
+      } }),
+      abuseGuard: allowingGuard(),
+      quotaService,
+      issueAnalysisToken: () => {
+        events.push("issue-token");
+        return "signed-analysis-token";
+      },
+    })(makeMultipartRequest(validImage()), "user-1");
+
+    expect(response.status).toBe(200);
+    expect(events).toEqual(["reserve", "analyze", "complete", "issue-token"]);
+    const reservationId = vi.mocked(quotaService.reserve).mock.calls[0]?.[1];
+    expect(reservationId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(quotaService.complete).toHaveBeenCalledWith("user-1", reservationId);
+    expect(quotaService.release).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      analysis: completeAnalysis,
+      analysisToken: "signed-analysis-token",
+      quota: quotaSummary,
     });
   });
 
@@ -348,9 +531,12 @@ describe("POST /api/analyze", () => {
   });
 
   it("returns RETAKE_REQUIRED when the analysis requires a new photo", async () => {
+    const release = vi.fn(async () => undefined);
     const response = await handleRequest(
       makeMultipartRequest(validImage()),
       analyzerReturning({ retake_required: true, retake_reason: "衣物細節不清楚" }),
+      allowingGuard(),
+      allowingQuotaService({ release }),
     );
 
     expect(response.status).toBe(422);
@@ -358,6 +544,67 @@ describe("POST /api/analyze", () => {
       error: "RETAKE_REQUIRED",
       retake_reason: "衣物細節不清楚",
     });
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["timeout", new AnalyzerTimeoutError(), 504, "AI_TIMEOUT"],
+    ["unavailable", new AnalyzerUnavailableError(), 503, "AI_UNAVAILABLE"],
+    ["provider", new AnalyzerProviderError("AI_AUTHORIZATION", 401, "req_auth"), 503, "AI_AUTHORIZATION"],
+    ["safety", new AnalyzerSafetyError(), 502, "AI_SAFETY_REJECTED"],
+    ["abort", new DOMException("aborted", "AbortError"), 504, "AI_TIMEOUT"],
+    ["unexpected", new Error("unexpected"), 503, "AI_UNAVAILABLE"],
+  ])("releases quota after an analyzer %s failure", async (_case, analyzerError, status, errorCode) => {
+    if (analyzerError instanceof AnalyzerProviderError) {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+    }
+    const release = vi.fn(async () => undefined);
+    const response = await handleRequest(
+      makeMultipartRequest(validImage()),
+      { analyze: async () => { throw analyzerError; } },
+      allowingGuard(),
+      allowingQuotaService({ release }),
+    );
+
+    expect(response.status).toBe(status);
+    await expect(response.json()).resolves.toEqual({ error: errorCode });
+    expect(release).toHaveBeenCalledWith("user-1", expect.any(String));
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("does not deliver analysis or issue a token when quota completion fails", async () => {
+    const issueAnalysisToken = vi.fn(() => "signed-analysis-token");
+    const release = vi.fn(async () => undefined);
+    const response = await createAnalyzeHandler({
+      createAnalyzer: () => analyzerReturning(completeAnalysis),
+      abuseGuard: allowingGuard(),
+      quotaService: allowingQuotaService({
+        complete: vi.fn(async () => { throw new QuotaUnavailableError(); }),
+        release,
+      }),
+      issueAnalysisToken,
+    })(makeMultipartRequest(validImage()), "user-1");
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: "QUOTA_UNAVAILABLE" });
+    expect(issueAnalysisToken).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("does not let a release failure replace the analyzer response", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = await handleRequest(
+      makeMultipartRequest(validImage()),
+      { analyze: async () => { throw new AnalyzerSafetyError(); } },
+      allowingGuard(),
+      allowingQuotaService({
+        release: vi.fn(async () => { throw new QuotaUnavailableError(); }),
+      }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({ error: "AI_SAFETY_REJECTED" });
+    expect(error).toHaveBeenCalledWith("analysis_quota_cleanup_failure", { stage: "release" });
   });
 
   it("maps an aborted analysis to AI_TIMEOUT", async () => {
@@ -462,6 +709,7 @@ describe("POST /api/analyze", () => {
     try {
       const response = await createAuthenticatedAnalyzeRoute(
         async () => ({ id: "user-1" } as User),
+        allowingQuotaService(),
       )(
         makeMultipartRequest(validImage()),
       );

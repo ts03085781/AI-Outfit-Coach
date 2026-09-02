@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AnalyzeRequestSchema,
+  AnalyzeSuccessResponseSchema,
   LocaleSchema,
   OccasionSchema,
   OutfitAnalysisSchema,
@@ -9,7 +10,42 @@ import {
   WeatherSchema,
 } from "@/features/outfit/domain";
 
+const validSuccessResponse = {
+  analysis: {
+    summary: "整體俐落。",
+    strengths: ["配色協調", "比例清楚"],
+    occasion_fit: "good" as const,
+    suggestions: [],
+    retake_required: false as const,
+    retake_reason: null,
+  },
+  analysisToken: "signed-analysis-token",
+  quota: {
+    limit: 3 as const,
+    used: 1,
+    remaining: 2,
+    resetAt: "2026-09-01T16:00:00.000Z",
+  },
+};
+
 describe("outfit domain contract", () => {
+  it("accepts a successful response with a consistent daily quota summary", () => {
+    expect(AnalyzeSuccessResponseSchema.parse(validSuccessResponse)).toEqual(validSuccessResponse);
+  });
+
+  it.each([
+    ["a different limit", { limit: 4 }],
+    ["inconsistent counts", { used: 2, remaining: 2 }],
+    ["a negative count", { used: -1, remaining: 4 }],
+    ["an invalid reset timestamp", { resetAt: "tomorrow" }],
+    ["an extra field", { reserved: 1 }],
+  ])("rejects a successful response with %s", (_case, quotaPatch) => {
+    expect(() => AnalyzeSuccessResponseSchema.parse({
+      ...validSuccessResponse,
+      quota: { ...validSuccessResponse.quota, ...quotaPatch },
+    })).toThrow();
+  });
+
   it("accepts a complete analysis with exactly two strengths", () => {
     const result = OutfitAnalysisSchema.parse({
       summary: "整體俐落。",

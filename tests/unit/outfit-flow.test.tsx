@@ -42,6 +42,12 @@ function analysisResponse(analysis = completeAnalysis) {
   return new Response(JSON.stringify({
     analysis,
     analysisToken: "signed-analysis-token",
+    quota: {
+      limit: 3,
+      used: 1,
+      remaining: 2,
+      resetAt: "2026-09-01T16:00:00.000Z",
+    },
   }), { status: 200 });
 }
 

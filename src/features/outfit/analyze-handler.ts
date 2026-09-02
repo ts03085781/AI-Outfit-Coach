@@ -8,6 +8,10 @@ import {
 } from "./openai-analyzer";
 import { isDecodableSupportedImage } from "./server-image";
 import type { AbuseGuard } from "@/lib/abuse-guard";
+import {
+  QuotaUnavailableError,
+  type AnalysisQuotaService,
+} from "@/features/outfit/analysis-quota";
 
 const MAX_REQUEST_BYTES = 6 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -17,6 +21,7 @@ const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 export type AnalyzeHandlerDependencies = {
   createAnalyzer: () => OutfitAnalyzer;
   abuseGuard: AbuseGuard;
+  quotaService: AnalysisQuotaService;
   issueAnalysisToken: (analysis: Exclude<Awaited<ReturnType<OutfitAnalyzer["analyze"]>>, { retake_required: true }>) => string;
 };
 
@@ -99,7 +104,7 @@ async function parseMultipartFormData(request: Request): Promise<FormData | unde
 }
 
 export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
-  return async function analyzeHandler(request: Request): Promise<Response> {
+  return async function analyzeHandler(request: Request, userId: string): Promise<Response> {
     const guard = dependencies.abuseGuard.enter(request, "analyze");
     if (!guard.allowed) return guard.response;
 
@@ -118,6 +123,9 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
 
       let image: Blob | undefined;
       let timeout: ReturnType<typeof setTimeout> | undefined;
+      let reservationId: string | undefined;
+      let reserved = false;
+      let completed = false;
       try {
         const imageValue = formData.get("image");
         if (!isValidImage(imageValue)) return json({ error: "INVALID_IMAGE" }, 400);
@@ -137,6 +145,19 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
         const context = AnalyzeRequestSchema.safeParse(rawContext);
         if (!context.success) return json({ error: "INVALID_IMAGE" }, 400);
 
+        reservationId = crypto.randomUUID();
+        const reservation = await dependencies.quotaService.reserve(userId, reservationId);
+        if (reservation.status === "daily_limit_reached") {
+          return json({
+            error: "DAILY_ANALYSIS_LIMIT_REACHED",
+            ...reservation.quota,
+          }, 429);
+        }
+        if (reservation.status === "slots_busy") {
+          return json({ error: "ANALYSIS_SLOTS_BUSY" }, 409);
+        }
+        reserved = true;
+
         const controller = new AbortController();
         timeout = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
         const analysis = await dependencies.createAnalyzer().analyze({
@@ -149,11 +170,17 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
           return json({ error: "RETAKE_REQUIRED", retake_reason: analysis.retake_reason }, 422);
         }
 
+        const quota = await dependencies.quotaService.complete(userId, reservationId);
+        completed = true;
         return json({
           analysis,
           analysisToken: dependencies.issueAnalysisToken(analysis),
+          quota,
         }, 200);
       } catch (error) {
+        if (error instanceof QuotaUnavailableError) {
+          return json({ error: "QUOTA_UNAVAILABLE" }, 503);
+        }
         if (error instanceof AnalyzerTimeoutError || isAbortError(error)) {
           return json({ error: "AI_TIMEOUT" }, 504);
         }
@@ -175,6 +202,13 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
         return json({ error: "AI_UNAVAILABLE" }, 503);
       } finally {
         if (timeout) clearTimeout(timeout);
+        if (reserved && !completed && reservationId) {
+          try {
+            await dependencies.quotaService.release(userId, reservationId);
+          } catch {
+            console.error("analysis_quota_cleanup_failure", { stage: "release" });
+          }
+        }
         image = undefined;
       }
     } finally {
