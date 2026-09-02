@@ -49,6 +49,14 @@ describe("analysis quota service", () => {
     { name: "a non-three limit", data: [{ ...quotaRow, limit_count: 4 }] },
     { name: "an invalid reset timestamp", data: [{ ...quotaRow, reset_at: "tomorrow" }] },
     { name: "inconsistent remaining quota", data: [{ ...quotaRow, remaining_count: 0 }] },
+    {
+      name: "more reservations than remaining capacity",
+      data: [{
+        ...quotaRow,
+        reserved_count: 2,
+        available_now_count: 0,
+      }],
+    },
   ])("rejects malformed quota data with $name", async ({ data }) => {
     const service = createAnalysisQuotaService(rpcReturning(data));
 
@@ -247,6 +255,21 @@ describe("analysis quota service", () => {
     await expect(service.complete("user-1", "reservation-1")).resolves.toEqual(quotaSummary);
     await expect(service.complete("user-1", "reservation-1")).resolves.toEqual(quotaSummary);
     expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a completed outcome that did not increase successful usage", async () => {
+    const service = createAnalysisQuotaService(rpcReturning([{
+      outcome: "completed",
+      reservation_id: "reservation-1",
+      ...quotaRow,
+      used_count: 0,
+      remaining_count: 3,
+      available_now_count: 3,
+    }]));
+
+    await expect(service.complete("user-1", "reservation-1")).rejects.toBeInstanceOf(
+      QuotaUnavailableError,
+    );
   });
 
   it.each(["invalid_reservation", "expired_reservation"])(

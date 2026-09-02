@@ -46,6 +46,8 @@ const RawQuotaSchema = z.object(RawQuotaFields).strict().refine(
     used_count + remaining_count === DAILY_ANALYSIS_LIMIT
   ),
 ).refine(
+  ({ reserved_count, remaining_count }) => reserved_count <= remaining_count,
+).refine(
   ({ available_now_count, remaining_count, reserved_count }) => (
     available_now_count === Math.max(0, remaining_count - reserved_count)
   ),
@@ -81,7 +83,14 @@ const CompleteRowSchema = z.object({
   outcome: z.enum(["completed", "invalid_reservation", "expired_reservation"]),
   reservation_id: z.string().min(1),
   ...RawQuotaFields,
-}).strict();
+}).strict().superRefine((row, context) => {
+  if (row.outcome === "completed" && row.used_count < 1) {
+    context.addIssue({
+      code: "custom",
+      message: "A completed reservation must include a successful use",
+    });
+  }
+});
 
 const ReleaseOutcomeSchema = z.enum([
   "released",
