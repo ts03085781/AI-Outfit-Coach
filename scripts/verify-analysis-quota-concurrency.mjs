@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const output = execFileSync("pnpm", ["dlx", "supabase@2.102.0", "--workdir", ".", "status", "-o", "env"], { encoding: "utf8" });
+const output = execFileSync("pnpm", ["exec", "supabase", "status", "-o", "env"], { encoding: "utf8" });
 const local = Object.fromEntries(output.trim().split("\n").map((line) => { const [name, ...rawValue] = line.split("="); return [name, rawValue.join("=").replace(/^\"|\"$/g, "")]; }));
 assert.ok(local.API_URL, "Supabase local API_URL is required");
 assert.ok(local.SERVICE_ROLE_KEY, "Supabase local SERVICE_ROLE_KEY is required");
