@@ -283,12 +283,21 @@ export function useOutfitFlow(locale: AppLocale) {
 
       if (response.status === 429) {
         const parsedLimit = DailyLimitErrorResponseSchema.safeParse(body);
-        if (!parsedLimit.success) throw new AnalysisRequestError("INVALID_RESPONSE");
-        const { error: _error, ...nextQuota } = parsedLimit.data;
-        setQuota(nextQuota);
-        setState("photo");
-        track({ type: "analysis_quota_reached" });
-        return "daily-limit";
+        if (parsedLimit.success) {
+          const { error: _error, ...nextQuota } = parsedLimit.data;
+          setQuota(nextQuota);
+          setState("photo");
+          track({ type: "analysis_quota_reached" });
+          return "daily-limit";
+        }
+        if (
+          typeof body === "object"
+          && body !== null
+          && "error" in body
+          && body.error === "DAILY_ANALYSIS_LIMIT_REACHED"
+        ) {
+          throw new AnalysisRequestError("INVALID_RESPONSE");
+        }
       }
 
       if (response.status === 503 && QuotaUnavailableErrorResponseSchema.safeParse(body).success) {

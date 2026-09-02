@@ -968,6 +968,34 @@ describe("outfit flow", () => {
     expect(telemetryEvents()).toContainEqual({ type: "analysis_quota_reached" });
   });
 
+  it("keeps the existing abuse-rate-limit response out of the daily quota outcome", async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/photo-check") return photoCheckResponse();
+      if (url === "/api/analyze") {
+        return new Response(JSON.stringify({ error: "RATE_LIMITED" }), { status: 429 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const { result: flow } = renderHook(() => useOutfitFlow("zh-TW"));
+    const image = new File(["outfit"], "outfit.jpg", { type: "image/jpeg" });
+
+    act(() => flow.current.chooseOccasion("casual"));
+    await act(() => flow.current.choosePhoto(image));
+    await waitFor(() => expect(flow.current.photoCheckState).toEqual({ status: "passed" }));
+    act(() => flow.current.setConsented(true));
+    let outcome: Awaited<ReturnType<typeof flow.current.analyze>> | undefined;
+    await act(async () => {
+      outcome = await flow.current.analyze();
+    });
+
+    expect(outcome).toBe("completed");
+    expect(flow.current.state).toBe("error");
+    expect(flow.current.image).toBe(image);
+    expect(flow.current.photoCheckState).toEqual({ status: "passed" });
+    expect(flow.current.analysisErrorMessage).toBe("目前分析次數較多，請稍後再試一次。");
+    expect(telemetryEvents()).not.toContainEqual({ type: "analysis_quota_reached" });
+  });
+
   it("returns quota-unavailable without turning it into an ordinary analysis error", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/photo-check") return photoCheckResponse();
