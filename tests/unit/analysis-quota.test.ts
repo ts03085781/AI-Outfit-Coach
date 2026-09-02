@@ -217,31 +217,80 @@ describe("analysis quota service", () => {
   });
 
   it("does not retry a database rejection from the production throwing RPC seam", async () => {
-    const databaseError = Object.assign(new Error("permission denied"), { code: "42501" });
+    const databaseError = Object.assign(
+      new Error("permission denied for user-sensitive reservation-sensitive"),
+      { code: "42501" },
+    );
     const builder = {
       throwOnError: vi.fn(() => Promise.reject(databaseError)),
     };
     const client = { rpc: vi.fn(() => builder) };
-    const service = createAnalysisQuotaService(createThrowingAnalysisQuotaRpc(client));
+    const diagnostic = vi.fn();
+    const service = createAnalysisQuotaService(
+      createThrowingAnalysisQuotaRpc(client),
+      diagnostic,
+    );
 
-    await expect(service.reserve("user-1", "reservation-1")).rejects.toBeInstanceOf(
+    await expect(service.reserve("user-sensitive", "reservation-sensitive")).rejects.toBeInstanceOf(
       QuotaUnavailableError,
     );
     expect(client.rpc).toHaveBeenCalledOnce();
     expect(builder.throwOnError).toHaveBeenCalledOnce();
+    expect(diagnostic).toHaveBeenCalledWith("analysis_quota_rpc_error", {
+      operation: "reserve_daily_analysis",
+      category: "database_exception",
+      code: "42501",
+    });
+    const logged = JSON.stringify(diagnostic.mock.calls);
+    expect(logged).not.toContain("user-sensitive");
+    expect(logged).not.toContain("reservation-sensitive");
+    expect(logged).not.toContain("permission denied");
   });
 
   it("does not retry a resolved Postgres error", async () => {
     const rpc = vi.fn(async () => ({
       data: null,
-      error: { code: "42501", message: "permission denied" },
+      error: {
+        code: "42501",
+        message: "permission denied for user-sensitive reservation-sensitive",
+      },
     }));
-    const service = createAnalysisQuotaService(rpc);
+    const diagnostic = vi.fn();
+    const service = createAnalysisQuotaService(rpc, diagnostic);
 
-    await expect(service.reserve("user-1", "reservation-1")).rejects.toBeInstanceOf(
+    await expect(service.reserve("user-sensitive", "reservation-sensitive")).rejects.toBeInstanceOf(
       QuotaUnavailableError,
     );
     expect(rpc).toHaveBeenCalledTimes(1);
+    expect(diagnostic).toHaveBeenCalledWith("analysis_quota_rpc_error", {
+      operation: "reserve_daily_analysis",
+      category: "database_response",
+      code: "42501",
+    });
+    const logged = JSON.stringify(diagnostic.mock.calls);
+    expect(logged).not.toContain("user-sensitive");
+    expect(logged).not.toContain("reservation-sensitive");
+    expect(logged).not.toContain("permission denied");
+  });
+
+  it("replaces an unrecognized error code instead of logging its raw value", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: {
+        code: "reservation_sensitive",
+        message: "user-sensitive",
+      },
+    }));
+    const diagnostic = vi.fn();
+    const service = createAnalysisQuotaService(rpc, diagnostic);
+
+    await expect(service.get("user-sensitive")).rejects.toBeInstanceOf(QuotaUnavailableError);
+    expect(diagnostic).toHaveBeenCalledWith("analysis_quota_rpc_error", {
+      operation: "get_daily_analysis_quota",
+      category: "database_response",
+      code: "UNKNOWN",
+    });
+    expect(JSON.stringify(diagnostic.mock.calls)).not.toContain("sensitive");
   });
 
   it("accepts an idempotent completed outcome and maps its quota", async () => {

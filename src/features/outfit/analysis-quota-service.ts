@@ -19,17 +19,38 @@ type RpcResponse = {
   error: RpcError | null;
 };
 
+type AnalysisQuotaRpcFunction =
+  | "get_daily_analysis_quota"
+  | "reserve_daily_analysis"
+  | "complete_daily_analysis"
+  | "release_daily_analysis";
+
 export type AnalysisQuotaRpc = (
-  functionName: string,
+  functionName: AnalysisQuotaRpcFunction,
   arguments_: Record<string, string>,
 ) => PromiseLike<RpcResponse>;
+
+type QuotaDiagnosticCategory =
+  | "database_response"
+  | "database_exception"
+  | "transport_exception"
+  | "unexpected_exception";
+
+type QuotaDiagnosticLogger = (
+  event: "analysis_quota_rpc_error",
+  diagnostic: {
+    operation: AnalysisQuotaRpcFunction;
+    category: QuotaDiagnosticCategory;
+    code: string;
+  },
+) => void;
 
 type ThrowingRpcBuilder = {
   throwOnError(): PromiseLike<RpcResponse>;
 };
 
 type AnalysisQuotaRpcClient = {
-  rpc(functionName: string, arguments_: Record<string, string>): ThrowingRpcBuilder;
+  rpc(functionName: AnalysisQuotaRpcFunction, arguments_: Record<string, string>): ThrowingRpcBuilder;
 };
 
 const RawQuotaFields = {
@@ -95,6 +116,35 @@ function unavailable(): QuotaUnavailableError {
   return new QuotaUnavailableError();
 }
 
+function safeErrorCode(error: unknown): string {
+  if (typeof error !== "object" || error === null || !("code" in error)) return "UNKNOWN";
+  const code = error.code;
+  return typeof code === "string" && /^(?:[0-9A-Z]{5}|PGRST[0-9]{3})$/.test(code)
+    ? code
+    : "UNKNOWN";
+}
+
+const defaultDiagnosticLogger: QuotaDiagnosticLogger = (event, diagnostic) => {
+  console.error(event, diagnostic);
+};
+
+function reportRpcError(
+  logger: QuotaDiagnosticLogger,
+  operation: AnalysisQuotaRpcFunction,
+  category: QuotaDiagnosticCategory,
+  error: unknown,
+) {
+  try {
+    logger("analysis_quota_rpc_error", {
+      operation,
+      category,
+      code: safeErrorCode(error),
+    });
+  } catch {
+    // Diagnostic logging must not replace the quota failure returned to callers.
+  }
+}
+
 function oneRow<T>(schema: z.ZodType<T>, data: unknown): T {
   const parsed = z.tuple([schema]).safeParse(data);
   if (!parsed.success) throw unavailable();
@@ -158,38 +208,52 @@ function parseCompletion(data: unknown, expectedReservationId: string): DailyQuo
 
 async function invoke(
   rpc: AnalysisQuotaRpc,
-  functionName: string,
+  functionName: AnalysisQuotaRpcFunction,
   arguments_: Record<string, string>,
   retryTransportFailure: boolean,
+  diagnosticLogger: QuotaDiagnosticLogger,
 ): Promise<unknown> {
   const attempts = retryTransportFailure ? 2 : 1;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       const { data, error } = await rpc(functionName, arguments_);
-      if (error) throw unavailable();
+      if (error) {
+        reportRpcError(diagnosticLogger, functionName, "database_response", error);
+        throw unavailable();
+      }
       return data;
     } catch (error) {
       if (error instanceof TypeError && attempt + 1 < attempts) continue;
       if (error instanceof QuotaUnavailableError) throw error;
+      const code = safeErrorCode(error);
+      const category = error instanceof TypeError
+        ? "transport_exception"
+        : code === "UNKNOWN"
+          ? "unexpected_exception"
+          : "database_exception";
+      reportRpcError(diagnosticLogger, functionName, category, error);
       throw unavailable();
     }
   }
   throw unavailable();
 }
 
-export function createAnalysisQuotaService(rpc: AnalysisQuotaRpc): AnalysisQuotaService {
+export function createAnalysisQuotaService(
+  rpc: AnalysisQuotaRpc,
+  diagnosticLogger: QuotaDiagnosticLogger = defaultDiagnosticLogger,
+): AnalysisQuotaService {
   return {
     async get(userId) {
       return parseQuota(await invoke(rpc, "get_daily_analysis_quota", {
         p_user_id: userId,
-      }, false));
+      }, false, diagnosticLogger));
     },
 
     async reserve(userId, reservationId) {
       const data = await invoke(rpc, "reserve_daily_analysis", {
         p_user_id: userId,
         p_reservation_id: reservationId,
-      }, true);
+      }, true, diagnosticLogger);
       return parseReservation(data, reservationId);
     },
 
@@ -197,7 +261,7 @@ export function createAnalysisQuotaService(rpc: AnalysisQuotaRpc): AnalysisQuota
       const data = await invoke(rpc, "complete_daily_analysis", {
         p_user_id: userId,
         p_reservation_id: reservationId,
-      }, true);
+      }, true, diagnosticLogger);
       return parseCompletion(data, reservationId);
     },
 
@@ -205,7 +269,7 @@ export function createAnalysisQuotaService(rpc: AnalysisQuotaRpc): AnalysisQuota
       const data = await invoke(rpc, "release_daily_analysis", {
         p_user_id: userId,
         p_reservation_id: reservationId,
-      }, true);
+      }, true, diagnosticLogger);
       const outcome = ReleaseOutcomeSchema.safeParse(data);
       if (!outcome.success || outcome.data === "invalid_reservation") throw unavailable();
     },
