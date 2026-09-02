@@ -22,6 +22,9 @@ export function DailyAnalysisLimitDialog({
   const homeRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
     const firstAction = kind === "unavailable" ? retryRef.current : homeRef.current;
     firstAction?.focus();
 
@@ -35,6 +38,9 @@ export function DailyAnalysisLimitDialog({
         if (previousValue === null) element.removeAttribute("aria-hidden");
         else element.setAttribute("aria-hidden", previousValue);
       });
+      if (previouslyFocused?.isConnected && previouslyFocused !== document.body) {
+        previouslyFocused.focus();
+      }
     };
   }, [kind]);
 

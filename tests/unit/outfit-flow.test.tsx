@@ -3,6 +3,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-li
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OutfitFlowPage } from "@/features/outfit/components/OutfitFlowPage";
 import { useOutfitFlow } from "@/features/outfit/useOutfitFlow";
+import * as outfitFlowModule from "@/features/outfit/useOutfitFlow";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 const HomePage = () => <LocaleProvider><OutfitFlowPage /></LocaleProvider>;
@@ -736,7 +737,9 @@ describe("outfit flow", () => {
     fireEvent.click(retry);
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled();
+    const firstOccasion = screen.getByRole("button", { name: "日常外出" });
+    expect(firstOccasion).toBeEnabled();
+    await waitFor(() => expect(document.activeElement).toBe(firstOccasion));
   });
 
   it("shows the login dialog when quota retry returns 401", async () => {
@@ -789,7 +792,10 @@ describe("outfit flow", () => {
     expect(await screen.findByRole("dialog", { name: title })).toBeVisible();
   });
 
-  it("keeps the third result visible until a new-analysis action opens the limit dialog", async () => {
+  it.each([
+    "重新選擇照片",
+    "返回第一步驟",
+  ])("keeps the third result visible until the %s action opens the limit dialog", async (actionName) => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/analysis-quota") return quotaResponse(2);
       if (url === "/api/photo-check") return photoCheckResponse();
@@ -811,10 +817,60 @@ describe("outfit flow", () => {
 
     expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
     expect(screen.queryByRole("dialog", { name: "今日分析次數已用完" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "重新選擇照片" }));
+    fireEvent.click(screen.getByRole("button", { name: actionName }));
 
     expect(await screen.findByRole("dialog", { name: "今日分析次數已用完" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "你的穿搭建議", hidden: true })).toBeInTheDocument();
+  });
+
+  it("keeps an exhausted retake result when its retake action opens the limit dialog", async () => {
+    const retake = vi.fn();
+    const hookSpy = vi.spyOn(outfitFlowModule, "useOutfitFlow").mockReturnValue({
+      state: "result",
+      occasion: "casual",
+      weather: undefined,
+      setting: undefined,
+      desiredFeel: "",
+      image: undefined,
+      consented: false,
+      photoError: undefined,
+      photoCheckState: { status: "idle" },
+      result: { retake_required: true, retake_reason: "請重新拍攝" },
+      analysisToken: undefined,
+      quota: {
+        limit: 3,
+        used: 3,
+        remaining: 0,
+        resetAt: "2026-09-01T16:00:00.000Z",
+      },
+      analysisErrorMessage: "",
+      chooseOccasion: vi.fn(),
+      continueToPhoto: vi.fn(),
+      choosePhoto: vi.fn(),
+      setWeather: vi.fn(),
+      setSetting: vi.fn(),
+      setDesiredFeel: vi.fn(),
+      setConsented: vi.fn(),
+      analyze: vi.fn(),
+      retryPhotoCheck: vi.fn(),
+      retake,
+      reselectPhoto: vi.fn(),
+      restart: vi.fn(),
+      backToOccasion: vi.fn(),
+    });
+    vi.mocked(fetch).mockImplementation(async (url) => (
+      url === "/api/analysis-quota" ? quotaResponse(2) : new Response(null, { status: 204 })
+    ));
+
+    const { unmount } = render(<HomePage />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "重新拍照" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "重新拍照" }));
+
+    expect(await screen.findByRole("dialog", { name: "今日分析次數已用完" })).toBeVisible();
+    expect(screen.getByText("請重新拍攝", { selector: "p", exact: true })).toBeInTheDocument();
+    expect(retake).not.toHaveBeenCalled();
+    unmount();
+    hookSpy.mockRestore();
   });
 
   it("shows the required-login dialog when analysis returns 401 after a valid session", async () => {

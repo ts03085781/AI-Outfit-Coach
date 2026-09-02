@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ImSpinner8 } from "react-icons/im";
 import {
@@ -41,6 +41,8 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
   const t = useTranslations();
   const flow = useOutfitFlow(locale);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
+  const firstOccasionRef = useRef<HTMLButtonElement>(null);
+  const focusAfterQuotaRetryRef = useRef(false);
   const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
 
   const checkQuota = useCallback(async (signal?: AbortSignal) => {
@@ -77,6 +79,19 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
     void checkQuota(controller.signal);
     return () => controller.abort();
   }, [checkQuota]);
+
+  useEffect(() => {
+    if (accessStatus === "checking" || !focusAfterQuotaRetryRef.current) return;
+    focusAfterQuotaRetryRef.current = false;
+    if (accessStatus !== "ready") return;
+    const focusTimer = window.setTimeout(() => firstOccasionRef.current?.focus(), 0);
+    return () => window.clearTimeout(focusTimer);
+  }, [accessStatus]);
+
+  const retryQuota = () => {
+    focusAfterQuotaRetryRef.current = true;
+    void checkQuota();
+  };
 
   const handleAnalyze = async () => {
     flow.setConsented(true);
@@ -124,6 +139,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
                       className="occasion-option"
                       disabled={accessStatus === "anonymous"}
                       key={occasion}
+                      ref={occasion === "casual" ? firstOccasionRef : undefined}
                       type="button"
                       onClick={() => flow.chooseOccasion(occasion)}
                     >
@@ -260,7 +276,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
       {accessStatus === "limited" || accessStatus === "unavailable" ? (
         <DailyAnalysisLimitDialog
           kind={accessStatus}
-          onRetry={() => void checkQuota()}
+          onRetry={retryQuota}
         />
       ) : null}
     </main>
