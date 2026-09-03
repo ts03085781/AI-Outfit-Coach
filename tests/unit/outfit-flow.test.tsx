@@ -767,7 +767,7 @@ describe("outfit flow", () => {
     expect(dialog).toHaveTextContent("目前無法確認今日分析額度，請稍後再試。");
     const retry = screen.getByRole("button", { name: "重新嘗試" });
     const home = screen.getByRole("link", { name: "返回首頁" });
-    expect(document.activeElement).toBe(retry);
+    await waitFor(() => expect(document.activeElement).toBe(retry));
     fireEvent.keyDown(dialog, { key: "Tab" });
     expect(document.activeElement).toBe(home);
     fireEvent.keyDown(dialog, { key: "Tab" });
