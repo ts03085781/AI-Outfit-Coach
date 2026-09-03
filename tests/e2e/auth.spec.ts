@@ -16,6 +16,16 @@ async function mockSession(page: Page, user: SessionUser | null) {
   });
 }
 
+async function mockAnonymousAnalysisQuota(page: Page) {
+  await page.route("**/api/analysis-quota", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      status: 401,
+      body: JSON.stringify({ error: "UNAUTHORIZED" }),
+    });
+  });
+}
+
 test.beforeEach(async ({ context, page }) => {
   await context.addCookies([{
     name: "NEXT_LOCALE",
@@ -23,6 +33,7 @@ test.beforeEach(async ({ context, page }) => {
     url: "http://127.0.0.1:3000",
   }]);
   await mockSession(page, null);
+  await mockAnonymousAnalysisQuota(page);
 });
 
 test("anonymous visitors can load the home, analysis, and settings pages", async ({ page }) => {
