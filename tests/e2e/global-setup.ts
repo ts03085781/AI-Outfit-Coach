@@ -81,8 +81,18 @@ export function requestPolicyFor(origin: URL, requestURL: string): RequestPolicy
       status: mock.status,
     };
   }
-  if (url.pathname.startsWith("/api/")) return { action: "abort" };
-  return { action: "continue" };
+
+  const allowedAssets = new Set([
+    "/icon-192.png",
+    "/icon-512.png",
+    "/icon.svg",
+    "/manifest.webmanifest",
+  ]);
+  const isApplicationRoute = APPLICATION_ROUTES.some((route) => route === url.pathname);
+  if (isApplicationRoute || allowedAssets.has(url.pathname) || url.pathname.startsWith("/_next/")) {
+    return { action: "continue" };
+  }
+  return { action: "abort" };
 }
 
 export async function prewarmApplicationRoutes(

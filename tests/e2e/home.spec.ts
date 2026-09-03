@@ -14,6 +14,16 @@ async function mockReadyAnalysisQuota(page: Page) {
   });
 }
 
+async function mockEmptyTrends(page: Page) {
+  await page.route("**/api/trends", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      status: 200,
+      body: JSON.stringify({ manifest: null }),
+    });
+  });
+}
+
 function browserTrendManifest() {
   const translations = {
     "zh-TW": { name: "API 薄透風衣", description: "適合台灣換季。" },
@@ -49,6 +59,7 @@ test("opens the magazine-style homepage and links to analysis", async ({ context
     });
   });
   await mockReadyAnalysisQuota(page);
+  await mockEmptyTrends(page);
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -125,6 +136,7 @@ test("keeps the app navigation visible without horizontal overflow on a narrow s
     url: "http://127.0.0.1:3000",
   }]);
   await page.setViewportSize({ width: 320, height: 800 });
+  await mockEmptyTrends(page);
   await page.goto("/");
 
   await expect(page.getByTestId("app-navigation")).toBeVisible();
@@ -138,6 +150,7 @@ test("keeps English navigation labels on one line at the label-caps scale on a 3
     url: "http://127.0.0.1:3000",
   }]);
   await page.setViewportSize({ width: 320, height: 800 });
+  await mockEmptyTrends(page);
   await page.goto("/");
 
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
@@ -177,6 +190,7 @@ test("keeps a full-width branded navigation fixed to the top across desktop page
     url: "http://127.0.0.1:3000",
   }]);
   await mockReadyAnalysisQuota(page);
+  await mockEmptyTrends(page);
   await page.setViewportSize({ width: 768, height: 900 });
   for (const path of ["/", "/analyze", "/settings"]) {
     await page.goto(path);

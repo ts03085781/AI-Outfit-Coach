@@ -46,8 +46,14 @@ describe("Playwright configuration", () => {
 
     expect(requestPolicyFor(origin, "https://api.open-meteo.com/v1/forecast"))
       .toEqual({ action: "abort" });
+    expect(requestPolicyFor(origin, `${origin.origin}/auth/callback?code=live-code`))
+      .toEqual({ action: "abort" });
+    expect(requestPolicyFor(origin, `${origin.origin}/unexpected-server-handler`))
+      .toEqual({ action: "abort" });
     expect(requestPolicyFor(origin, `${origin.origin}/api/photo-check`))
       .toEqual({ action: "abort" });
+    expect(requestPolicyFor(origin, `${origin.origin}/login`))
+      .toEqual({ action: "continue" });
     expect(requestPolicyFor(origin, `${origin.origin}/_next/static/chunk.js`))
       .toEqual({ action: "continue" });
     expect(requestPolicyFor(origin, `${origin.origin}/api/auth/session`)).toEqual({
@@ -65,6 +71,40 @@ describe("Playwright configuration", () => {
       body: JSON.stringify({ error: "UNAUTHORIZED" }),
       status: 401,
     });
+  });
+
+  it("replaces inherited live-service credentials with inert test values", async () => {
+    const inherited = {
+      BLOB_READ_WRITE_TOKEN: "live-blob-token",
+      BLOB_STORE_ID: "live-blob-store",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "live-public-key",
+      NEXT_PUBLIC_SUPABASE_URL: "https://live-project.supabase.co",
+      OPENAI_API_KEY: "live-openai-key",
+      SUPABASE_SECRET_KEY: "live-supabase-secret",
+    };
+    for (const [name, value] of Object.entries(inherited)) {
+      vi.stubEnv(name, value);
+    }
+    vi.resetModules();
+
+    try {
+      const { default: isolatedConfig } = await import("../../playwright.config");
+      const configuredServer = Array.isArray(isolatedConfig.webServer)
+        ? isolatedConfig.webServer[0]
+        : isolatedConfig.webServer;
+
+      expect(configuredServer?.env).toMatchObject({
+        BLOB_READ_WRITE_TOKEN: "",
+        BLOB_STORE_ID: "",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "e2e-test-public-key",
+        NEXT_PUBLIC_SUPABASE_URL: "https://e2e-test.supabase.co",
+        OPENAI_API_KEY: "",
+        SUPABASE_SECRET_KEY: "",
+      });
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it("uses an explicit hydrated readiness contract for every route", async () => {
