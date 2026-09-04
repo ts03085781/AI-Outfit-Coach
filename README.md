@@ -54,11 +54,14 @@ pnpm supabase:start
 pnpm supabase:reset
 pnpm test:db
 pnpm test:db:concurrency
+pnpm test:db:retention
 pnpm exec supabase db advisors --local --level error --fail-on error
 pnpm exec supabase migration list --local
 ```
 
 本機服務使用 `supabase/config.toml` 的 5532x port，避免干擾其他專案。若 pinned CLI 在特定機器遇到 profile 存取問題，先保存錯誤輸出並依 `docs/DEVELOPMENT-SOP.md` 的 fallback 驗證，不要停止或刪除其他專案的 Supabase containers。
+
+每日配額清理由 Supabase Cron 在台灣 00:10 執行，每次最多 10,000 筆，保留最近 3 個台灣日曆日與仍有效的 reservation。清理不參與配額換日。詳見[保留規則、容量限制、查核與停用](docs/daily-analysis-retention.md)。`test:db:retention` 只允許本專案本機容器且要求配額表為空；它會建立暫時的每秒 Cron 測試工作並於結束時移除。
 
 正式發布必須先把 `supabase/migrations/` 套用至目標 Supabase 專案，再部署相依的應用程式碼；不得反向部署。Preview 與 Production 均需分別設定 server-only `SUPABASE_SECRET_KEY`。
 
