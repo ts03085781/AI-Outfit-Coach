@@ -11,6 +11,7 @@ import type { AbuseGuard } from "@/lib/abuse-guard";
 import {
   QuotaUnavailableError,
   type AnalysisQuotaService,
+  type GetSubscriptionAccess,
 } from "@/features/outfit/analysis-quota";
 
 const MAX_REQUEST_BYTES = 6 * 1024 * 1024;
@@ -22,6 +23,7 @@ export type AnalyzeHandlerDependencies = {
   createAnalyzer: () => OutfitAnalyzer;
   abuseGuard: AbuseGuard;
   quotaService: AnalysisQuotaService;
+  getSubscription: GetSubscriptionAccess;
   issueAnalysisToken: (analysis: Exclude<Awaited<ReturnType<OutfitAnalyzer["analyze"]>>, { retake_required: true }>) => string;
 };
 
@@ -145,18 +147,25 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
         const context = AnalyzeRequestSchema.safeParse(rawContext);
         if (!context.success) return json({ error: "INVALID_IMAGE" }, 400);
 
-        reservationId = crypto.randomUUID();
-        const reservation = await dependencies.quotaService.reserve(userId, reservationId);
-        if (reservation.status === "daily_limit_reached") {
-          return json({
-            error: "DAILY_ANALYSIS_LIMIT_REACHED",
-            ...reservation.quota,
-          }, 429);
+        // Resolve access once: an analysis admitted before expiry may finish afterward.
+        const subscription = await dependencies.getSubscription(userId).catch(() => {
+          throw new QuotaUnavailableError();
+        });
+        if (subscription.isActive && !subscription.currentPeriodEnd) throw new QuotaUnavailableError();
+        if (!subscription.isActive) {
+          reservationId = crypto.randomUUID();
+          const reservation = await dependencies.quotaService.reserve(userId, reservationId);
+          if (reservation.status === "daily_limit_reached") {
+            return json({
+              error: "DAILY_ANALYSIS_LIMIT_REACHED",
+              ...reservation.quota,
+            }, 429);
+          }
+          if (reservation.status === "slots_busy") {
+            return json({ error: "ANALYSIS_SLOTS_BUSY" }, 409);
+          }
+          reserved = true;
         }
-        if (reservation.status === "slots_busy") {
-          return json({ error: "ANALYSIS_SLOTS_BUSY" }, 409);
-        }
-        reserved = true;
 
         const controller = new AbortController();
         timeout = setTimeout(() => controller.abort(), ANALYSIS_TIMEOUT_MS);
@@ -171,7 +180,9 @@ export function createAnalyzeHandler(dependencies: AnalyzeHandlerDependencies) {
         }
 
         const analysisToken = dependencies.issueAnalysisToken(analysis);
-        const quota = await dependencies.quotaService.complete(userId, reservationId);
+        const quota = subscription.isActive
+          ? { type: "subscription" as const, unlimited: true as const, currentPeriodEnd: subscription.currentPeriodEnd! }
+          : await dependencies.quotaService.complete(userId, reservationId!);
         completed = true;
         return json({
           analysis,

@@ -33,6 +33,7 @@ describe("GET /api/analysis-quota", () => {
     const response = await createAuthenticatedAnalysisQuotaRoute(
       async () => ({ id: "user-1" } as User),
       service,
+      async () => ({ isActive: false, currentPeriodEnd: null }),
     )(new Request("http://localhost/api/analysis-quota"));
 
     expect(response.status).toBe(200);
@@ -65,6 +66,7 @@ describe("GET /api/analysis-quota", () => {
     const response = await createAuthenticatedAnalysisQuotaRoute(
       async () => ({ id: "user-1" } as User),
       service,
+      async () => ({ isActive: false, currentPeriodEnd: null }),
     )(new Request("http://localhost/api/analysis-quota"));
 
     expect(response.status).toBe(503);
@@ -79,9 +81,34 @@ describe("GET /api/analysis-quota", () => {
     const response = await createAuthenticatedAnalysisQuotaRoute(
       async () => ({ id: "user-1" } as User),
       service,
+      async () => ({ isActive: false, currentPeriodEnd: null }),
     )(new Request("http://localhost/api/analysis-quota"));
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ error: "QUOTA_UNAVAILABLE" });
   });
+});
+
+
+it("returns unlimited access without reading exhausted free quota", async () => {
+  const get = vi.fn(async () => quota);
+  const response = await createAuthenticatedAnalysisQuotaRoute(
+    async () => ({ id: "subscriber" } as User), serviceWithGet(get),
+    async () => ({ isActive: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" }),
+  )(new Request("http://localhost/api/analysis-quota"));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ type: "subscription", unlimited: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" });
+  expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(get).not.toHaveBeenCalled();
+});
+
+it("does not fall back to free quota on subscription database failure", async () => {
+  const get = vi.fn(async () => quota);
+  const response = await createAuthenticatedAnalysisQuotaRoute(
+    async () => ({ id: "subscriber" } as User), serviceWithGet(get),
+    async () => { throw new Error("DB failure"); },
+  )(new Request("http://localhost/api/analysis-quota"));
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ error: "QUOTA_UNAVAILABLE" });
+  expect(get).not.toHaveBeenCalled();
 });

@@ -43,6 +43,7 @@ test.beforeEach(async ({ context, page }) => {
     url: "http://127.0.0.1:3000",
   }]);
   await mockSession(page, null);
+  await page.route("**/api/subscription", (route) => route.fulfill({ status: 401, json: { error: "AUTH_REQUIRED" } }));
   await mockAnonymousAnalysisQuota(page);
   await mockEmptyTrends(page);
 });
@@ -126,4 +127,41 @@ test("login errors use the error palette without exposing provider details", asy
   await expect(alert).toHaveCSS("color", "rgb(186, 26, 26)");
   await expect(alert).toHaveCSS("background-color", "rgb(255, 218, 214)");
   await expect(alert).toHaveCSS("border-color", "rgb(186, 26, 26)");
+});
+
+test("subscription sends anonymous visitors to login and returns to settings", async ({ page }) => {
+  await page.goto("/settings");
+  await expect(page.getByText("NT$60／月")).toBeVisible();
+  await page.getByRole("button", { name: "立即訂閱" }).click();
+  await expect(page).toHaveURL(/\/login\?next=\/settings&reason=auth/);
+});
+
+test("subscription shows maintenance to signed-in visitors", async ({ page }) => {
+  await mockSession(page, { id: "user-1", name: "Test", email: null, avatarUrl: null });
+  await page.route("**/api/subscription", (route) => route.fulfill({ status: route.request().method() === "POST" ? 503 : 401, json: { error: "SUBSCRIPTION_MAINTENANCE" } }));
+  await page.goto("/settings");
+  const dialogPromise = page.waitForEvent("dialog").then(async (dialog) => {
+    expect(dialog.message()).toBe("此功能維護中，請稍後再試。");
+    await dialog.accept();
+  });
+  await page.getByRole("button", { name: "立即訂閱" }).click();
+  await dialogPromise;
+  await expect(page).toHaveURL(/\/settings$/);
+});
+
+
+test("active subscription can cancel renewal and retains the paid period", async ({ page }) => {
+  const summary = { status: "active", isActive: true, currentPeriodStart: "2026-09-10T00:00:00Z", currentPeriodEnd: "2026-10-10T00:00:00Z", cancelAtPeriodEnd: false, cancelRequestedAt: null, amountTwd: 60, billingInterval: "month" };
+  await mockSession(page, { id: "user-1", name: "Test", email: null, avatarUrl: null });
+  await page.route("**/api/subscription", (route) => route.fulfill({ json: summary }));
+  await page.route("**/api/subscription/cancel", (route) => route.fulfill({ json: { ...summary, cancelAtPeriodEnd: true, cancelRequestedAt: "2026-09-11T00:00:00Z" } }));
+  await page.goto("/settings");
+  const dialogPromise = page.waitForEvent("dialog").then(async (dialog) => {
+    expect(dialog.message()).toContain("不會退款");
+    await dialog.accept();
+  });
+  await page.getByRole("button", { name: "取消訂閱" }).click();
+  await dialogPromise;
+  await expect(page.getByText(/已取消續訂，可使用至/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "取消訂閱" })).toHaveCount(0);
 });

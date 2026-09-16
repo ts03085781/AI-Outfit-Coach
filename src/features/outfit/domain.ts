@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { DailyQuotaSummarySchema } from "@/features/outfit/analysis-quota";
+import { AnalysisAccessSummarySchema } from "@/features/outfit/analysis-quota";
 
 export const OccasionSchema = z.enum(["casual", "date", "work", "formal"]);
 
@@ -59,5 +59,5 @@ export type OutfitAnalysis = z.infer<typeof OutfitAnalysisSchema>;
 export const AnalyzeSuccessResponseSchema = z.object({
   analysis: OutfitAnalysisSchema,
   analysisToken: z.string().min(1).max(1_024),
-  quota: DailyQuotaSummarySchema,
+  quota: AnalysisAccessSummarySchema,
 }).strict();

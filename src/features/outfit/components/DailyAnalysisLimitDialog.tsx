@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { SubscriptionButton } from "@/features/subscription/components/SubscriptionButton";
 
 type DailyAnalysisLimitDialogProps = {
   kind: "limited" | "unavailable";
@@ -57,16 +58,10 @@ export function DailyAnalysisLimitDialog({
     }
     if (event.key !== "Tab") return;
 
+    const actions = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not(:disabled)"));
+    const index = actions.indexOf(document.activeElement as HTMLElement);
     event.preventDefault();
-    if (kind === "limited") {
-      homeRef.current?.focus();
-      return;
-    }
-
-    const target = document.activeElement === retryRef.current
-      ? homeRef.current
-      : retryRef.current;
-    target?.focus();
+    actions[(index + (event.shiftKey ? -1 : 1) + actions.length) % actions.length]?.focus();
   };
 
   if (typeof document === "undefined") return null;
@@ -90,6 +85,7 @@ export function DailyAnalysisLimitDialog({
         </p>
         {!isUnavailable ? <p className="analysis-quota-note">{t("resetNote")}</p> : null}
         <div className="analysis-quota-actions">
+          {!isUnavailable ? <SubscriptionButton nextPath="/analyze" /> : null}
           {isUnavailable ? (
             <button
               className="button-primary"

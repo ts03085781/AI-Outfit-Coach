@@ -15,7 +15,7 @@ import { RequiredLoginDialog } from "@/features/auth/components/RequiredLoginDia
 import { DailyAnalysisLimitDialog } from "@/features/outfit/components/DailyAnalysisLimitDialog";
 import { PhotoStep } from "@/features/outfit/components/PhotoStep";
 import { ResultStep } from "@/features/outfit/components/ResultStep";
-import { DailyQuotaSummarySchema } from "@/features/outfit/analysis-quota";
+import { AnalysisAccessSummarySchema } from "@/features/outfit/analysis-quota";
 import type { Occasion, Setting, Weather } from "@/features/outfit/domain";
 import { useOutfitFlow } from "@/features/outfit/useOutfitFlow";
 import { type AppLocale } from "@/lib/i18n/config";
@@ -41,18 +41,21 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
   const t = useTranslations();
   const flow = useOutfitFlow(locale);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("checking");
+  const updateQuota = flow.updateQuota;
+  const quotaRequestId = useRef(0);
   const firstOccasionRef = useRef<HTMLButtonElement>(null);
   const focusAfterQuotaRetryRef = useRef(false);
   const step = flow.state === "occasion" ? 1 : flow.state === "photo" ? 2 : 3;
 
   const checkQuota = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++quotaRequestId.current;
     setAccessStatus("checking");
     try {
       const response = await fetch("/api/analysis-quota", {
         cache: "no-store",
         signal,
       });
-      if (signal?.aborted) return;
+      if (signal?.aborted || requestId !== quotaRequestId.current) return;
       if (response.status === 401) {
         setAccessStatus("anonymous");
         return;
@@ -62,22 +65,28 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
         return;
       }
 
-      const parsed = DailyQuotaSummarySchema.safeParse(await response.json());
-      if (signal?.aborted) return;
+      const parsed = AnalysisAccessSummarySchema.safeParse(await response.json());
+      if (signal?.aborted || requestId !== quotaRequestId.current) return;
       if (!parsed.success) {
         setAccessStatus("unavailable");
         return;
       }
-      setAccessStatus(parsed.data.used === 3 ? "limited" : "ready");
+      setAccessStatus("used" in parsed.data && parsed.data.used === 3 ? "limited" : "ready");
+      updateQuota(parsed.data);
     } catch {
-      if (!signal?.aborted) setAccessStatus("unavailable");
+      if (!signal?.aborted && requestId === quotaRequestId.current) setAccessStatus("unavailable");
     }
-  }, []);
+  }, [updateQuota]);
 
   useEffect(() => {
     const controller = new AbortController();
     void checkQuota(controller.signal);
-    return () => controller.abort();
+    const refresh = () => { void checkQuota(controller.signal); };
+    window.addEventListener("subscription-changed", refresh);
+    return () => {
+      controller.abort();
+      window.removeEventListener("subscription-changed", refresh);
+    };
   }, [checkQuota]);
 
   useEffect(() => {
@@ -102,7 +111,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
   };
 
   const startAnother = (action: () => void) => {
-    if (flow.quota?.remaining === 0) {
+    if (flow.quota && "remaining" in flow.quota && flow.quota.remaining === 0) {
       setAccessStatus("limited");
       return;
     }
@@ -116,6 +125,7 @@ export function OutfitFlowPage({ loginSucceeded = false }: OutfitFlowPageProps) 
     >
       <div className="flow-content" inert={accessStatus !== "ready" ? true : undefined}>
         {loginSucceeded ? <p className="login-success" role="status">{t("auth.loginSuccess")}</p> : null}
+        {(flow.quota && "unlimited" in flow.quota) ? <p role="status">{t("subscription.unlimited")}</p> : null}
         <div className="flow-header" aria-label={t("step", { step })}>
           <span>{t("appName")}</span>
           <span>{step}/3</span>

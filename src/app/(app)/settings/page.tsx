@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+import { SubscriptionSection } from "@/features/subscription/components/SubscriptionSection";
+
 import { AccountSection } from "@/features/auth/components/AccountSection";
 import { locales, type AppLocale } from "@/lib/i18n/config";
 import { persistLocale, useAppLocale } from "@/lib/i18n/LocaleProvider";
@@ -41,6 +43,7 @@ export default function SettingsPage() {
           </label>
         </section>
         <AccountSection />
+        <SubscriptionSection />
       </div>
     </main>
   );

@@ -97,6 +97,7 @@ function handleRequest(
   userId = "user-1",
 ) {
   return createAnalyzeHandler({
+    getSubscription: async () => ({ isActive: false, currentPeriodEnd: null }),
     createAnalyzer: () => analyzer,
     abuseGuard,
     quotaService,
@@ -170,6 +171,7 @@ describe("POST /api/analyze", () => {
       const response = await createAuthenticatedAnalyzeRoute(
         async () => ({ id: "verified-user" } as User),
         quotaService,
+        async () => ({ isActive: false, currentPeriodEnd: null }),
       )(makeMultipartRequest(validImage()));
 
       expect(response.status).toBe(503);
@@ -280,6 +282,7 @@ describe("POST /api/analyze", () => {
       }),
     });
     const response = await createAnalyzeHandler({
+    getSubscription: async () => ({ isActive: false, currentPeriodEnd: null }),
       createAnalyzer: () => ({ analyze: async () => {
         events.push("analyze");
         return completeAnalysis;
@@ -576,6 +579,7 @@ describe("POST /api/analyze", () => {
     const issueAnalysisToken = vi.fn(() => "signed-analysis-token");
     const release = vi.fn(async () => undefined);
     const response = await createAnalyzeHandler({
+    getSubscription: async () => ({ isActive: false, currentPeriodEnd: null }),
       createAnalyzer: () => analyzerReturning(completeAnalysis),
       abuseGuard: allowingGuard(),
       quotaService: allowingQuotaService({
@@ -595,6 +599,7 @@ describe("POST /api/analyze", () => {
     const complete = vi.fn(async () => quotaSummary);
     const release = vi.fn(async () => undefined);
     const response = await createAnalyzeHandler({
+    getSubscription: async () => ({ isActive: false, currentPeriodEnd: null }),
       createAnalyzer: () => analyzerReturning(completeAnalysis),
       abuseGuard: allowingGuard(),
       quotaService: allowingQuotaService({ complete, release }),
@@ -727,6 +732,7 @@ describe("POST /api/analyze", () => {
       const response = await createAuthenticatedAnalyzeRoute(
         async () => ({ id: "user-1" } as User),
         allowingQuotaService(),
+        async () => ({ isActive: false, currentPeriodEnd: null }),
       )(
         makeMultipartRequest(validImage()),
       );
@@ -751,5 +757,51 @@ describe("POST /api/analyze", () => {
     );
 
     expect(log).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("subscription analysis entitlement", () => {
+  it("admits an active subscriber without touching daily quota and keeps that access for completion", async () => {
+    const quotaService = allowingQuotaService();
+    const getSubscription = vi.fn().mockResolvedValueOnce({ isActive: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" })
+      .mockResolvedValue({ isActive: false, currentPeriodEnd: null });
+    const response = await createAnalyzeHandler({
+      getSubscription,
+      quotaService,
+      createAnalyzer: () => analyzerReturning(completeAnalysis),
+      abuseGuard: allowingGuard(),
+      issueAnalysisToken: () => "signed-analysis-token",
+    })(makeMultipartRequest(validImage()), "subscriber");
+    expect(response.status).toBe(200);
+    expect((await response.json()).quota).toEqual({ type: "subscription", unlimited: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" });
+    expect(getSubscription).toHaveBeenCalledExactlyOnceWith("subscriber");
+    for (const operation of Object.values(quotaService)) expect(operation).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on subscription lookup failure without using model or free quota", async () => {
+    const quotaService = allowingQuotaService();
+    const createAnalyzer = vi.fn();
+    const response = await createAnalyzeHandler({
+      getSubscription: async () => { throw new Error("private DB detail"); },
+      quotaService, createAnalyzer, abuseGuard: allowingGuard(), issueAnalysisToken: () => "token",
+    })(makeMultipartRequest(validImage()), "subscriber");
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "QUOTA_UNAVAILABLE" });
+    expect(createAnalyzer).not.toHaveBeenCalled();
+    expect(quotaService.reserve).not.toHaveBeenCalled();
+  });
+
+  it("still applies model safety failures for subscribers without releasing a free reservation", async () => {
+    const quotaService = allowingQuotaService();
+    const response = await createAnalyzeHandler({
+      getSubscription: async () => ({ isActive: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" }),
+      quotaService,
+      createAnalyzer: () => ({ analyze: async () => { throw new AnalyzerSafetyError(); } }),
+      abuseGuard: allowingGuard(), issueAnalysisToken: () => "token",
+    })(makeMultipartRequest(validImage()), "subscriber");
+    expect(response.status).toBe(502);
+    expect(quotaService.reserve).not.toHaveBeenCalled();
+    expect(quotaService.release).not.toHaveBeenCalled();
   });
 });

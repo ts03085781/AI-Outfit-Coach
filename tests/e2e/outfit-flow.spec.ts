@@ -88,6 +88,9 @@ test.beforeEach(async ({ context, page }) => {
     value: "zh-TW",
     url: "http://127.0.0.1:3000",
   }]);
+  await page.route("**/api/subscription", async (route) => {
+    await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "SUBSCRIPTION_MAINTENANCE" }) });
+  });
   await page.route("**/api/auth/session", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -124,7 +127,7 @@ test.describe("mock-only outfit flow", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   });
 
-  test("blocks exhausted entry with one focused home action and no analysis request", async ({ page }) => {
+  test("blocks exhausted entry with subscription and no analysis request", async ({ page }) => {
     const requests: string[] = [];
     page.on("request", (request) => requests.push(request.url()));
     await page.setViewportSize({ width: 320, height: 800 });
@@ -153,9 +156,17 @@ test.describe("mock-only outfit flow", () => {
     await expect(page.getByText("每日次數將於台灣時間 00:00 重置。")).toBeVisible();
     await expect(home).toHaveAttribute("href", "/");
     await expect(home).toBeFocused();
-    await expect(dialog.getByRole("button")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /訂閱/ })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /訂閱/ })).toHaveCount(0);
+    const subscribe = dialog.getByRole("button", { name: "立即訂閱" });
+    await expect(subscribe).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(subscribe).toBeFocused();
+    const maintenancePromise = page.waitForEvent("dialog").then(async (maintenance) => {
+      expect(maintenance.message()).toBe("此功能維護中，請稍後再試。");
+      await maintenance.accept();
+    });
+    await subscribe.click();
+    await maintenancePromise;
+    await expect(dialog).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
     expect(requests.filter((url) => (
@@ -644,3 +655,16 @@ for (const width of [320, 390, 430]) {
     }
   });
 }
+
+
+test("subscriber can analyze and restart without the daily limit", async ({ page }) => {
+  const access = { type: "subscription", unlimited: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" };
+  await page.route("**/api/analysis-quota", async (route) => { await route.fulfill({ json: access }); });
+  await page.route("**/api/analyze", async (route) => { await route.fulfill({ json: { analysis, analysisToken: "mock-signed-analysis-token", quota: access } }); });
+  await mockTelemetry(page);
+  await completeAnalysis(page);
+  await expect(page.getByText("無限次分析", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "返回第一步驟" }).click();
+  await expect(page.getByRole("button", { name: "日常外出" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});

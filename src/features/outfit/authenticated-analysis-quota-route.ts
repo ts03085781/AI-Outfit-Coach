@@ -1,3 +1,5 @@
+import { configuredSubscriptionService } from "@/features/subscription/service";
+import type { GetSubscriptionAccess } from "@/features/outfit/analysis-quota";
 import type { User } from "@supabase/supabase-js";
 
 import { createAnalysisQuotaHandler } from "@/features/outfit/analysis-quota-handler";
@@ -9,6 +11,7 @@ import { getCurrentUser } from "@/lib/auth/user";
 export function createAuthenticatedAnalysisQuotaRoute(
   getUser: () => Promise<User | null> = getCurrentUser,
   service: AnalysisQuotaService = configuredAnalysisQuotaService,
+  getSubscription: GetSubscriptionAccess = (userId) => configuredSubscriptionService.get(userId),
 ) {
-  return withAuthenticatedUser(createAnalysisQuotaHandler(service), getUser);
+  return withAuthenticatedUser(createAnalysisQuotaHandler(service, getSubscription), getUser);
 }

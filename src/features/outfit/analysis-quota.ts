@@ -31,3 +31,17 @@ export type AnalysisQuotaService = {
   complete(userId: string, reservationId: string): Promise<DailyQuotaSummary>;
   release(userId: string, reservationId: string): Promise<void>;
 };
+
+export const SubscriptionAnalysisAccessSchema = z.object({
+  type: z.literal("subscription"),
+  unlimited: z.literal(true),
+  currentPeriodEnd: z.string().datetime({ offset: true }),
+}).strict();
+
+export const AnalysisAccessSummarySchema = z.union([DailyQuotaSummarySchema, SubscriptionAnalysisAccessSchema]);
+export type AnalysisAccessSummary = z.infer<typeof AnalysisAccessSummarySchema>;
+
+export type GetSubscriptionAccess = (userId: string) => Promise<{
+  isActive: boolean;
+  currentPeriodEnd: string | null;
+}>;

@@ -685,7 +685,7 @@ describe("outfit flow", () => {
     expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === "/api/analysis-quota")).toHaveLength(1);
   });
 
-  it("blocks an exhausted entry with exact copy and one focused home action", async () => {
+  it("blocks an exhausted entry with subscription and keyboard-accessible actions", async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       if (url === "/api/analysis-quota") return quotaResponse(3);
       return new Response(null, { status: 204 });
@@ -699,10 +699,12 @@ describe("outfit flow", () => {
     expect(homeLink).toHaveAttribute("href", "/");
     expect(document.activeElement).toBe(homeLink);
     fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "立即訂閱" }));
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(homeLink);
     fireEvent.keyDown(dialog, { key: "Escape" });
     expect(dialog).toBeVisible();
-    expect(screen.queryByRole("button", { name: /訂閱|關閉|重新嘗試/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /關閉|重新嘗試/ })).not.toBeInTheDocument();
     expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/photo-check")).toBe(false);
     expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/analyze")).toBe(false);
     expect(stylesheet).toMatch(/\.analysis-quota-layer\s*\{[^}]*z-index:\s*25/);
@@ -884,6 +886,7 @@ describe("outfit flow", () => {
         remaining: 0,
         resetAt: "2026-09-01T16:00:00.000Z",
       },
+      updateQuota: vi.fn(),
       analysisErrorMessage: "",
       chooseOccasion: vi.fn(),
       continueToPhoto: vi.fn(),
@@ -1546,4 +1549,44 @@ describe("outfit flow", () => {
     expect(stylesheet).toMatch(/\.result-navigation\s+button\s*\{[\s\S]*?min-height:\s*44px/);
     expect(stylesheet).toMatch(/\.result-navigation\s+button:focus-visible/);
   });
+});
+
+
+it("lets subscribers complete analysis and start another without a daily-limit dialog", async () => {
+  const access = { type: "subscription", unlimited: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" };
+  vi.mocked(fetch).mockImplementation(async (url) => {
+    if (url === "/api/analysis-quota") return Response.json(access);
+    if (url === "/api/photo-check") return photoCheckResponse();
+    if (url === "/api/analyze") return Response.json({ analysis: completeAnalysis, analysisToken: "signed-analysis-token", quota: access });
+    return new Response(null, { status: 204 });
+  });
+  render(<HomePage />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled());
+  chooseOccasionAndPhoto();
+  await waitFor(() => expect(screen.getByRole("button", { name: "開始分析" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "開始分析" }));
+  expect(await screen.findByRole("heading", { name: "你的穿搭建議" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "返回第一步驟" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "日常外出" })).toBeVisible();
+});
+
+it("does not let a stale free-quota response overwrite subscription activation", async () => {
+  const oldResponse = deferred<Response>();
+  let checks = 0;
+  vi.mocked(fetch).mockImplementation(async (url) => {
+    if (url === "/api/analysis-quota") {
+      checks += 1;
+      if (checks === 1) return oldResponse.promise;
+      return Response.json({ type: "subscription", unlimited: true, currentPeriodEnd: "2026-10-10T00:00:00.000Z" });
+    }
+    return new Response(null, { status: 204 });
+  });
+  render(<HomePage />);
+  await waitFor(() => expect(checks).toBe(1));
+  act(() => window.dispatchEvent(new Event("subscription-changed")));
+  expect(await screen.findByText("無限次分析")).toBeVisible();
+  await act(async () => oldResponse.resolve(quotaResponse(3)));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "日常外出" })).toBeEnabled();
 });

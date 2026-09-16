@@ -80,6 +80,7 @@ export function AccountSection() {
       setSignOutFailed(true);
     } else {
       setUser(null);
+      window.dispatchEvent(new Event("auth:signed-out"));
     }
 
     setIsSigningOut(false);

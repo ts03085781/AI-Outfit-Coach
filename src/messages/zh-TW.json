@@ -59,7 +59,11 @@
     "hot": "偏熱",
     "mild": "舒適"
   },
-  "setting": { "indoor": "室內", "outdoor": "戶外", "mixed": "室內外都有" },
+  "setting": {
+    "indoor": "室內",
+    "outdoor": "戶外",
+    "mixed": "室內外都有"
+  },
   "photo": {
     "back": "返回",
     "title": "拍下你的穿搭",
@@ -202,5 +206,25 @@
     "RATE_LIMIT_UNAVAILABLE": "分析服務暫時無法使用，請稍後再試一次。",
     "ANALYSIS_SLOTS_BUSY": "另一個分析正在進行，請稍後再試。",
     "INVALID_RESPONSE": "模型回覆格式暫時異常，請再試一次。"
+  },
+  "subscription": {
+    "title": "訂閱方案",
+    "price": "NT$60／月",
+    "description": "每月只要新台幣 60 元，訂閱即可享用無限次服裝分析，隨時取得穿搭建議。",
+    "subscribe": "立即訂閱",
+    "loading": "確認登入狀態中…",
+    "maintenance": "此功能維護中，請稍後再試。",
+    "error": "暫時無法讀取或更新訂閱，請稍後再試。",
+    "retry": "重試",
+    "activeUntil": "訂閱有效，可使用至 {date}。",
+    "canceledUntil": "已取消續訂，可使用至 {date}。",
+    "cancel": "取消訂閱",
+    "canceling": "取消中…",
+    "cancelConfirm": "確定取消自動續訂？本期權益保留至到期，取消不會退款。",
+    "cancelError": "暫時無法取消續訂，請稍後再試。",
+    "pending": "訂閱等待付款中。",
+    "past_due": "續訂付款未完成，目前使用免費方案。",
+    "expired": "訂閱已到期，目前使用免費方案。",
+    "unlimited": "無限次分析"
   }
 }

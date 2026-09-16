@@ -412,3 +412,8 @@ p { color: var(--color-muted); line-height: 1.6; }
   .result-photo { grid-column: 1; grid-row: 2; margin-bottom: 0; }
   .result-analysis { grid-column: 2; grid-row: 2; }
 }
+
+.subscription-card { display: grid; gap: 16px; }
+.subscription-card p { margin: 0; line-height: 1.7; }
+.subscription-price { color: var(--color-ink); font-size: 1.75rem; font-weight: 700; }
+.subscription-card .button-primary { width: 100%; }

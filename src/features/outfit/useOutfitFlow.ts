@@ -20,7 +20,7 @@ import {
 } from "./domain";
 import {
   DAILY_ANALYSIS_LIMIT,
-  type DailyQuotaSummary,
+  type AnalysisAccessSummary,
 } from "./analysis-quota";
 import { ImagePreparationError, prepareImage, type ImagePreparationErrorCode } from "./image";
 import {
@@ -102,7 +102,7 @@ export function useOutfitFlow(locale: AppLocale) {
   const [result, setResult] = useState<OutfitAnalysis>();
   const [analysisToken, setAnalysisToken] = useState<string>();
   const [analysisErrorCode, setAnalysisErrorCode] = useState<TelemetryErrorCode>();
-  const [quota, setQuota] = useState<DailyQuotaSummary>();
+  const [quota, setQuota] = useState<AnalysisAccessSummary>();
 
   useEffect(() => () => {
     photoRequestRef.current += 1;
@@ -393,6 +393,7 @@ export function useOutfitFlow(locale: AppLocale) {
     result,
     analysisToken,
     quota,
+    updateQuota: setQuota,
     analysisErrorMessage: messages[locale].error[analysisErrorCode ?? "AI_UNAVAILABLE"],
     chooseOccasion,
     continueToPhoto,

@@ -1,3 +1,5 @@
+import { configuredSubscriptionService } from "@/features/subscription/service";
+import type { GetSubscriptionAccess } from "@/features/outfit/analysis-quota";
 import type { User } from "@supabase/supabase-js";
 
 import { createAnalyzeHandler } from "@/features/outfit/analyze-handler";
@@ -19,7 +21,8 @@ const defaultDependencies = {
 export function createAuthenticatedAnalyzeRoute(
   getUser: () => Promise<User | null> = getCurrentUser,
   quotaService: AnalysisQuotaService = configuredAnalysisQuotaService,
+  getSubscription: GetSubscriptionAccess = (userId) => configuredSubscriptionService.get(userId),
 ) {
-  const handler = createAnalyzeHandler({ ...defaultDependencies, quotaService });
+  const handler = createAnalyzeHandler({ ...defaultDependencies, quotaService, getSubscription });
   return withAuthenticatedUser((request, user) => handler(request, user.id), getUser);
 }

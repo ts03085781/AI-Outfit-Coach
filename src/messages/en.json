@@ -206,5 +206,25 @@
     "RATE_LIMIT_UNAVAILABLE": "Analysis is temporarily unavailable. Please try again shortly.",
     "ANALYSIS_SLOTS_BUSY": "Another analysis is in progress. Please try again shortly.",
     "INVALID_RESPONSE": "The model response format was invalid. Please try again."
+  },
+  "subscription": {
+    "title": "Subscription",
+    "price": "NT$60 / month",
+    "description": "Subscribe for NT$60 per month to enjoy unlimited outfit analyses and get styling advice whenever you need it.",
+    "subscribe": "Subscribe",
+    "loading": "Checking sign-in…",
+    "maintenance": "This feature is under maintenance. Please try again later.",
+    "error": "Subscription unavailable. Please try again later.",
+    "retry": "Retry",
+    "activeUntil": "Subscription active until {date}.",
+    "canceledUntil": "Renewal canceled. Access continues until {date}.",
+    "cancel": "Cancel subscription",
+    "canceling": "Canceling…",
+    "cancelConfirm": "Cancel automatic renewal? Access continues until the end of this period. Cancellation does not issue a refund.",
+    "cancelError": "Unable to cancel renewal. Please try again later.",
+    "pending": "Subscription awaiting payment.",
+    "past_due": "Renewal payment incomplete. You are using the free plan.",
+    "expired": "Subscription expired. You are using the free plan.",
+    "unlimited": "Unlimited analyses"
   }
 }
