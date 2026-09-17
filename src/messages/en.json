@@ -211,6 +211,8 @@
     "title": "Subscription",
     "price": "NT$60 / month",
     "description": "Subscribe for NT$60 per month to enjoy unlimited outfit analyses and get styling advice whenever you need it.",
+    "email": "Email",
+    "phone": "Phone",
     "subscribe": "Subscribe",
     "loading": "Checking sign-in…",
     "maintenance": "This feature is under maintenance. Please try again later.",

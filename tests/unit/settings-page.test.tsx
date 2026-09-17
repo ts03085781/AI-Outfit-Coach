@@ -251,3 +251,20 @@ it("ignores subscription activation completing after signout and prevents duplic
   expect(screen.getByRole("button", { name: "立即訂閱" })).toBeVisible();
   expect(screen.queryByRole("button", { name: "取消訂閱" })).not.toBeInTheDocument();
 });
+
+it.each([
+  ["zh-TW", "電子郵件", "電話"],
+  ["en", "Email", "Phone"],
+  ["ja", "メールアドレス", "電話番号"],
+  ["ko", "이메일", "전화번호"],
+] as const)("shows subscription contact details in %s", async (locale, email, phone) => {
+  fetchMock.mockResolvedValue(sessionResponse(null));
+  render(<LocaleProvider initialLocale={locale}><SettingsPage /></LocaleProvider>);
+
+  const emailLine = screen.getByText(`${email}: ts03085781@gmail.com`);
+  const phoneLine = screen.getByText(`${phone}: 0960081103`);
+  expect(emailLine).toBeVisible();
+  expect(phoneLine).toBeVisible();
+  expect(emailLine.nextElementSibling).toBe(phoneLine);
+  await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+});
