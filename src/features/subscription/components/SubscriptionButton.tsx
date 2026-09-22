@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { SubscriptionSummarySchema, type SubscriptionSummary } from "../domain";
+import { CheckoutResponseSchema, SubscriptionSummarySchema, type SubscriptionSummary } from "../domain";
 
 export function SubscriptionButton({ nextPath, onSubscribed }: {
   nextPath: "/settings" | "/analyze";
@@ -14,10 +14,13 @@ export function SubscriptionButton({ nextPath, onSubscribed }: {
   useEffect(() => {
     mounted.current = true;
     const signedOut = () => { ++identityVersion.current; };
+    const returned = () => { pending.current = false; setIsLoading(false); };
+    window.addEventListener("pageshow", returned);
     window.addEventListener("auth:signed-out", signedOut);
     return () => {
       mounted.current = false;
       window.removeEventListener("auth:signed-out", signedOut);
+      window.removeEventListener("pageshow", returned);
     };
   }, []);
   const pending = useRef(false);
@@ -28,6 +31,7 @@ export function SubscriptionButton({ nextPath, onSubscribed }: {
     pending.current = true;
     setIsLoading(true);
     const currentIdentity = identityVersion.current;
+    let redirecting = false;
     try {
       const response = await fetch("/api/subscription", { method: "POST", cache: "no-store" });
       if (!mounted.current || identityVersion.current !== currentIdentity) return;
@@ -44,6 +48,26 @@ export function SubscriptionButton({ nextPath, onSubscribed }: {
         }
         throw new Error("Subscription unavailable");
       }
+      const checkout = CheckoutResponseSchema.safeParse(data);
+      if (checkout.success) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = checkout.data.checkout.action;
+        form.hidden = true;
+        for (const [name, value] of Object.entries(checkout.data.checkout.fields)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = name;
+          input.value = value;
+          form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        try {
+          HTMLFormElement.prototype.submit.call(form);
+          redirecting = true;
+        } finally { form.remove(); }
+        return;
+      }
       const summary = SubscriptionSummarySchema.parse(data);
       if (!mounted.current || identityVersion.current !== currentIdentity) return;
       onSubscribed?.(summary);
@@ -51,12 +75,14 @@ export function SubscriptionButton({ nextPath, onSubscribed }: {
     } catch {
       if (mounted.current && identityVersion.current === currentIdentity) window.alert(t("error"));
     } finally {
-      pending.current = false;
-      if (mounted.current) setIsLoading(false);
+      if (!redirecting) {
+        pending.current = false;
+        if (mounted.current) setIsLoading(false);
+      }
     }
   }
 
   return <button className="button-primary" type="button" onClick={subscribe} disabled={isLoading} aria-busy={isLoading}>
-    {t(isLoading ? "loading" : "subscribe")}
+    {t(isLoading ? "redirecting" : "subscribe")}
   </button>;
 }

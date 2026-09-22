@@ -9,11 +9,20 @@ export const SubscriptionSummarySchema = z.object({
   cancelRequestedAt: z.string().datetime({ offset: true }).nullable(),
   amountTwd: z.literal(60),
   billingInterval: z.literal("month"),
+  canCancel: z.boolean().optional(),
+  canCheckout: z.boolean().optional(),
 });
 export type SubscriptionSummary = z.infer<typeof SubscriptionSummarySchema>;
+export const CheckoutResponseSchema = z.object({
+  checkout: z.object({
+    action: z.literal("https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"),
+    fields: z.record(z.string(), z.string()),
+  }),
+});
+export type SubscriptionStart = SubscriptionSummary | z.infer<typeof CheckoutResponseSchema>;
 export interface SubscriptionService {
   get(userId: string): Promise<SubscriptionSummary>;
-  subscribe(userId: string): Promise<SubscriptionSummary>;
+  subscribe(userId: string): Promise<SubscriptionStart>;
   cancel(userId: string): Promise<SubscriptionSummary>;
 }
 export class SubscriptionUnavailableError extends Error {

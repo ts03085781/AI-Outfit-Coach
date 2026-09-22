@@ -165,3 +165,42 @@ test("active subscription can cancel renewal and retains the paid period", async
   await expect(page.getByText(/已取消續訂，可使用至/)).toBeVisible();
   await expect(page.getByRole("button", { name: "取消訂閱" })).toHaveCount(0);
 });
+
+test("subscription posts a checkout form to ECPay and stays unpaid until confirmation", async ({ page }) => {
+  const pending = { status: "pending", isActive: false, currentPeriodStart: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, cancelRequestedAt: null, amountTwd: 60, billingInterval: "month", canCheckout: true, canCancel: false };
+  await mockSession(page, { id: "user-1", name: "Test", email: null, avatarUrl: null });
+  await page.route("**/api/subscription", route => route.fulfill({ json: route.request().method() === "POST"
+    ? { checkout: { action: "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5", fields: { MerchantID: "3002607", MerchantTradeNo: "TEST123", TotalAmount: "60", PeriodAmount: "60", PeriodType: "M", Frequency: "1", ExecTimes: "999", CheckMacValue: "signed-by-server" } } }
+    : pending }));
+  let checkoutBody = "";
+  await page.route("https://payment-stage.ecpay.com.tw/**", async route => {
+    expect(route.request().method()).toBe("POST");
+    checkoutBody = route.request().postData() ?? "";
+    await route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" });
+  });
+  await page.goto("/settings");
+  await expect(page.getByText("訂閱等待付款中。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "取消訂閱" })).toHaveCount(0);
+  await expect(page.getByText("ts03085781@gmail.com", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("0960081103", { exact: false })).toHaveCount(0);
+  await page.getByRole("button", { name: "立即訂閱" }).click();
+  await expect(page.getByRole("heading", { name: "Sandbox checkout" })).toBeVisible();
+  expect(new URLSearchParams(checkoutBody).get("MerchantTradeNo")).toBe("TEST123");
+  expect(new URLSearchParams(checkoutBody).get("TotalAmount")).toBe("60");
+});
+
+test("returning from checkout shows pending, then confirmed access without trusting the return URL", async ({ page }) => {
+  const pending = { status: "pending", isActive: false, currentPeriodStart: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, cancelRequestedAt: null, amountTwd: 60, billingInterval: "month" };
+  let confirmed = false;
+  await mockSession(page, { id: "user-1", name: "Test", email: null, avatarUrl: null });
+  await page.route("**/api/subscription", route => route.fulfill({ json: confirmed
+    ? { ...pending, status: "active", isActive: true, currentPeriodStart: "2026-09-22T01:00:00Z", currentPeriodEnd: "2026-10-22T01:00:00Z", canCancel: true, canCheckout: false }
+    : pending }));
+  await page.goto("/settings?payment=returned&RtnCode=1");
+  await expect(page.getByText("訂閱等待付款中。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "取消訂閱" })).toHaveCount(0);
+  confirmed = true;
+  await page.getByRole("button", { name: "重新確認付款狀態" }).click();
+  await expect(page.getByRole("button", { name: "取消訂閱" })).toBeVisible();
+  await expect(page.getByText(/訂閱有效，可使用至/)).toBeVisible();
+});

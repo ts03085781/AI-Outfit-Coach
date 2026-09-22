@@ -211,8 +211,6 @@
     "title": "Subscription",
     "price": "NT$60 / month",
     "description": "Subscribe for NT$60 per month to enjoy unlimited outfit analyses and get styling advice whenever you need it.",
-    "email": "Email",
-    "phone": "Phone",
     "subscribe": "Subscribe",
     "loading": "Checking sign-in…",
     "maintenance": "This feature is under maintenance. Please try again later.",
@@ -227,6 +225,9 @@
     "pending": "Subscription awaiting payment.",
     "past_due": "Renewal payment incomplete. You are using the free plan.",
     "expired": "Subscription expired. You are using the free plan.",
-    "unlimited": "Unlimited analyses"
+    "unlimited": "Unlimited analyses",
+    "redirecting": "Opening checkout…",
+    "renewalTerms": "NT$60 is charged automatically each month for up to 999 payments. Cancel future payments anytime; paid access lasts through the current period.",
+    "refreshStatus": "Check payment status"
   }
 }

@@ -15,10 +15,12 @@ export function SubscriptionSection() {
   const [revision, setRevision] = useState(0);
   const generation = useRef(0);
   const pending = useRef(false);
+  const polls = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
     const current = ++generation.current;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     setError(false);
     async function load() {
@@ -33,7 +35,12 @@ export function SubscriptionSection() {
           response.status === 401
             ? null
             : SubscriptionSummarySchema.parse(await response.json());
-        if (generation.current === current) setSummary(data);
+        if (generation.current === current) {
+          setSummary(data);
+          if (data?.status === "pending" && polls.current++ < 12) {
+            timer = setTimeout(() => setRevision(value => value + 1), 5000);
+          }
+        }
       } catch {
         if (generation.current === current) setError(true);
       } finally {
@@ -43,6 +50,7 @@ export function SubscriptionSection() {
     function signedOut() {
       ++generation.current;
       controller.abort();
+      clearTimeout(timer);
       setSummary(null);
       setLoading(false);
       setError(false);
@@ -53,6 +61,7 @@ export function SubscriptionSection() {
     return () => {
       generation.current = current + 1;
       controller.abort();
+      clearTimeout(timer);
       window.removeEventListener("auth:signed-out", signedOut);
     };
   }, [revision]);
@@ -105,8 +114,6 @@ export function SubscriptionSection() {
       <h2 id="subscription-title">{t("title")}</h2>
       <p className="subscription-price">{t("price")}</p>
       <p>{t("description")}</p>
-      <p>{t("email")}: ts03085781@gmail.com</p>
-      <p>{t("phone")}: 0960081103</p>
       {loading ? (
         <p role="status">{t("loading")}</p>
       ) : error ? (
@@ -120,12 +127,12 @@ export function SubscriptionSection() {
             {t("retry")}
           </button>
         </>
-      ) : summary?.isActive ? (
+      ) : summary?.isActive || summary?.canCancel ? (
         <>
           <p role="status">
-            {t(summary.cancelAtPeriodEnd ? "canceledUntil" : "activeUntil", {
+            {summary.isActive ? t(summary.cancelAtPeriodEnd ? "canceledUntil" : "activeUntil", {
               date: end,
-            })}
+            }) : t("past_due")}
           </p>
           {!summary.cancelAtPeriodEnd ? (
             <button
@@ -146,11 +153,15 @@ export function SubscriptionSection() {
               {t(summary.status === "active" ? "expired" : summary.status)}
             </p>
           ) : null}
-          <SubscriptionButton
-            key={generation.current}
-            nextPath="/settings"
-            onSubscribed={setSummary}
-          />
+          {summary?.canCheckout !== false ? <>
+            <p>{t("renewalTerms")}</p>
+            <SubscriptionButton
+              key={generation.current}
+              nextPath="/settings"
+              onSubscribed={setSummary}
+            />
+          </> : null}
+          {summary?.status === "pending" ? <button className="button-secondary" type="button" onClick={() => { polls.current = 0; setRevision(value => value + 1); }}>{t("refreshStatus")}</button> : null}
         </>
       )}
     </section>

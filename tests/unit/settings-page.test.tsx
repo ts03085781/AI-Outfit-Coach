@@ -252,19 +252,36 @@ it("ignores subscription activation completing after signout and prevents duplic
   expect(screen.queryByRole("button", { name: "取消訂閱" })).not.toBeInTheDocument();
 });
 
-it.each([
-  ["zh-TW", "電子郵件", "電話"],
-  ["en", "Email", "Phone"],
-  ["ja", "メールアドレス", "電話番号"],
-  ["ko", "이메일", "전화번호"],
-] as const)("shows subscription contact details in %s", async (locale, email, phone) => {
+it.each(["zh-TW", "en", "ja", "ko"] as const)("omits subscription contact details in %s", async (locale) => {
   fetchMock.mockResolvedValue(sessionResponse(null));
   render(<LocaleProvider initialLocale={locale}><SettingsPage /></LocaleProvider>);
-
-  const emailLine = screen.getByText(`${email}: ts03085781@gmail.com`);
-  const phoneLine = screen.getByText(`${phone}: 0960081103`);
-  expect(emailLine).toBeVisible();
-  expect(phoneLine).toBeVisible();
-  expect(emailLine.nextElementSibling).toBe(phoneLine);
+  expect(screen.queryByText(/ts03085781@gmail.com/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/0960081103/)).not.toBeInTheDocument();
   await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+});
+
+it("submits checkout to ECPay without displaying an active subscription", async () => {
+  fetchMock.mockResolvedValue(sessionResponse({ id: "user-1" }));
+  const submit = vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(function(this: HTMLFormElement) {
+    expect(this.action).toBe("https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5");
+    expect(this.method).toBe("post");
+    expect(new FormData(this).get("MerchantTradeNo")).toBe("SUB123");
+  });
+  subscriptionFetch.mockImplementation(async (_url, options) => options?.method === "POST"
+    ? Response.json({ checkout: { action: "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5", fields: { MerchantTradeNo: "SUB123", ItemName: '<script>alert("x")</script>' } } })
+    : new Response(null, { status: 401 }));
+  render(<LocaleProvider initialLocale="zh-TW"><SettingsPage /></LocaleProvider>);
+  fireEvent.click(await screen.findByRole("button", { name: "立即訂閱" }));
+  await waitFor(() => expect(submit).toHaveBeenCalledOnce());
+  expect(screen.queryByRole("button", { name: "取消訂閱" })).not.toBeInTheDocument();
+  expect(document.querySelector('form script')).toBeNull();
+  submit.mockRestore();
+});
+
+it("allows stopping future billing when paid access has expired after a failed renewal", async () => {
+  fetchMock.mockResolvedValue(sessionResponse({ id: "user-1" }));
+  subscriptionFetch.mockResolvedValue(Response.json({ ...active, status: "past_due", isActive: false, canCancel: true, canCheckout: false }));
+  render(<LocaleProvider initialLocale="zh-TW"><SettingsPage /></LocaleProvider>);
+  expect(await screen.findByRole("button", { name: "取消訂閱" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "立即訂閱" })).not.toBeInTheDocument();
 });

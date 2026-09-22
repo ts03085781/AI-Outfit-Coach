@@ -211,8 +211,6 @@
     "title": "訂閱方案",
     "price": "NT$60／月",
     "description": "每月只要新台幣 60 元，訂閱即可享用無限次服裝分析，隨時取得穿搭建議。",
-    "email": "電子郵件",
-    "phone": "電話",
     "subscribe": "立即訂閱",
     "loading": "確認登入狀態中…",
     "maintenance": "此功能維護中，請稍後再試。",
@@ -227,6 +225,9 @@
     "pending": "訂閱等待付款中。",
     "past_due": "續訂付款未完成，目前使用免費方案。",
     "expired": "訂閱已到期，目前使用免費方案。",
-    "unlimited": "無限次分析"
+    "unlimited": "無限次分析",
+    "redirecting": "正在前往付款…",
+    "renewalTerms": "每月自動扣款 NT$60，最多 999 期。可隨時取消後續扣款，本期權益保留至到期。",
+    "refreshStatus": "重新確認付款狀態"
   }
 }

@@ -38,7 +38,7 @@ describe("mock gate", () => {
   it("uses server-selected identity only and maps provider refusal", async () => {
     const rpc = vi.fn().mockResolvedValueOnce({ data: [row], error: null }).mockResolvedValueOnce({ data: null, error: { code: "P0002" } });
     const service = createSubscriptionService(rpc, { mockEnabled: () => true, now: () => new Date("2026-01-15") });
-    expect((await service.subscribe("verified-user")).isActive).toBe(true);
+    expect(await service.subscribe("verified-user")).toMatchObject({ isActive: true });
     expect(rpc).toHaveBeenCalledWith("activate_mock_subscription", { p_user_id: "verified-user" });
     await expect(service.cancel("verified-user")).rejects.toThrow(SubscriptionMaintenanceError);
   });
@@ -48,4 +48,10 @@ describe("mock gate", () => {
     await expect(service.get("user")).rejects.toThrow(SubscriptionUnavailableError);
     await expect(service.get("user")).rejects.toThrow(SubscriptionUnavailableError);
   });
+});
+
+it("does not grant live access to stage payments unless explicitly enabled", () => {
+  const stage = [{ ...row, provider_environment: "stage" }];
+  expect(subscriptionSummary(stage, new Date("2026-01-15")).isActive).toBe(false);
+  expect(subscriptionSummary(stage, new Date("2026-01-15"), false, true).isActive).toBe(true);
 });
