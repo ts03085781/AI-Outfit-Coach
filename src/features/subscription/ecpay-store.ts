@@ -7,7 +7,7 @@ import type { EcpayOrder, EcpayStore } from "./ecpay-service";
 
 const orderSchema = z.object({
   merchant_trade_no: z.string().regex(/^[A-Za-z0-9]{1,20}$/), user_id: z.string().uuid(), merchant_id: z.string(),
-  environment: z.literal("stage"), status: z.enum(["pending", "active", "terminated", "failed"]),
+  environment: z.enum(["stage", "production"]), status: z.enum(["pending", "active", "terminated", "failed"]),
   cancel_confirmed_at: z.string().datetime({ offset: true }).nullable(),
 });
 
@@ -22,11 +22,11 @@ export function createEcpayStore(client: ReturnType<typeof createAdminSupabaseCl
     if (error) throw new SubscriptionUnavailableError();
     return data ? orderSchema.parse(data) : null;
   }
-  const args = (tradeNo: string) => ({ p_trade_no: tradeNo, p_merchant_id: config.merchantId });
+  const args = (tradeNo: string) => ({ p_trade_no: tradeNo, p_merchant_id: config.merchantId, p_environment: config.environment });
   return {
     async read(userId) {
       const data = await rpc("get_subscription", { p_user_id: userId });
-      const summary = subscriptionSummary(data, new Date(), false, true);
+      const summary = subscriptionSummary(data, new Date(), false, config.environment === "stage");
       const rows = z.array(z.object({ provider: z.string(), provider_environment: z.string().nullable(), provider_subscription_id: z.string().nullable() })).max(1).parse(data);
       const row = rows[0];
       if (row?.provider === "ecpay" && row.provider_subscription_id) {

@@ -1,11 +1,11 @@
-# Monthly subscriptions and ECPay sandbox
+# Monthly subscriptions and ECPay
 
 The plan costs NT$60 per calendar month. Cancellation stops future charges and keeps paid access until the current period ends. It does not refund payments. Access has no grace period; expiry restores the existing free daily quota without resetting usage.
 
 ## Implemented flow
 
 - `GET /api/subscription` returns the authenticated user's private, non-cacheable summary. Optional `canCancel` and `canCheckout` distinguish paid access from a still-running billing agreement (for example a failed renewal).
-- `POST /api/subscription` returns either the existing summary or `{ checkout: { action, fields } }`. The browser submits a form to the fixed ECPay **stage** checkout endpoint. User identity, NT$60 price, monthly interval and 999-payment maximum are chosen by the server. Repeated/concurrent attempts reuse the same pending order; an ongoing agreement cannot create a second one.
+- `POST /api/subscription` returns either the existing summary or `{ checkout: { action, fields } }`. The browser submits a form to the fixed ECPay endpoint for the server-selected environment. User identity, NT$60 price, monthly interval and 999-payment maximum are chosen by the server. Repeated/concurrent attempts reuse the same pending order; an ongoing agreement cannot create a second one.
 - `POST /api/ecpay/payment` receives first-payment notifications; `/api/ecpay/period` receives renewals. Both accept bounded form bodies without user cookies, verify the SHA256 CheckMacValue using a timing-safe comparison, and validate the merchant, local order and amount. Duplicate/case-colliding fields are rejected. Successful notifications trigger an authoritative ECPay query before granting rights. `SimulatePaid=1` dashboard notifications never grant access, even in stage.
 - `POST /api/ecpay/return` only redirects the browser to Settings. Its body and URL parameters never grant rights. Settings polls pending payments for up to a minute and offers a manual refresh.
 - `POST /api/subscription/cancel` calls the signed ECPay `CreditCardPeriodAction` with `Action=Cancel`. The response signature, merchant, order and success code must match before marking cancellation. If the response is lost or cancellation is retried, an authoritative query confirming termination can repair local state. Database failures never produce a false success response.
@@ -13,7 +13,7 @@ The plan costs NT$60 per calendar month. Cancellation stops future charges and k
 
 ## Data and reconciliation
 
-Apply `20260922020227_ecpay_subscriptions.sql` before enabling ECPay. It adds a `provider_environment` marker, server-only `ecpay_orders` and `ecpay_payment_events`, and transactional service-role RPCs. RLS is enabled and browser roles have no access to orders/events or mutation functions. No card information, keys, signatures, full provider responses, photos or email addresses are persisted in the payment ledger.
+Apply `20260923044349_ecpay_subscriptions.sql` followed by `20260923044404_ecpay_production_environment.sql` before enabling ECPay. It adds a `provider_environment` marker, server-only `ecpay_orders` and `ecpay_payment_events`, and transactional service-role RPCs. RLS is enabled and browser roles have no access to orders/events or mutation functions. No card information, keys, signatures, full provider responses, photos or email addresses are persisted in the payment ledger.
 
 A unique open order per user and per-user transaction locks serialize checkout/cancellation/callback races. Payment events are unique by order and authorization number. Snapshots merge immutable events; older responses cannot remove newer paid periods or undo cancellation. Historical orders cannot replace the current subscription pointer. Stage entitlements are ignored when the stage adapter is disabled.
 
@@ -27,7 +27,7 @@ The first payment callback returns exact `1|OK` only after processing; invalid o
 
 ## Sandbox configuration and safe setup
 
-This milestone only supports **ECPAY_ENV=stage**. `production` is rejected. Keep `ECPAY_ENABLED=false` on the live site (`https://stylecue.website/`). Use a separate test deployment and test Supabase database; do not give sandbox access to live users.
+Both `ECPAY_ENV=stage` and `production` are supported. Production rejects the public sandbox merchant/keys and Vercel preview scope. Mock billing cannot be enabled alongside ECPay. RPCs enforce environment and merchant matching for every mutation, and refuse replacing a subscription from another environment. Keep the live site disabled until the [production launch checklist](ecpay-production-launch.md) passes. Use separate databases for sandbox and live billing.
 
 Set these server environment variables in the test deployment or in an untracked local `.env.local`:
 
@@ -73,7 +73,9 @@ For local sandbox acceptance, `scripts/ecpay-callback-proxy.mjs` listens on `127
 
 Any approved public tunnel must target **3041**, never the application port or database. Run the application with local Supabase, a disposable test identity and public ECPay stage credentials; do not load production service credentials into that test runtime. Set `ECPAY_PUBLIC_BASE_URL` to the temporary HTTPS origin before starting the test. Close the tunnel and local processes after canceling the test agreement and removing the disposable local data. This setup supports the browser on the same computer only.
 
-Automatic approval review rejected exposing the full application through `localhost.run`. The narrower callback proxy has been implemented and tested, but opening it through that third-party service still awaits explicit user authorization. No public tunnel has been opened.
+With user authorization, the callback-only tunnel was used for manual acceptance on 2026-09-22. The user confirmed payment and cancellation passed; a subsequent stage query confirmed one successful charge and `ExecStatus=0`. The tunnel, proxy and isolated Next.js processes were then stopped, and temporary runtime credential files removed. The production site and database were not changed.
+
+Use `http://localhost:3040` consistently for browser login and provider return redirects during future local acceptance. The Next.js development request origin was `localhost`; using `127.0.0.1` in the browser caused valid subscription POSTs to fail the existing same-origin protection. Do not bypass that protection. The temporary local login helper is not part of the application or a deployable route.
 
 After configuring a publicly reachable isolated test deployment:
 

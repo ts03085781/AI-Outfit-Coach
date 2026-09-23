@@ -8,10 +8,13 @@ export function createCallbackProxy({ target = "http://127.0.0.1:3040", fetcher 
   if (origin.protocol !== "http:" || origin.hostname !== "127.0.0.1" || origin.pathname !== "/" || origin.username || origin.password || origin.search || origin.hash) {
     throw new Error("Proxy target must be a loopback HTTP origin");
   }
+  // Next.js dev normalizes the application request origin to localhost.
+  const browserOrigin = new URL(origin.origin);
+  browserOrigin.hostname = "localhost";
   return createServer(async (request, response) => {
     response.setHeader("Cache-Control", "no-store");
     if ((request.method === "POST" && request.url === "/api/ecpay/return") || (request.method === "GET" && request.url === "/settings")) {
-      response.writeHead(303, { Location: `${origin.origin}/settings?payment=returned` });
+      response.writeHead(303, { Location: `${browserOrigin.origin}/settings?payment=returned` });
       response.end();
       return;
     }

@@ -3,7 +3,7 @@ import { SubscriptionUnavailableError, type SubscriptionService, type Subscripti
 import { buildCheckout, createEcpayClient, verifyCheckMacValue, type EcpayConfig, type PeriodSnapshot } from "./ecpay";
 
 export type EcpayOrder = {
-  merchant_trade_no: string; user_id: string; merchant_id: string; environment: "stage";
+  merchant_trade_no: string; user_id: string; merchant_id: string; environment: "stage" | "production";
   status: "pending" | "active" | "terminated" | "failed"; cancel_confirmed_at: string | null;
 };
 export type EcpayStore = {

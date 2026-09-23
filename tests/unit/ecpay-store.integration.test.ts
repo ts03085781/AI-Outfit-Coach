@@ -10,7 +10,7 @@ import { ecpayConfig, generateCheckMacValue } from "@/features/subscription/ecpa
 
 // Opt-in: real local database/REST; ECPay remains deterministic and no cloud configuration is read.
 describe.skipIf(process.env.ECPAY_LOCAL_DB_TEST !== "true")("ECPay local REST integration", () => {
-  it("runs checkout, callback reconciliation and cancellation through the real service-role store", async () => {
+  it.each(["stage", "production"])("runs %s checkout, callback reconciliation and cancellation through the real service-role store", async (environment) => {
     const local = JSON.parse(execFileSync("pnpm", ["exec", "supabase", "status", "-o", "json"], { encoding: "utf8", timeout: 30000 }));
     const apiUrl = String(local.API_URL);
     expect(new URL(apiUrl).hostname).toBe("127.0.0.1");
@@ -19,7 +19,7 @@ describe.skipIf(process.env.ECPAY_LOCAL_DB_TEST !== "true")("ECPay local REST in
     expect(project).toBeTruthy();
     const sql = (statement: string) => execFileSync("docker", ["exec", `supabase_db_${project}`, "psql", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-Atc", statement], { encoding: "utf8", timeout: 30000 }).trim();
     const userId = randomUUID();
-    const config = ecpayConfig({ ECPAY_ENABLED: "true", ECPAY_ENV: "stage", ECPAY_MERCHANT_ID: "3002607", ECPAY_HASH_KEY: "pwFHCqoQZGmho4w6", ECPAY_HASH_IV: "EkRm7iFT261dpevs", ECPAY_PUBLIC_BASE_URL: "https://test.example.com" });
+    const config = ecpayConfig({ ECPAY_ENABLED: "true", ECPAY_ENV: environment, ECPAY_MERCHANT_ID: environment === "stage" ? "3002607" : "9999999", ECPAY_HASH_KEY: "K".repeat(16), ECPAY_HASH_IV: "I".repeat(16), ECPAY_PUBLIC_BASE_URL: "https://test.example.com" });
     const store = createEcpayStore(client, config);
     const now = new Date();
     const end = new Date(now.getTime() + 28 * 86400_000).toISOString();

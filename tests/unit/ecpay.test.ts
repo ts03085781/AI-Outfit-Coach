@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
+import { CheckoutResponseSchema } from "@/features/subscription/domain";
 import vectors from "../../.ecpay-skill/test-vectors/checkmacvalue.json";
 import { createEcpayClient, ecpayConfig, generateCheckMacValue, parseEcpayForm, verifyCheckMacValue, buildCheckout, parsePeriodQuery } from "@/features/subscription/ecpay";
 
@@ -72,5 +73,28 @@ describe("provider query and cancellation", () => {
     for (const response of [new Response("RtnCode=1"), new Response("RtnCode=0&RtnMsg=declined"), new Response("oops", { status: 500 })]) {
       await expect(createEcpayClient(config(), vi.fn().mockResolvedValue(response)).cancel("SUB123")).rejects.toThrow();
     }
+  });
+});
+
+const liveEnv = { ...env, ECPAY_ENV: "production", ECPAY_MERCHANT_ID: "9999999", ECPAY_HASH_KEY: "KKKKKKKKKKKKKKKK", ECPAY_HASH_IV: "IIIIIIIIIIIIIIII" };
+describe("production environment", () => {
+  it("selects fixed live endpoints and accepts only the two official checkout URLs", async () => {
+    const live = ecpayConfig(liveEnv);
+    expect(CheckoutResponseSchema.safeParse({checkout: buildCheckout(live, "LIVE123")}).success).toBe(true);
+    expect(CheckoutResponseSchema.safeParse({checkout: {action: "https://evil.example", fields: {}}}).success).toBe(false);
+    expect(buildCheckout(live, "LIVE123").action).toBe("https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5");
+    const fields = { MerchantID: live.merchantId, MerchantTradeNo: "LIVE123", RtnCode: "1" };
+    const fetcher = vi.fn().mockResolvedValue(new Response(new URLSearchParams({ ...fields, CheckMacValue: generateCheckMacValue(fields, live.hashKey, live.hashIv) })));
+    await createEcpayClient(live, fetcher).cancel("LIVE123");
+    expect(fetcher.mock.calls[0][0]).toBe("https://payment.ecpay.com.tw/Cashier/CreditCardPeriodAction");
+    fetcher.mockResolvedValue(new Response(JSON.stringify(query({ MerchantID: live.merchantId }))));
+    await createEcpayClient(live, fetcher).query("SUB123");
+    expect(fetcher.mock.calls[1][0]).toBe("https://payment.ecpay.com.tw/Cashier/QueryCreditCardPeriodInfo");
+  });
+  it("rejects public sandbox credentials, preview deployments and conflicting mock mode", () => {
+    for (const change of [{ ECPAY_MERCHANT_ID: "3002607" }, { ECPAY_HASH_KEY: env.ECPAY_HASH_KEY }, { ECPAY_HASH_IV: env.ECPAY_HASH_IV }, { VERCEL_ENV: "preview" }, { SUBSCRIPTION_MOCK_ENABLED: "true" }, { ECPAY_ENV: "unknown" }]) {
+      expect(() => ecpayConfig({ ...liveEnv, ...change })).toThrow();
+    }
+    expect(ecpayConfig({ ...liveEnv, VERCEL_ENV: "production" }).environment).toBe("production");
   });
 });

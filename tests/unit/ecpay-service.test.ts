@@ -22,6 +22,14 @@ function setup() {
 }
 
 describe("ECPay subscription lifecycle", () => {
+  it("rejects another environment before querying or canceling at the gateway", async () => {
+    const { service, state, provider } = setup();
+    state.order = { ...order, environment: "production" };
+    await expect(service.get("user-1")).rejects.toThrow();
+    await expect(service.cancel("user-1")).rejects.toThrow();
+    expect(provider.query).not.toHaveBeenCalled();
+    expect(provider.cancel).not.toHaveBeenCalled();
+  });
   it("only marks cancellation after the provider confirms it, preserving paid dates", async () => {
     const { service, state } = setup();
     expect(await service.cancel("user-1")).toMatchObject({ isActive: true, cancelAtPeriodEnd: true, currentPeriodEnd: active.currentPeriodEnd });

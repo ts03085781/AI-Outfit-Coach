@@ -31,6 +31,6 @@ test("never returns upstream pages or errors and only redirects return navigatio
     assert.equal(await (await fetch(`${origin}/api/ecpay/period`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "x=1" })).text(), "0|ERROR");
     const response = await fetch(`${origin}/api/ecpay/return`, { method: "POST", redirect: "manual" });
     assert.equal(response.status, 303);
-    assert.equal(response.headers.get("location"), "http://127.0.0.1:3040/settings?payment=returned");
+    assert.equal(response.headers.get("location"), "http://localhost:3040/settings?payment=returned");
   }, async () => new Response("internal credentials should never leave", { status: 500 }));
 });

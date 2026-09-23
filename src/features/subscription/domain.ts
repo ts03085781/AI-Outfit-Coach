@@ -15,7 +15,7 @@ export const SubscriptionSummarySchema = z.object({
 export type SubscriptionSummary = z.infer<typeof SubscriptionSummarySchema>;
 export const CheckoutResponseSchema = z.object({
   checkout: z.object({
-    action: z.literal("https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"),
+    action: z.enum(["https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5", "https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5"]),
     fields: z.record(z.string(), z.string()),
   }),
 });

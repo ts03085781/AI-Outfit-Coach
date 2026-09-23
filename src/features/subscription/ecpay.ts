@@ -4,15 +4,15 @@ import { z } from "zod";
 import { SubscriptionMaintenanceError, SubscriptionUnavailableError } from "./domain";
 
 // 規格來源：2026-09-22 讀取綠界官方文件 2868.md、2892.md、2900.md、5631.md。
-// 此階段只允許 stage；正式付款需要另行完成上線驗證。
+// 端點依伺服器環境選擇，拒絕自訂付款主機。
 export const ECPAY_CHECKOUT_URL = "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5";
-const ECPAY_API = "https://payment-stage.ecpay.com.tw";
-export type EcpayConfig = { merchantId: string; hashKey: string; hashIv: string; origin: string; environment: "stage" };
+const ECPAY_API = { stage: "https://payment-stage.ecpay.com.tw", production: "https://payment.ecpay.com.tw" } as const;
+export type EcpayConfig = { merchantId: string; hashKey: string; hashIv: string; origin: string; environment: "stage" | "production" };
 
 export function ecpayConfig(env: Record<string, string | undefined> = process.env): EcpayConfig {
   if (env.ECPAY_ENABLED !== "true") throw new SubscriptionMaintenanceError();
   const parsed = z.object({
-    ECPAY_ENV: z.literal("stage"),
+    ECPAY_ENV: z.enum(["stage", "production"]),
     ECPAY_MERCHANT_ID: z.string().regex(/^\d{1,10}$/),
     ECPAY_HASH_KEY: z.string().length(16),
     ECPAY_HASH_IV: z.string().length(16),
@@ -20,13 +20,18 @@ export function ecpayConfig(env: Record<string, string | undefined> = process.en
   }).safeParse(env);
   if (!parsed.success) throw new SubscriptionUnavailableError();
   const v = parsed.data;
+  if (env.SUBSCRIPTION_MOCK_ENABLED === "true" || (v.ECPAY_ENV === "production" && (
+    ["3002607", "2000132", "3002599", "3003008"].includes(v.ECPAY_MERCHANT_ID)
+    || v.ECPAY_HASH_KEY === "pwFHCqoQZGmho4w6" || v.ECPAY_HASH_IV === "EkRm7iFT261dpevs"
+    || (env.VERCEL_ENV && env.VERCEL_ENV !== "production")
+  ))) throw new SubscriptionUnavailableError();
   const url = new URL(v.ECPAY_PUBLIC_BASE_URL);
   if (url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash
     || url.pathname !== "/" || !url.hostname.includes(".") || url.hostname.endsWith(".localhost")
     || url.hostname.endsWith(".local") || isIP(url.hostname.replace(/^\[|\]$/g, "")) || url.origin.length > 160) {
     throw new SubscriptionUnavailableError();
   }
-  return { merchantId: v.ECPAY_MERCHANT_ID, hashKey: v.ECPAY_HASH_KEY, hashIv: v.ECPAY_HASH_IV, origin: url.origin, environment: "stage" };
+  return { merchantId: v.ECPAY_MERCHANT_ID, hashKey: v.ECPAY_HASH_KEY, hashIv: v.ECPAY_HASH_IV, origin: url.origin, environment: v.ECPAY_ENV };
 }
 
 export function generateCheckMacValue(fields: Record<string, string>, hashKey: string, hashIv: string): string {
@@ -79,7 +84,7 @@ export function buildCheckout(config: EcpayConfig, tradeNo: string, now = new Da
     NeedExtraPaidInfo: "Y",
   };
   fields.CheckMacValue = generateCheckMacValue(fields, config.hashKey, config.hashIv);
-  return { action: ECPAY_CHECKOUT_URL, fields } as const;
+  return { action: `${ECPAY_API[config.environment]}/Cashier/AioCheckOut/V5`, fields } as const;
 }
 
 const int = z.union([z.number().int(), z.string().regex(/^\d+$/).transform(Number)]).pipe(z.number().int().safe());
@@ -133,7 +138,7 @@ export function createEcpayClient(config: EcpayConfig, fetcher: typeof fetch = f
   async function post(path: string, fields: Record<string, string>): Promise<string> {
     const params = { MerchantID: config.merchantId, TimeStamp: String(Math.floor(Date.now() / 1000)), ...fields };
     const body = new URLSearchParams({ ...params, CheckMacValue: generateCheckMacValue(params, config.hashKey, config.hashIv) });
-    const response = await fetcher(`${ECPAY_API}${path}`, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" }, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) });
+    const response = await fetcher(`${ECPAY_API[config.environment]}${path}`, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" }, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new SubscriptionUnavailableError();
     const text = await response.text();
     if (text.length > 1_000_000) throw new SubscriptionUnavailableError();

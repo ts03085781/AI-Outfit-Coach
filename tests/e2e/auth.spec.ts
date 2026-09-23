@@ -166,14 +166,15 @@ test("active subscription can cancel renewal and retains the paid period", async
   await expect(page.getByRole("button", { name: "取消訂閱" })).toHaveCount(0);
 });
 
-test("subscription posts a checkout form to ECPay and stays unpaid until confirmation", async ({ page }) => {
+for (const host of ["payment-stage.ecpay.com.tw", "payment.ecpay.com.tw"]) {
+test(`subscription posts a ${host} checkout form and stays unpaid until confirmation`, async ({ page }) => {
   const pending = { status: "pending", isActive: false, currentPeriodStart: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, cancelRequestedAt: null, amountTwd: 60, billingInterval: "month", canCheckout: true, canCancel: false };
   await mockSession(page, { id: "user-1", name: "Test", email: null, avatarUrl: null });
   await page.route("**/api/subscription", route => route.fulfill({ json: route.request().method() === "POST"
-    ? { checkout: { action: "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5", fields: { MerchantID: "3002607", MerchantTradeNo: "TEST123", TotalAmount: "60", PeriodAmount: "60", PeriodType: "M", Frequency: "1", ExecTimes: "999", CheckMacValue: "signed-by-server" } } }
+    ? { checkout: { action: `https://${host}/Cashier/AioCheckOut/V5`, fields: { MerchantID: "3002607", MerchantTradeNo: "TEST123", TotalAmount: "60", PeriodAmount: "60", PeriodType: "M", Frequency: "1", ExecTimes: "999", CheckMacValue: "signed-by-server" } } }
     : pending }));
   let checkoutBody = "";
-  await page.route("https://payment-stage.ecpay.com.tw/**", async route => {
+  await page.route(`https://${host}/**`, async route => {
     expect(route.request().method()).toBe("POST");
     checkoutBody = route.request().postData() ?? "";
     await route.fulfill({ contentType: "text/html", body: "<h1>Sandbox checkout</h1>" });
@@ -188,6 +189,7 @@ test("subscription posts a checkout form to ECPay and stays unpaid until confirm
   expect(new URLSearchParams(checkoutBody).get("MerchantTradeNo")).toBe("TEST123");
   expect(new URLSearchParams(checkoutBody).get("TotalAmount")).toBe("60");
 });
+}
 
 test("returning from checkout shows pending, then confirmed access without trusting the return URL", async ({ page }) => {
   const pending = { status: "pending", isActive: false, currentPeriodStart: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, cancelRequestedAt: null, amountTwd: 60, billingInterval: "month" };

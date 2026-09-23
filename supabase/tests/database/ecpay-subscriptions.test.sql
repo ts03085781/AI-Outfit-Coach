@@ -33,6 +33,6 @@ select is((select provider_subscription_id from public.get_subscription('0000000
 select throws_ok($$select public.apply_ecpay_snapshot('STAGE001','3002607','1','[{"key":"999","success":true,"amount":60,"occurred_at":"2090-02-01T02:00:00Z","period_end":null,"rtn_code":"1"}]')$$, '23514', null, 'successful payments require an explicit paid-through date');
 reset role;
 select ok(not has_function_privilege(r, f, 'EXECUTE'), r || ' cannot call ' || f)
-from unnest(array['anon','authenticated']) r cross join unnest(array['public.begin_ecpay_checkout(uuid,text,text)','public.apply_ecpay_snapshot(text,text,text,jsonb)','public.confirm_ecpay_cancellation(text,text)','public.record_ecpay_failure(text,text,text,text,text)']) f;
+from unnest(array['anon','authenticated']) r cross join unnest(array['public.begin_ecpay_checkout(uuid,text,text,text)','public.apply_ecpay_snapshot(text,text,text,jsonb,text)','public.confirm_ecpay_cancellation(text,text,text)','public.record_ecpay_failure(text,text,text,text,text,text)']) f;
 select * from finish();
 rollback;
