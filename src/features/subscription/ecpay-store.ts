@@ -14,7 +14,10 @@ const orderSchema = z.object({
 export function createEcpayStore(client: ReturnType<typeof createAdminSupabaseClient>, config: EcpayConfig): EcpayStore {
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
-    if (error) throw new SubscriptionUnavailableError();
+    if (error) {
+      console.warn("ECPay database RPC failed", name, /^[A-Z0-9]{1,12}$/.test(error.code ?? "") ? error.code : "UNKNOWN");
+      throw new SubscriptionUnavailableError();
+    }
     return data as unknown;
   }
   async function find(tradeNo: string): Promise<EcpayOrder | null> {

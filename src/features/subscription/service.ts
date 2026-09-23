@@ -56,6 +56,8 @@ export function createSubscriptionService(rpc: SubscriptionRpc, options: { mockE
 }
 async function configured(): Promise<SubscriptionService> {
   try {
+    const missing = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY"].filter(name => !process.env[name]);
+    if (missing.length) console.warn("Missing subscription server configuration", missing.join(","));
     const { createAdminSupabaseClient } = await import("@/lib/supabase/admin");
     const client = createAdminSupabaseClient();
     if (process.env.ECPAY_ENABLED === "true") {

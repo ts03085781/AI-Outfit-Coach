@@ -8,6 +8,7 @@ export function createAdminSupabaseClient() {
   const { url } = supabasePublicConfig();
   const secretKey = process.env.SUPABASE_SECRET_KEY;
   if (!secretKey) {
+    console.warn("Missing server configuration", "SUPABASE_SECRET_KEY");
     throw new Error("Missing server-only Supabase secret configuration");
   }
 

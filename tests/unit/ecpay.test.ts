@@ -98,3 +98,14 @@ describe("production environment", () => {
     expect(ecpayConfig({ ...liveEnv, VERCEL_ENV: "production" }).environment).toBe("production");
   });
 });
+
+it("configuration diagnostics report field names without exposing supplied secrets", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const secret = "invalid-private-credential";
+  try {
+    expect(() => ecpayConfig({ ...env, ECPAY_HASH_KEY: secret })).toThrow();
+    expect(warn).toHaveBeenCalledWith("ECPay configuration invalid fields", "ECPAY_HASH_KEY");
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(env.ECPAY_HASH_IV);
+  } finally { warn.mockRestore(); }
+});

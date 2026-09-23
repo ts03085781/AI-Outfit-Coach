@@ -18,17 +18,29 @@ export function ecpayConfig(env: Record<string, string | undefined> = process.en
     ECPAY_HASH_IV: z.string().length(16),
     ECPAY_PUBLIC_BASE_URL: z.string().url(),
   }).safeParse(env);
-  if (!parsed.success) throw new SubscriptionUnavailableError();
+  if (!parsed.success) {
+    console.warn("ECPay configuration invalid fields", [...new Set(parsed.error.issues.map(issue => issue.path[0]))].join(","));
+    throw new SubscriptionUnavailableError();
+  }
   const v = parsed.data;
   if (env.SUBSCRIPTION_MOCK_ENABLED === "true" || (v.ECPAY_ENV === "production" && (
     ["3002607", "2000132", "3002599", "3003008"].includes(v.ECPAY_MERCHANT_ID)
     || v.ECPAY_HASH_KEY === "pwFHCqoQZGmho4w6" || v.ECPAY_HASH_IV === "EkRm7iFT261dpevs"
     || (env.VERCEL_ENV && env.VERCEL_ENV !== "production")
-  ))) throw new SubscriptionUnavailableError();
+  ))) {
+    console.warn("ECPay configuration conflict", {
+      mockEnabled: env.SUBSCRIPTION_MOCK_ENABLED === "true",
+      testMerchant: ["3002607", "2000132", "3002599", "3003008"].includes(v.ECPAY_MERCHANT_ID),
+      testCredentials: v.ECPAY_HASH_KEY === "pwFHCqoQZGmho4w6" || v.ECPAY_HASH_IV === "EkRm7iFT261dpevs",
+      nonProductionDeployment: !!env.VERCEL_ENV && env.VERCEL_ENV !== "production",
+    });
+    throw new SubscriptionUnavailableError();
+  }
   const url = new URL(v.ECPAY_PUBLIC_BASE_URL);
   if (url.protocol !== "https:" || url.username || url.password || url.port || url.search || url.hash
     || url.pathname !== "/" || !url.hostname.includes(".") || url.hostname.endsWith(".localhost")
     || url.hostname.endsWith(".local") || isIP(url.hostname.replace(/^\[|\]$/g, "")) || url.origin.length > 160) {
+    console.warn("ECPay configuration invalid fields", "ECPAY_PUBLIC_BASE_URL");
     throw new SubscriptionUnavailableError();
   }
   return { merchantId: v.ECPAY_MERCHANT_ID, hashKey: v.ECPAY_HASH_KEY, hashIv: v.ECPAY_HASH_IV, origin: url.origin, environment: v.ECPAY_ENV };
@@ -110,7 +122,10 @@ function periodEnd(processed: Date, anchor: Date): string {
 
 export function parsePeriodQuery(value: unknown, config: EcpayConfig, tradeNo: string): PeriodSnapshot {
   const parsed = querySchema.safeParse(value);
-  if (!parsed.success) throw new SubscriptionUnavailableError();
+  if (!parsed.success) {
+    console.warn("ECPay configuration invalid fields", [...new Set(parsed.error.issues.map(issue => issue.path[0]))].join(","));
+    throw new SubscriptionUnavailableError();
+  }
   const q = parsed.data;
   if (q.MerchantID !== config.merchantId || q.MerchantTradeNo !== tradeNo) throw new SubscriptionUnavailableError();
   const logs = [q, ...q.ExecLog];
